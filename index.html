@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SCG AI BOQ & Comprehensive Material Estimator</title>
+  <style>
+    :root {
+      --primary: #dc2626; /* SCG Red */
+      --primary-dark: #b91c1c;
+      --bg: #f8fafc;
+      --surface: #ffffff;
+      --border: #e2e8f0;
+      --text: #1e293b;
+    }
+    * {
+      box-sizing: border-box;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    body {
+      margin: 0;
+      padding: 16px;
+      background: var(--bg);
+      color: var(--text);
+    }
+    .card {
+      background: var(--surface);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 16px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+      border: 1px solid var(--border);
+    }
+    h2, h3 {
+      margin-top: 0;
+      color: #0f172a;
+    }
+    label {
+      display: block;
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 6px;
+      color: #475569;
+    }
+    input[type="password"] {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      margin-bottom: 12px;
+      font-size: 14px;
+    }
+    input[type="file"] {
+      width: 100%;
+      margin-bottom: 12px;
+    }
+    button {
+      width: 100%;
+      background: var(--primary);
+      color: white;
+      border: none;
+      padding: 12px;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    button:hover {
+      background: var(--primary-dark);
+    }
+    button:disabled {
+      background: #94a3b8;
+    }
+    .table-container {
+      overflow-x: auto;
+      margin-top: 12px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      text-align: left;
+    }
+    th, td {
+      border: 1px solid var(--border);
+      padding: 8px 10px;
+    }
+    th {
+      background: #f1f5f9;
+      white-space: nowrap;
+    }
+    .badge {
+      display: inline-block;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: bold;
+      white-space: nowrap;
+    }
+    .badge-wall { background: #fef3c7; color: #92400e; }
+    .badge-floor { background: #e0f2fe; color: #075985; }
+    .badge-roof { background: #fee2e2; color: #991b1b; }
+    .badge-mep { background: #dcfce7; color: #166534; }
+    .badge-other { background: #f1f5f9; color: #475569; }
+    .status-text {
+      font-size: 14px;
+      color: #64748b;
+      margin-top: 8px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+  <h2>🏗️ SCG AI BOQ & Material Estimator</h2>
+
+  <!-- ส่วนตั้งค่า API Key -->
+  <div class="card">
+    <label for="apiKey">Gemini API Key (บันทึกในเครื่องปลอดภัย):</label>
+    <input type="password" id="apiKey" placeholder="วางรหัส AIzaSy... ที่นี่">
+    <button type="button" onclick="saveApiKey()">บันทึก API Key</button>
+  </div>
+
+  <!-- ส่วนอัปโหลดเอกสาร -->
+  <div class="card">
+    <label for="planFile">1. ถ่ายรูป / อัปโหลด แบบแปลน (Drawing):</label>
+    <input type="file" id="planFile" accept="image/*" capture="environment">
+
+    <label for="specFile">2. ถ่ายรูป / อัปโหลด สเปกหรือรายการประกอบแบบ (ถ้ามี):</label>
+    <input type="file" id="specFile" accept="image/*" capture="environment">
+
+    <button id="processBtn" onclick="processImages()">เริ่มประเมิน BOQ และจับคู่สินค้า SCG</button>
+    <div id="status" class="status-text"></div>
+  </div>
+
+  <!-- ส่วนแสดงผลตาราง BOQ -->
+  <div class="card" id="resultCard" style="display: none;">
+    <h3>รายการประเมินปริมาณงานและประมาณการวัสดุ SCG ครบวงจร</h3>
+    <div class="table-container">
+      <table id="boqTable">
+        <thead>
+          <tr>
+            <th>หมวดงาน</th>
+            <th>รหัสอ้างอิง</th>
+            <th>รายการงานตามแบบ</th>
+            <th>ปริมาณสุทธิ</th>
+            <th>สินค้า SCG ที่แนะนำ</th>
+            <th>ประมาณการสั่งซื้อจริง (รวมเผื่อเศษ)</th>
+            <th>หมายเหตุและวิธีคำนวณ</th>
+          </tr>
+        </thead>
+        <tbody id="boqBody"></tbody>
+      </table>
+    </div>
+    <button style="margin-top: 16px; background: #16a34a;" onclick="exportCSV()">Export เป็น Excel (CSV)</button>
+  </div>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const savedKey = localStorage.getItem("GEMINI_API_KEY");
+      if (savedKey) {
+        document.getElementById("apiKey").value = savedKey;
+      }
+    });
+
+    function saveApiKey() {
+      const key = document.getElementById("apiKey").value.trim();
+      if (key) {
+        localStorage.setItem("GEMINI_API_KEY", key);
+        alert("บันทึก API Key เรียบร้อยแล้ว");
+      }
+    }
+
+    function fileToBase64(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => resolve(reader.result.split(',')[1]);
+        reader.onerror = error => reject(error);
+      });
+    }
+
+    async function processImages() {
+      const apiKey = document.getElementById("apiKey").value.trim();
+      const planFile = document.getElementById("planFile").files[0];
+      const specFile = document.getElementById("specFile").files[0];
+      const statusDiv = document.getElementById("status");
+      const btn = document.getElementById("processBtn");
+
+      if (!apiKey) {
+        alert("กรุณากรอกและบันทึก Gemini API Key ก่อน");
+        return;
+      }
+      if (!planFile) {
+        alert("กรุณาเลือกหรือถ่ายภาพแบบแปลน");
+        return;
+      }
+
+      btn.disabled = true;
+      statusDiv.innerText = "กำลังแปลงข้อมูลรูปภาพ...";
+
+      try {
+        const imageParts = [];
+        const planBase64 = await fileToBase64(planFile);
+        imageParts.push({
+          inlineData: { mimeType: planFile.type, data: planBase64 }
+        });
+
+        if (specFile) {
+          const specBase64 = await fileToBase64(specFile);
+          imageParts.push({
+            inlineData: { mimeType: specFile.type, data: specBase64 }
+          });
+        }
+
+        statusDiv.innerText = "AI กำลังถอดแบบ คำนวณปริมาณ และจับคู่สินค้า SCG ครบวงจร...";
+
+        const promptText = `
+คุณเป็นผู้เชี่ยวชาญการถอดแบบและประมาณราคา (Quantity Surveyor) ประจำเครือ SCG
+วิเคราะห์ภาพแบบแปลนและรายการประกอบแบบที่แนบมานี้ ถอดปริมาณงาน และจับคู่สินค้าในเครือ SCG ให้ครบถ้วนตามหมวดงานต่อไปนี้:
+
+[ฐานข้อมูลสินค้า SCG และสูตรการแปลงหน่วยที่ต้องใช้]:
+1. หมวดงานผนังและฉาบ (Wall & Partition):
+   - งานก่อผนังมวลเบา: "อิฐมวลเบา Q-CON" (8.33 ก้อน/ตร.ม. เผื่อเศษ 5%) + "ปูนก่ออิฐมวลเบา เสือ มอร์ตาร์" (1 ถุง 50กก. ได้ ~25 ตร.ม.)
+   - งานฉาบผนัง: "ปูนฉาบอิฐมวลเบา เสือ มอร์ตาร์" (1 ถุง 50กก. ฉาบได้ ~2.5 ตร.ม. ที่ความหนา 1 ซม. คิดฉาบ 2 ด้าน)
+   - งานก่ออิฐมอญ/บล็อก: "ปูนซีเมนต์ผสม เสือ ซีเมนต์" (ถุง 50กก.)
+   - งานโครงสร้าง คสล./เสาเอ็น-ทับหลัง: "ปูนซีเมนต์ปอร์ตแลนด์ ตราช้าง" (ถุง 50กก.)
+   - งานผนังเบากั้นห้อง: "แผ่นสมาร์ทบอร์ด SCG หนา 8/10/12 มม." (แผ่น 1.2x2.4 ม. เผื่อ 7%) + "โครงคร่าวโลหะ ตราช้าง C-Stud/U-Track" (ท่อน 3 ม.)
+   - งานผนังตกแต่ง: "ไม้ตกแต่ง SCG D-COR" หรือ "ไม้สังเคราะห์ SCG Smartwood" (ท่อน/แผ่น)
+
+2. หมวดงานพื้น (Floor Finishes & Structure):
+   - งานเทพื้นโครงสร้าง: "คอนกรีตผสมเสร็จ CPAC" (คิว หรือ ลบ.ม.)
+   - งานปรับระดับพื้น: "ปูนเทปรับระดับ เสือ มอร์ตาร์ Floor Screed" (1 ถุง 50กก. ได้ ~0.9 ตร.ม. หนา 3 ซม.)
+   - งานปูกระเบื้อง: "กระเบื้อง COTTO" (คำนวณเป็นกล่อง เผื่อเศษ 5-10%) + "ปูนกาวซีเมนต์ เสือ/COTTO" (1 ถุง 20กก. ปูได้ ~4 ตร.ม.) + "กาวยาแนว COTTO/เสือ" (1 ถุง 1กก. ได้ ~4 ตร.ม.)
+   - งานพื้นเบา/ยกระดับ: "แผ่นพื้นสมาร์ทบอร์ด SCG หนา 16/18/20 มม." (แผ่น 1.2x2.4 ม.)
+   - งานไม้พื้นระเบียง/ภายนอก: "ไม้พื้น SCG D-COR / Smartwood" (แผ่น/ท่อน)
+
+3. หมวดงานหลังคาและฝ้าเพดาน (Roof & Ceiling):
+   - แผ่นหลังคา: "กระเบื้องหลังคาลอนคู่ SCG", "หลังคาคอนกรีต CPAC", หรือ "หลังคาเซรามิก Excella" (คำนวณพื้นที่ลาดเอียงจริง หารระยะซ้อนทับ คิดเป็น แผ่น)
+   - อุปกรณ์หลังคา: "ระบบครอบแห้ง SCG Dry Tech System" (เมตร/กล่อง)
+   - งานฉนวน: "ฉนวนกันความร้อน STAY COOL ตราช้าง" หรือ "แผ่นสะท้อนความร้อน SCG" (คำนวณเป็น ม้วน)
+   - เชิงชายและรางน้ำ: "ไม้เชิงชาย SCG Smartwood" (ท่อน 3 ม.) + "รางน้ำฝนไวนิล SCG รุ่น Smart/Deluxe" (ท่อนและชุดอุปกรณ์)
+   - งานฝ้าเพดาน: "แผ่นฝ้าสมาร์ทบอร์ด SCG หนา 3.5/4/6 มม." (แผ่น) + "โครงคร่าวฝ้าเพดาน ตราช้าง C-Line" (ท่อน 4 ม.)
+
+4. หมวดงานสุขาภิบาลและระบบน้ำ (Sanitary & Plumbing):
+   - สุขภัณฑ์: "โถสุขภัณฑ์ COTTO", "อ่างล้างหน้า COTTO", "ก๊อกน้ำและฝักบัว COTTO" (ชุด/ชิ้น)
+   - ท่อและข้อต่อ: "ท่อ SCG ตราช้าง สีฟ้า (ประปา)", "สีเทา (ระบายน้ำ)", "สีเหลือง (ร้อยสายไฟ)" (ท่อน 4 ม.)
+   - ระบบบำบัด/สำรองน้ำ: "ถังบำบัดน้ำเสีย SCG", "ถังเก็บน้ำบนดิน SCG" (ใบ)
+
+ให้แปลงผลลัพธ์เป็น JSON Array เท่านั้น โดยแต่ละ Object ประกอบด้วย:
+[
+  {
+    "category": "หมวดงาน (เช่น งานผนัง, งานพื้น, งานหลังคาและฝ้า, งานสุขาภิบาลและระบบน้ำ)",
+    "code_ref": "รหัสสัญลักษณ์บนแบบ เช่น W1, F1, D1, หรือ -",
+    "item_name": "ชื่อรายการงานตามแบบแปลน",
+    "net_quantity": "ปริมาณสุทธิ เช่น 65 ตร.ม. หรือ 18 ม.",
+    "scg_product": "ชื่อสินค้า SCG ที่แนะนำอย่างเจาะจง",
+    "order_estimate": "จำนวนและหน่วยสั่งซื้อจริง เช่น 569 ก้อน, 26 ถุง (50กก.), 45 กล่อง",
+    "calculation_note": "สูตรคำนวณและ % เผื่อเศษที่ใช้"
+  }
+]
+`;
+
+        const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+
+        const requestBody = {
+          contents: [{
+            parts: [
+              { text: promptText },
+              ...imageParts
+            ]
+          }],
+          generationConfig: {
+            responseMimeType: "application/json"
+          }
+        };
+
+        const response = await fetch(endpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(requestBody)
+        });
+
+        if (!response.ok) {
+          throw new Error("Request failed");
+        }
+
+        const data = await response.json();
+        const rawContent = data.candidates[0].content.parts[0].text;
+        const boqItems = JSON.parse(rawContent);
+
+        renderBOQTable(boqItems);
+        statusDiv.innerText = "ประมวลผลและประมาณการวัสดุ SCG สำเร็จ!";
+      } catch (err) {
+        statusDiv.innerText = "เกิดข้อผิดพลาดในการประมวลผล กรุณาลองใหม่อีกครั้ง";
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    function renderBOQTable(items) {
+      const tbody = document.getElementById("boqBody");
+      tbody.innerHTML = "";
+      window.currentBOQData = items;
+
+      items.forEach(item => {
+        let badgeClass = "badge badge-other";
+        const cat = item.category || "";
+        if (cat.includes("ผนัง")) badgeClass = "badge badge-wall";
+        else if (cat.includes("พื้น")) badgeClass = "badge badge-floor";
+        else if (cat.includes("หลังคา") || cat.includes("ฝ้า")) badgeClass = "badge badge-roof";
+        else if (cat.includes("สุขาภิบาล") || cat.includes("ระบบ") || cat.includes("ท่อ")) badgeClass = "badge badge-mep";
+
+        const row = document.createElement("tr");
+        row.innerHTML = `
+          <td><span class="${badgeClass}">${item.category || "-"}</span></td>
+          <td>${item.code_ref || "-"}</td>
+          <td>${item.item_name || "-"}</td>
+          <td><b>${item.net_quantity || "-"}</b></td>
+          <td style="color: #b91c1c; font-weight: 600;">${item.scg_product || "-"}</td>
+          <td><b>${item.order_estimate || "-"}</b></td>
+          <td style="color: #64748b;">${item.calculation_note || "-"}</td>
+        `;
+        tbody.appendChild(row);
+      });
+
+      document.getElementById("resultCard").style.display = "block";
+    }
+
+    function exportCSV() {
+      if (!window.currentBOQData || window.currentBOQData.length === 0) return;
+
+      let csvContent = "\uFEFFหมวดงาน,รหัสอ้างอิง,รายการงาน,ปริมาณสุทธิ,สินค้า SCG แนะนำ,ประมาณการสั่งซื้อจริง,หมายเหตุการคำนวณ\n";
+      window.currentBOQData.forEach(row => {
+        csvContent += `"${row.category}","${row.code_ref}","${row.item_name}","${row.net_quantity}","${row.scg_product}","${row.order_estimate}","${row.calculation_note}"\n`;
+      });
+
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.setAttribute("href", url);
+      link.setAttribute("download", `SCG_BOQ_Full_${new Date().toISOString().slice(0,10)}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  </script>
+</body>
+</html>
