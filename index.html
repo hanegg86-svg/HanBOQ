@@ -80,15 +80,26 @@
         grid-template-columns: 1fr 1fr 1fr;
       }
     }
+    .btn-group {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    @media (min-width: 640px) {
+      .btn-group {
+        flex-direction: row;
+      }
+    }
     button {
       background: var(--primary);
       color: white;
       border: none;
       padding: 12px;
       border-radius: 8px;
-      font-size: 16px;
+      font-size: 15px;
       font-weight: 600;
       cursor: pointer;
+      flex: 1;
     }
     button:hover {
       background: var(--primary-dark);
@@ -96,6 +107,12 @@
     button:disabled {
       background: #94a3b8;
       cursor: not-allowed;
+    }
+    .btn-recalc {
+      background: #0284c7;
+    }
+    .btn-recalc:hover {
+      background: #0369a1;
     }
     .btn-view {
       background: #0284c7;
@@ -274,7 +291,10 @@
     <label for="specFile">2. รายการประกอบแบบ/สเปก (ถ้ามี) - รองรับ PDF, PNG, JPG:</label>
     <input type="file" id="specFile" accept="image/*,application/pdf">
 
-    <button id="processBtn" style="width: 100%;" onclick="processDocuments()">เริ่มวิเคราะห์ด้วย Gemini 3.5 Flash-Lite</button>
+    <div class="btn-group">
+      <button id="processBtn" onclick="processDocuments()">เริ่มวิเคราะห์จากแบบใหม่</button>
+      <button id="recalcBtn" class="btn-recalc" onclick="recalculateWithNewSpecs()" disabled>🔄 คำนวณใหม่ตามสเปกที่เลือก (ไม่ต้องอัปโหลดใหม่)</button>
+    </div>
     <div id="status" class="status-text"></div>
   </div>
 
@@ -317,6 +337,7 @@
 
   <script>
     let renderedBaseImage = null; // เก็บภาพ Canvas ฐานสำหรับวาดกรอบ
+    let lastRawBOQItems = null;   // จำผลการถอดปริมาณดิบไว้ใช้คำนวณซ้ำเมื่อเปลี่ยนสเปก
 
     document.addEventListener("DOMContentLoaded", () => {
       const savedKey = localStorage.getItem("GEMINI_API_KEY");
@@ -333,7 +354,6 @@
       }
     }
 
-    // ฟังก์ชันแปลงไฟล์ภาพหรือหน้าแรกของ PDF ให้กลายเป็น Image Element เพื่อใช้วาด Canvas
     async function prepareBaseImage(file) {
       if (file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")) {
         const arrayBuffer = await file.arrayBuffer();
@@ -385,6 +405,7 @@
       });
     }
 
+    // ฟังก์ชันวิเคราะห์ใหม่ทั้งหมดจากไฟล์แบบแปลน
     async function processDocuments() {
       const apiKey = document.getElementById("apiKey").value.trim();
       const planFile = document.getElementById("planFile").files[0];
@@ -394,6 +415,7 @@
       const floorChoice = document.getElementById("floorOption").value;
       const statusDiv = document.getElementById("status");
       const btn = document.getElementById("processBtn");
+      const recalcBtn = document.getElementById("recalcBtn");
 
       if (!apiKey) {
         alert("กรุณากรอกและบันทึก Gemini API Key ก่อน");
@@ -405,10 +427,10 @@
       }
 
       btn.disabled = true;
-      statusDiv.innerText = "กำลังประมวลผลไฟล์และเตรียมภาพอ้างอิง...";
+      recalcBtn.disabled = true;
+      statusDiv.innerText = "กำลังแปลงข้อมูลไฟล์และเรนเดอร์ภาพอ้างอิง...";
 
       try {
-        // เตรียม Base Image สำหรับทำ Visual Grounding
         renderedBaseImage = await prepareBaseImage(planFile);
 
         const parts = [];
@@ -420,24 +442,24 @@
           parts.push(specPart);
         }
 
-        statusDiv.innerText = "กำลังวิเคราะห์และหาพิกัดตำแหน่งด้วย Gemini 3.5 Flash-Lite...";
+        statusDiv.innerText = "กำลังวิเคราะห์แบบและคำนวณตำแหน่งด้วย Gemini 3.5 Flash-Lite...";
 
         const promptText = `
 คุณเป็นผู้เชี่ยวชาญการถอดแบบและประมาณราคา (Quantity Surveyor) ประจำเครือ SCG
 วิเคราะห์แบบแปลนที่แนบมานี้ ถอดปริมาณงาน และคำนวณปริมาณสินค้า SCG ตามเงื่อนไขด้านล่าง:
 
 [เงื่อนไขวัสดุทดแทน]:
-- หลังคา: "${roofChoice}" (ถ้าเป็น metal_snaplock ใช้ SCG Metal Sheet ลอน Snap Lock, ถ้าเป็น metal_760 ใช้ SCG Metal Sheet ลอน 760 Noise Shield)
-- ผนัง: "${wallChoice}"
-- พื้น: "${floorChoice}"
+- สเปกหลังคา: "${roofChoice}" (ถ้าเป็น metal_snaplock ใช้ SCG Metal Sheet ลอน Snap Lock ซ่อนสกรู กว้างใช้งาน 0.30ม., ถ้าเป็น metal_760 ใช้ SCG Metal Sheet ลอน 760 Noise Shield กว้างใช้งาน 0.76ม.)
+- สเปกผนัง: "${wallChoice}"
+- สเปกพื้น: "${floorChoice}"
 
 [คำสั่งพิเศษด้านตำแหน่ง - VISUAL GROUNDING]:
-สำหรับแต่ละรายการที่ถอดได้ ให้ระบุพิกัด Bounding Box บนภาพแบบแปลนที่ใช้ถอดตัวเลขนั้น (box_2d) เป็นพิกัด Normalized [ymin, xmin, ymax, xmax] ในช่วง 0 ถึง 1000 เสมอ พร้อมระบุคำอธิบายตำแหน่ง เช่น "โซนหลังคาหลัก แกนกริด 1-4" หรือ "แนวผนังห้องนอน 1"
+สำหรับแต่ละรายการที่ถอดได้ ให้ระบุพิกัด Bounding Box บนภาพแบบแปลนที่ใช้ถอดตัวเลขนั้น (box_2d) เป็นพิกัด Normalized [ymin, xmin, ymax, xmax] ในช่วง 0 ถึง 1000 เสมอ พร้อมระบุคำอธิบายตำแหน่ง
 
 ส่งคำตอบกลับมาเป็น JSON Array เท่านั้น:
 [
   {
-    "category": "หมวดงาน",
+    "category": "หมวดงาน (งานหลังคา, งานผนัง, งานพื้น, งานสุขาภิบาล)",
     "code_ref": "รหัสสัญลักษณ์บนแบบ หรือ -",
     "item_name": "ชื่อรายการงานตามแบบแปลน",
     "net_quantity": "ปริมาณสุทธิ เช่น 180 ตร.ม.",
@@ -475,12 +497,94 @@
         const rawContent = data.candidates[0].content.parts[0].text;
         const boqItems = JSON.parse(rawContent);
 
+        lastRawBOQItems = boqItems; // จำข้อมูลดิบไว้ใช้คำนวณซ้ำ
+        recalcBtn.disabled = false;  // เปิดให้กดปุ่มคำนวณใหม่ได้
+
         renderBOQTable(boqItems);
-        statusDiv.innerText = "ประมวลผลและจับคู่พิกัดสำเร็จ!";
+        statusDiv.innerText = "ประมวลผลและประมาณการสำเร็จ!";
       } catch (err) {
         statusDiv.innerText = "เกิดข้อผิดพลาดในการประมวลผล กรุณาลองใหม่อีกครั้ง";
       } finally {
         btn.disabled = false;
+      }
+    }
+
+    // ฟังก์ชันคำนวณใหม่ตามสเปกที่เปลี่ยน โดยใช้ตัวเลขเดิม (เร็วและไม่เปลืองโควตาสแกนภาพ)
+    async function recalculateWithNewSpecs() {
+      if (!lastRawBOQItems || lastRawBOQItems.length === 0) {
+        alert("กรุณาวิเคราะห์แบบแปลนก่อนอย่างน้อยหนึ่งครั้ง");
+        return;
+      }
+
+      const apiKey = document.getElementById("apiKey").value.trim();
+      const roofChoice = document.getElementById("roofOption").value;
+      const wallChoice = document.getElementById("wallOption").value;
+      const floorChoice = document.getElementById("floorOption").value;
+      const statusDiv = document.getElementById("status");
+      const recalcBtn = document.getElementById("recalcBtn");
+
+      recalcBtn.disabled = true;
+      statusDiv.innerText = "กำลังคำนวณปริมาณสินค้าใหม่ตามสเปกที่เลือก...";
+
+      try {
+        const promptText = `
+คุณเป็น Quantity Surveyor ประจำ SCG
+นี่คือรายการปริมาณงานสุทธิเดิมที่ถอดได้จากแบบ:
+${JSON.stringify(lastRawBOQItems, null, 2)}
+
+ผู้ใช้ต้องการเปลี่ยนสเปกวัสดุใหม่ดังนี้:
+- สเปกหลังคาใหม่: "${roofChoice}" (ถ้าเป็น metal_snaplock ใช้ SCG Metal Sheet ลอน Snap Lock กว้างใช้งาน 0.30 ม. เผื่อ 5%, ถ้าเป็น metal_760 ใช้ SCG Metal Sheet ลอน 760 Noise Shield กว้างใช้งาน 0.76 ม. เผื่อ 5%, ถ้าเป็น cpac ใช้กระเบื้องคอนกรีต CPAC ~11 แผ่น/ตร.ม.)
+- สเปกผนังใหม่: "${wallChoice}" (ถ้าเป็น qcon ใช้อิฐมวลเบา Q-CON 8.33 ก้อน/ตร.ม. + ปูนฉาบเสือมอร์ตาร์, ถ้าเป็น smartboard ใช้แผ่นสมาร์ทบอร์ด SCG + โครง C-Stud)
+- สเปกพื้นใหม่: "${floorChoice}" (ถ้าเป็น cotto_tile ใช้กระเบื้อง COTTO + ปูนกาวเสือ, ถ้าเป็น smartwood_floor ใช้ไม้พื้น SCG D-COR/Smartwood)
+
+กรุณาแปลงสินค้า SCG (scg_product), คำนวณจำนวนสั่งซื้อใหม่ (order_estimate) และอัปเดตวิธีคำนวณ (calculation_note) ให้สอดคล้องกับสเปกใหม่ โดยยังคงรักษาข้อมูลปริมาณสุทธิ (net_quantity) และพิกัดตำแหน่งเดิม (source_location) ไว้ครบถ้วน
+
+ส่งผลลัพธ์กลับมาเป็น JSON Array เท่านั้น:
+[
+  {
+    "category": "หมวดงาน",
+    "code_ref": "รหัสสัญลักษณ์เดิม",
+    "item_name": "ชื่อรายการงานเดิม",
+    "net_quantity": "ปริมาณสุทธิเดิม",
+    "scg_product": "ชื่อสินค้า SCG ตามสเปกใหม่",
+    "order_estimate": "จำนวนและหน่วยสั่งซื้อใหม่",
+    "calculation_note": "สูตรคำนวณของสินค้าใหม่",
+    "source_location": {
+      "box_2d": [ymin, xmin, ymax, xmax],
+      "location_description": "คำอธิบายเดิม"
+    }
+  }
+]
+`;
+
+        const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key=${apiKey}`;
+
+        const response = await fetch(endpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: promptText }] }],
+            generationConfig: {
+              responseMimeType: "application/json"
+            }
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error("Recalculate Error");
+        }
+
+        const data = await response.json();
+        const rawContent = data.candidates[0].content.parts[0].text;
+        const updatedItems = JSON.parse(rawContent);
+
+        lastRawBOQItems = updatedItems;
+        renderBOQTable(updatedItems);
+        statusDiv.innerText = "คำนวณและอัปเดตสเปกสินค้าใหม่สำเร็จ!";
+      } catch (err) {
+        statusDiv.innerText = "เกิดข้อผิดพลาดในการคำนวณใหม่ กรุณาลองอีกครั้ง";
+      } finally {
+        recalcBtn.disabled = false;
       }
     }
 
@@ -520,13 +624,12 @@
       document.getElementById("resultCard").style.display = "block";
     }
 
-    // ฟังก์ชันเปิด Modal และวาดไฮไลต์ Bounding Box
     function showLocation(index) {
       const item = window.currentBOQData[index];
       if (!item || !item.source_location || !renderedBaseImage) return;
 
       const loc = item.source_location;
-      const box = loc.box_2d; // [ymin, xmin, ymax, xmax] 0-1000
+      const box = loc.box_2d;
 
       document.getElementById("modalTitle").innerText = `🔍 ตำแหน่งอ้างอิง: ${item.item_name} (${item.net_quantity})`;
       document.getElementById("modalDesc").innerHTML = `<b>คำอธิบายตำแหน่ง:</b> ${loc.location_description || "ไม่มีคำอธิบายเพิ่มเติม"}`;
@@ -534,11 +637,9 @@
       const canvas = document.getElementById("viewerCanvas");
       const ctx = canvas.getContext("2d");
 
-      // ปรับขนาด Canvas ให้เท่าภาพต้นฉบับ
       canvas.width = renderedBaseImage.width;
       canvas.height = renderedBaseImage.height;
 
-      // 1. วาดภาพแบบแปลนลงบน Canvas
       ctx.drawImage(renderedBaseImage, 0, 0);
 
       if (box && box.length === 4) {
@@ -549,14 +650,11 @@
         const w = xmax - xmin;
         const h = ymax - ymin;
 
-        // 2. เคลือบฟิล์มสีดำโปร่งใสรอบนอกเพื่อให้จุดไฮไลต์เด่นขึ้น
         ctx.fillStyle = "rgba(0, 0, 0, 0.35)";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // 3. เจาะช่องสว่างตรงตำแหน่ง Bounding Box
         ctx.drawImage(renderedBaseImage, xmin, ymin, w, h, xmin, ymin, w, h);
 
-        // 4. วาดเส้นกรอบสี่เหลี่ยมสีแดง SCG และพื้นหลังโปร่งแสง
         ctx.strokeStyle = "#dc2626";
         ctx.lineWidth = 6;
         ctx.strokeRect(xmin, ymin, w, h);
@@ -564,7 +662,6 @@
         ctx.fillStyle = "rgba(220, 38, 38, 0.2)";
         ctx.fillRect(xmin, ymin, w, h);
 
-        // 5. ป้ายแท็กข้อความเหนือกรอบ
         ctx.fillStyle = "#dc2626";
         ctx.fillRect(xmin, ymin > 30 ? ymin - 30 : ymin, 160, 30);
         ctx.fillStyle = "#ffffff";
@@ -592,14 +689,14 @@
       let csvContent = "\uFEFFหมวดงาน,รหัสอ้างอิง,รายการงาน,ปริมาณสุทธิ,สินค้า SCG แนะนำ,ประมาณการสั่งซื้อจริง,หมายเหตุการคำนวณ,คำอธิบายตำแหน่ง\n";
       window.currentBOQData.forEach(row => {
         const desc = (row.source_location && row.source_location.location_description) ? row.source_location.location_description : "-";
-        csvContent += `"${row.category}","${row.code_ref}","${row.item_name}","${row.net_quantity}","${row.scg_product}","${row.order_estimate}","${row.calculation_note}","${desc}"\n`;
+        csvContent += `"${row.category}","${row.code_ref}","${row.item_name}","${row.net_quantity}","${row.scg_product}","${row.order_estimate}","${row.calculation_note}"\n`;
       });
 
       const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.setAttribute("href", url);
-      link.setAttribute("download", `SCG_BOQ_Visual_${new Date().toISOString().slice(0,10)}.csv`);
+      link.setAttribute("download", `SCG_BOQ_Recalc_${new Date().toISOString().slice(0,10)}.csv`);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
