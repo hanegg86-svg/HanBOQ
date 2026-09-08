@@ -77,6 +77,11 @@
     }
     @media (min-width: 640px) {
       .grid-options {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+    @media (min-width: 1024px) {
+      .grid-options {
         grid-template-columns: 1fr 1fr 1fr;
       }
     }
@@ -156,6 +161,8 @@
     .badge-wall { background: #fef3c7; color: #92400e; }
     .badge-floor { background: #e0f2fe; color: #075985; }
     .badge-roof { background: #fee2e2; color: #991b1b; }
+    .badge-ceiling { background: #e0e7ff; color: #3730a3; }
+    .badge-wood { background: #fae8ff; color: #86198f; }
     .badge-mep { background: #dcfce7; color: #166534; }
     .badge-other { background: #f1f5f9; color: #475569; }
     .status-text {
@@ -166,7 +173,7 @@
       font-weight: 500;
     }
 
-    /* สไตล์ Modal แสดงภาพพิกัด */
+    /* Modal แสดงตำแหน่ง */
     .modal {
       display: none;
       position: fixed;
@@ -241,19 +248,20 @@
 
   <h2>🏗️ SCG AI BOQ & Multi-Page Visual Grounding Estimator</h2>
 
-  <!-- ส่วนตั้งค่า API Key -->
+  <!-- ตั้งค่า API Key -->
   <div class="card">
     <label for="apiKey">Gemini API Key:</label>
     <input type="password" id="apiKey" placeholder="วางรหัส AIzaSy... ที่นี่">
     <button type="button" style="width: 100%;" onclick="saveApiKey()">บันทึก API Key</button>
   </div>
 
-  <!-- ส่วนเลือกวัสดุและอัปโหลดเอกสาร -->
+  <!-- เลือกวัสดุและอัปโหลดเอกสาร -->
   <div class="card">
     <label>เลือกสเปกหรือวัสดุทดแทนที่ต้องการคำนวณเปรียบเทียบ:</label>
     <div class="grid-options">
+      <!-- 1. หลังคา -->
       <div>
-        <label for="roofOption">หมวดงานหลังคา:</label>
+        <label for="roofOption">1. หมวดงานหลังคา:</label>
         <select id="roofOption">
           <option value="auto">คำนวณตามแบบระบุ (Default)</option>
           <option value="metal_snaplock">SCG Metal Sheet ลอน Snap Lock (ซ่อนสกรู)</option>
@@ -264,23 +272,48 @@
         </select>
       </div>
 
+      <!-- 2. ผนัง -->
       <div>
-        <label for="wallOption">หมวดงานผนัง:</label>
+        <label for="wallOption">2. หมวดงานผนัง:</label>
         <select id="wallOption">
           <option value="auto">คำนวณตามแบบระบุ (Default)</option>
           <option value="qcon">ก่ออิฐมวลเบา Q-CON + ปูนฉาบเสือมอร์ตาร์</option>
-          <option value="smartboard">ผนังเบา แผ่นสมาร์ทบอร์ด SCG + โครง C-Stud</option>
+          <option value="smartboard_wall">ผนังเบา สมาร์ทบอร์ด SCG หนา 8-10 มม. + โครง C-Stud</option>
+          <option value="smartwood_siding">ผนังตกแต่ง ไม้ฝา SCG Smartwood (ลายไม้สัก)</option>
           <option value="clay_brick">ก่ออิฐมอญ/บล็อก + ปูนเสือซีเมนต์ผสม</option>
         </select>
       </div>
 
+      <!-- 3. พื้น -->
       <div>
-        <label for="floorOption">หมวดงานพื้น:</label>
+        <label for="floorOption">3. หมวดงานพื้น:</label>
         <select id="floorOption">
           <option value="auto">คำนวณตามแบบระบุ (Default)</option>
           <option value="cotto_tile">กระเบื้อง COTTO + ปูนกาวเสือ</option>
-          <option value="smartwood_floor">ไม้พื้น SCG D-COR / Smartwood</option>
+          <option value="smartwood_floor">ไม้พื้นสังเคราะห์ SCG Smartwood / D-COR</option>
           <option value="smartboard_floor">แผ่นพื้นสมาร์ทบอร์ด SCG หนา 16-20 มม.</option>
+        </select>
+      </div>
+
+      <!-- 4. ฝ้าเพดาน -->
+      <div>
+        <label for="ceilingOption">4. หมวดงานฝ้าเพดาน:</label>
+        <select id="ceilingOption">
+          <option value="auto">คำนวณตามแบบระบุ (Default)</option>
+          <option value="smartboard_ceiling">ฝ้าสมาร์ทบอร์ด SCG ขอบเรียบ หนา 3.5-4 มม. + โครงฝ้า</option>
+          <option value="smartboard_vent">ฝ้าชายคา สมาร์ทบอร์ด SCG รุ่นมีรูระบายอากาศ (ลดร้อน)</option>
+          <option value="gypsum_ceiling">แผ่นยิปซัม SCG ตราช้าง ขอบลาด หนา 9 มม. + โครงพลัสไลน์</option>
+        </select>
+      </div>
+
+      <!-- 5. ไม้สังเคราะห์ตกแต่ง Smartwood -->
+      <div>
+        <label for="woodOption">5. หมวดไม้ตกแต่ง Smartwood:</label>
+        <select id="woodOption">
+          <option value="auto">คำนวณตามแบบระบุ (Default)</option>
+          <option value="smartwood_eaves">ไม้เชิงชาย SCG Smartwood 2 in 1 (ตามแนวชายคา)</option>
+          <option value="smartwood_lath">ไม้ระแนงบังแดด / ตกแต่ง SCG Smartwood 3"</option>
+          <option value="smartwood_fence">ไม้รั้วสังเคราะห์ SCG Smartwood</option>
         </select>
       </div>
     </div>
@@ -298,7 +331,7 @@
     <div id="status" class="status-text"></div>
   </div>
 
-  <!-- ส่วนแสดงผลตาราง BOQ -->
+  <!-- ตาราง BOQ -->
   <div class="card" id="resultCard" style="display: none;">
     <h3>รายการประเมินปริมาณงานและสินค้า SCG</h3>
     <div class="table-container">
@@ -321,7 +354,7 @@
     <button style="margin-top: 16px; background: #16a34a; width: 100%;" onclick="exportCSV()">Export เป็น Excel (CSV)</button>
   </div>
 
-  <!-- Modal ป๊อปอัปแสดงภาพและตำแหน่ง Bounding Box -->
+  <!-- Modal ป๊อปอัป -->
   <div id="viewerModal" class="modal">
     <div class="modal-content">
       <div class="modal-header">
@@ -336,10 +369,10 @@
   </div>
 
   <script>
-    let currentUploadedFile = null;  // เก็บอ้างอิงไฟล์แปลน
-    let pdfDocumentInstance = null;  // เก็บ instance ของ PDF เมื่อโหลดด้วย pdf.js
-    let singleImageInstance = null;  // เก็บภาพกรณีเป็น PNG/JPG
-    let lastRawBOQItems = null;      // แคชรายการถอดแบบดิบ
+    let currentUploadedFile = null;
+    let pdfDocumentInstance = null;
+    let singleImageInstance = null;
+    let lastRawBOQItems = null;
 
     document.addEventListener("DOMContentLoaded", () => {
       const savedKey = localStorage.getItem("GEMINI_API_KEY");
@@ -377,7 +410,6 @@
       });
     }
 
-    // เตรียมตัวโหลดเอกสารเก็บไว้ในหน่วยความจำ
     async function loadPlanDocument(file) {
       currentUploadedFile = file;
       pdfDocumentInstance = null;
@@ -398,7 +430,6 @@
       }
     }
 
-    // ฟังก์ชันเรนเดอร์หน้าเอกสารที่ต้องการ (PDF Page หรือ Image) เป็น Image Object
     async function getPageImage(pageNum) {
       if (pdfDocumentInstance) {
         const pageIndex = Math.min(Math.max(1, pageNum || 1), pdfDocumentInstance.numPages);
@@ -429,6 +460,9 @@
       const roofChoice = document.getElementById("roofOption").value;
       const wallChoice = document.getElementById("wallOption").value;
       const floorChoice = document.getElementById("floorOption").value;
+      const ceilingChoice = document.getElementById("ceilingOption").value;
+      const woodChoice = document.getElementById("woodOption").value;
+
       const statusDiv = document.getElementById("status");
       const btn = document.getElementById("processBtn");
       const recalcBtn = document.getElementById("recalcBtn");
@@ -444,7 +478,7 @@
 
       btn.disabled = true;
       recalcBtn.disabled = true;
-      statusDiv.innerText = "กำลังประมวลผลเอกสารและเตรียมระบบ Multi-Page...";
+      statusDiv.innerText = "กำลังประมวลผลไฟล์และเตรียมระบบอ่านแบบ...";
 
       try {
         await loadPlanDocument(planFile);
@@ -458,37 +492,45 @@
           parts.push(specPart);
         }
 
-        statusDiv.innerText = "Gemini กำลังอ่านทุกหน้าของแบบแปลน และจับคู่พิกัดตำแหน่ง...";
+        statusDiv.innerText = "Gemini กำลังถอดแบบทุกหน้าและจับคู่สินค้า SCG Smartboard & Smartwood...";
 
         const promptText = `
 คุณเป็นผู้เชี่ยวชาญการถอดแบบและประมาณราคา (Quantity Surveyor) ประจำเครือ SCG
-วิเคราะห์แบบแปลนที่แนบมานี้ (ซึ่งอาจมีหลายหน้า เช่น แปลนชั้น 1, แปลนชั้น 2, แปลนหลังคา) ถอดปริมาณงาน และคำนวณปริมาณสินค้า SCG ตามเงื่อนไขด้านล่าง:
+วิเคราะห์แบบแปลนที่แนบมานี้ (อาจมีหลายหน้า เช่น แปลนชั้น 1, ชั้น 2, แปลนฝ้าเพดาน, แปลนหลังคา, รูปด้าน) ถอดปริมาณงาน และคำนวณปริมาณสินค้า SCG ตามเงื่อนไขด้านล่าง:
 
-[เงื่อนไขวัสดุทดแทน]:
-- สเปกหลังคา: "${roofChoice}" (ถ้าเป็น metal_snaplock ใช้ SCG Metal Sheet ลอน Snap Lock ซ่อนสกรู กว้างใช้งาน 0.30ม., ถ้าเป็น metal_760 ใช้ SCG Metal Sheet ลอน 760 Noise Shield กว้างใช้งาน 0.76ม.)
-- สเปกผนัง: "${wallChoice}"
-- สเปกพื้น: "${floorChoice}"
+[เงื่อนไขวัสดุทดแทนที่ผู้ใช้เลือก]:
+1. สเปกหลังคา: "${roofChoice}" (ถ้าเป็น metal_snaplock ใช้ SCG Metal Sheet ลอน Snap Lock 0.30ม., ถ้าเป็น metal_760 ใช้ SCG Metal Sheet ลอน 760 Noise Shield 0.76ม.)
+2. สเปกผนัง: "${wallChoice}" (ถ้าเป็น smartboard_wall ใช้ แผ่นสมาร์ทบอร์ด SCG หนา 8-10 มม. + โครง C-Stud, ถ้าเป็น smartwood_siding ใช้ ไม้ฝา SCG Smartwood ลายไม้สัก)
+3. สเปกพื้น: "${floorChoice}" (ถ้าเป็น smartwood_floor ใช้ ไม้พื้น SCG D-COR/Smartwood, ถ้าเป็น smartboard_floor ใช้ แผ่นพื้นสมาร์ทบอร์ด SCG 16-20 มม.)
+4. สเปกฝ้าเพดาน: "${ceilingChoice}" (ถ้าเป็น smartboard_ceiling ใช้ แผ่นฝ้าสมาร์ทบอร์ด SCG ขอบเรียบ 3.5-4 มม., ถ้าเป็น smartboard_vent ใช้ แผ่นฝ้าสมาร์ทบอร์ด SCG รุ่นมีรูระบายอากาศ ชายคาภายนอก)
+5. สเปกไม้สังเคราะห์ตกแต่ง: "${woodChoice}" (ถ้าเป็น smartwood_eaves ใช้ ไม้เชิงชาย SCG Smartwood 2 in 1 ตามแนวชายคา, ถ้าเป็น smartwood_lath ใช้ ไม้ระแนงบังแดด SCG Smartwood 3")
 
-[คำสั่งพิเศษด้าน Multi-Page Visual Grounding]:
+[ฐานข้อมูลสูตรคำนวณสินค้า SCG Smartboard & Smartwood]:
+- แผ่นสมาร์ทบอร์ด SCG (ฝ้า/ผนัง): ขนาด 1.20x2.40 ม. (2.88 ตร.ม./แผ่น) คำนวณจำนวนแผ่น = (พื้นที่ ตร.ม. / 2.88) เผื่อเศษ 5-7% + โครง C-Stud / โครงพลัสไลน์ SCG ตราช้าง + สกรูยึด
+- ไม้ฝา SCG Smartwood: กว้าง 15 หรือ 20 ซม. ยาว 3.0 ม. คิดระยะซ้อนทับ (หน้า 15 ซม. ใช้ ~2.22 แผ่น/ตร.ม., หน้า 20 ซม. ใช้ ~1.67 แผ่น/ตร.ม.) เผื่อเศษ 5%
+- ไม้เชิงชาย SCG Smartwood: ความยาวแนวชายคารอบอาคาร (เมตร) / 3.0 ม. เผื่อเศษ 5%
+- ไม้พื้น SCG Smartwood: หน้ากว้าง 4", 6" หรือ 8" ยาว 3.0 ม. คิดตามพื้นที่ปูพื้น เผื่อเศษ 5% + สกรูและสีย้อมไม้ไฟเบอร์ซีเมนต์
+
+[คำสั่งพิเศษ Multi-Page Visual Grounding]:
 สำหรับแต่ละรายการที่ถอดได้:
-1. ระบุเลขหน้าในเอกสาร (page_number เริ่มต้นที่ 1) ที่พบข้อมูลหรือรูปแปลนส่วนนั้น
+1. ระบุเลขหน้าในเอกสาร (page_number เริ่มต้นที่ 1) ที่พบข้อมูล
 2. ระบุพิกัด Bounding Box บนหน้าเอกสารนั้น (box_2d) เป็นพิกัด Normalized [ymin, xmin, ymax, xmax] ในช่วง 0 ถึง 1000 เสมอ
-3. ระบุคำอธิบายตำแหน่งอย่างชัดเจน (location_description)
+3. ระบุคำอธิบายตำแหน่ง เช่น "แปลนฝ้าเพดาน ชั้น 1" หรือ "รูปด้าน ทิศเหนือ ไม้ฝาตกแต่ง"
 
 ส่งคำตอบกลับมาเป็น JSON Array เท่านั้น:
 [
   {
-    "category": "หมวดงาน (งานหลังคา, งานผนัง, งานพื้น, งานสุขาภิบาล)",
+    "category": "หมวดงาน (งานหลังคา, งานผนัง, งานพื้น, งานฝ้าเพดาน, งานไม้ตกแต่ง, งานสุขาภิบาล)",
     "code_ref": "รหัสสัญลักษณ์บนแบบ หรือ -",
     "item_name": "ชื่อรายการงานตามแบบแปลน",
-    "net_quantity": "ปริมาณสุทธิ เช่น 180 ตร.ม.",
+    "net_quantity": "ปริมาณสุทธิ เช่น 120 ตร.ม., 45 ม.",
     "scg_product": "ชื่อสินค้า SCG ที่แนะนำ/ทดแทน",
-    "order_estimate": "จำนวนและหน่วยสั่งซื้อจริง",
-    "calculation_note": "สูตรคำนวณและ % เผื่อเศษ",
+    "order_estimate": "จำนวนและหน่วยสั่งซื้อจริง เช่น 45 แผ่น, 18 ท่อน",
+    "calculation_note": "สูตรคำนวณ หน้ากว้างใช้งาน หรือ % เผื่อเศษที่ใช้",
     "source_location": {
       "page_number": 1,
       "box_2d": [ymin, xmin, ymax, xmax],
-      "location_description": "คำอธิบายตำแหน่ง เช่น แปลนหลังคา หน้า 3 โซนแกน A-D"
+      "location_description": "คำอธิบายตำแหน่งในแบบ"
     }
   }
 ]
@@ -521,7 +563,7 @@
         recalcBtn.disabled = false;
 
         renderBOQTable(boqItems);
-        statusDiv.innerText = "ประมวลผลแบบแปลนหลายหน้าและประมาณการสำเร็จ!";
+        statusDiv.innerText = "ประมวลผลและประมาณการสำเร็จ!";
       } catch (err) {
         statusDiv.innerText = "เกิดข้อผิดพลาดในการประมวลผล กรุณาลองใหม่อีกครั้ง";
       } finally {
@@ -539,11 +581,14 @@
       const roofChoice = document.getElementById("roofOption").value;
       const wallChoice = document.getElementById("wallOption").value;
       const floorChoice = document.getElementById("floorOption").value;
+      const ceilingChoice = document.getElementById("ceilingOption").value;
+      const woodChoice = document.getElementById("woodOption").value;
+
       const statusDiv = document.getElementById("status");
       const recalcBtn = document.getElementById("recalcBtn");
 
       recalcBtn.disabled = true;
-      statusDiv.innerText = "กำลังคำนวณปริมาณสินค้าใหม่ตามสเปกที่เลือก...";
+      statusDiv.innerText = "กำลังคำนวณปริมาณสินค้าใหม่ตามสเปก Smartboard / Smartwood ที่เลือก...";
 
       try {
         const promptText = `
@@ -552,9 +597,11 @@
 ${JSON.stringify(lastRawBOQItems, null, 2)}
 
 ผู้ใช้ต้องการเปลี่ยนสเปกวัสดุใหม่ดังนี้:
-- สเปกหลังคาใหม่: "${roofChoice}" (ถ้าเป็น metal_snaplock ใช้ SCG Metal Sheet ลอน Snap Lock กว้างใช้งาน 0.30 ม. เผื่อ 5%, ถ้าเป็น metal_760 ใช้ SCG Metal Sheet ลอน 760 Noise Shield กว้างใช้งาน 0.76 ม. เผื่อ 5%, ถ้าเป็น cpac ใช้กระเบื้องคอนกรีต CPAC ~11 แผ่น/ตร.ม.)
-- สเปกผนังใหม่: "${wallChoice}" (ถ้าเป็น qcon ใช้อิฐมวลเบา Q-CON 8.33 ก้อน/ตร.ม. + ปูนฉาบเสือมอร์ตาร์, ถ้าเป็น smartboard ใช้แผ่นสมาร์ทบอร์ด SCG + โครง C-Stud)
-- สเปกพื้นใหม่: "${floorChoice}" (ถ้าเป็น cotto_tile ใช้กระเบื้อง COTTO + ปูนกาวเสือ, ถ้าเป็น smartwood_floor ใช้ไม้พื้น SCG D-COR/Smartwood)
+- สเปกหลังคา: "${roofChoice}" (ถ้าเป็น metal_snaplock ใช้ SCG Metal Sheet ลอน Snap Lock กว้าง 0.30 ม., ถ้าเป็น metal_760 ใช้ SCG Metal Sheet ลอน 760 Noise Shield กว้าง 0.76 ม., ถ้าเป็น cpac ใช้กระเบื้องคอนกรีต CPAC ~11 แผ่น/ตร.ม.)
+- สเปกผนัง: "${wallChoice}" (ถ้าเป็น smartboard_wall ใช้ แผ่นสมาร์ทบอร์ด SCG 8-10 มม. แผ่น 1.2x2.4 ม. / 2.88 ตร.ม. เผื่อ 5%, ถ้าเป็น smartwood_siding ใช้ ไม้ฝา SCG Smartwood ลายไม้สัก ~2.22 แผ่น/ตร.ม.)
+- สเปกพื้น: "${floorChoice}" (ถ้าเป็น smartwood_floor ใช้ ไม้พื้น SCG Smartwood/D-COR, ถ้าเป็น smartboard_floor ใช้ แผ่นพื้นสมาร์ทบอร์ด SCG 16-20 มม.)
+- สเปกฝ้า: "${ceilingChoice}" (ถ้าเป็น smartboard_ceiling ใช้ ฝ้าสมาร์ทบอร์ด SCG ขอบเรียบ 3.5-4 มม., ถ้าเป็น smartboard_vent ใช้ ฝ้าสมาร์ทบอร์ด SCG มีรูระบายอากาศ)
+- สเปกไม้ตกแต่ง: "${woodChoice}" (ถ้าเป็น smartwood_eaves ใช้ ไม้เชิงชาย SCG Smartwood 2 in 1, ถ้าเป็น smartwood_lath ใช้ ไม้ระแนง SCG Smartwood 3")
 
 กรุณาแปลงสินค้า SCG (scg_product), คำนวณจำนวนสั่งซื้อใหม่ (order_estimate) และอัปเดตวิธีคำนวณ (calculation_note) ให้สอดคล้องกับสเปกใหม่ โดยยังคงรักษาข้อมูลปริมาณสุทธิ (net_quantity) และพิกัดตำแหน่งรวมถึง page_number เดิม (source_location) ไว้ครบถ้วน
 
@@ -618,7 +665,9 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
         const cat = item.category || "";
         if (cat.includes("ผนัง")) badgeClass = "badge badge-wall";
         else if (cat.includes("พื้น")) badgeClass = "badge badge-floor";
-        else if (cat.includes("หลังคา") || cat.includes("ฝ้า")) badgeClass = "badge badge-roof";
+        else if (cat.includes("หลังคา")) badgeClass = "badge badge-roof";
+        else if (cat.includes("ฝ้า") || cat.includes("เพดาน")) badgeClass = "badge badge-ceiling";
+        else if (cat.includes("ไม้") || cat.includes("ตกแต่ง") || cat.includes("เชิงชาย") || cat.includes("ระแนง")) badgeClass = "badge badge-wood";
         else if (cat.includes("สุขาภิบาล") || cat.includes("ระบบ") || cat.includes("ท่อ")) badgeClass = "badge badge-mep";
 
         const loc = item.source_location;
@@ -645,7 +694,6 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
       document.getElementById("resultCard").style.display = "block";
     }
 
-    // ฟังก์ชันเปิด Modal และวาดไฮไลต์ตามหน้าและพิกัดจริง
     async function showLocation(index) {
       const item = window.currentBOQData[index];
       if (!item || !item.source_location) return;
@@ -654,7 +702,6 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
       const targetPage = loc.page_number || 1;
       const box = loc.box_2d;
 
-      // เรนเดอร์ภาพของหน้านั้นๆ
       const pageResult = await getPageImage(targetPage);
       if (!pageResult) return;
 
@@ -679,14 +726,11 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
         const w = xmax - xmin;
         const h = ymax - ymin;
 
-        // เคลือบดำโปร่งใสรอบนอก
         ctx.fillStyle = "rgba(0, 0, 0, 0.35)";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // เจาะช่องสว่างตรงตำแหน่ง Bounding Box
         ctx.drawImage(baseImg, xmin, ymin, w, h, xmin, ymin, w, h);
 
-        // วาดกรอบสี่เหลี่ยมสีแดง SCG
         ctx.strokeStyle = "#dc2626";
         ctx.lineWidth = 6;
         ctx.strokeRect(xmin, ymin, w, h);
@@ -694,7 +738,6 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
         ctx.fillStyle = "rgba(220, 38, 38, 0.2)";
         ctx.fillRect(xmin, ymin, w, h);
 
-        // ป้ายข้อความบอกหน้าและตำแหน่ง
         ctx.fillStyle = "#dc2626";
         ctx.fillRect(xmin, ymin > 30 ? ymin - 30 : ymin, 180, 30);
         ctx.fillStyle = "#ffffff";
@@ -730,7 +773,7 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.setAttribute("href", url);
-      link.setAttribute("download", `SCG_BOQ_MultiPage_${new Date().toISOString().slice(0,10)}.csv`);
+      link.setAttribute("download", `SCG_BOQ_Smartwood_${new Date().toISOString().slice(0,10)}.csv`);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
