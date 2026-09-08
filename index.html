@@ -3,7 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SCG AI BOQ & Material Estimator (Gemini 3.5 Flash-Lite)</title>
+  <title>SCG AI BOQ & Visual Grounding Estimator</title>
+  <!-- โหลด pdf.js จาก CDN เพื่อเรนเดอร์ PDF บน Browser -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script>
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  </script>
+
   <style>
     :root {
       --primary: #dc2626; /* SCG Red */
@@ -42,13 +48,15 @@
       margin-bottom: 6px;
       color: #475569;
     }
-    input[type="password"] {
+    input[type="password"], select {
       width: 100%;
       padding: 10px;
       border: 1px solid var(--border);
       border-radius: 8px;
       margin-bottom: 12px;
       font-size: 14px;
+      background: #ffffff;
+      color: var(--text);
     }
     input[type="file"] {
       width: 100%;
@@ -58,8 +66,21 @@
       border-radius: 6px;
       background: #fafafa;
     }
+    .grid-options {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+      margin-bottom: 12px;
+      background: #f1f5f9;
+      padding: 12px;
+      border-radius: 8px;
+    }
+    @media (min-width: 640px) {
+      .grid-options {
+        grid-template-columns: 1fr 1fr 1fr;
+      }
+    }
     button {
-      width: 100%;
       background: var(--primary);
       color: white;
       border: none;
@@ -75,6 +96,19 @@
     button:disabled {
       background: #94a3b8;
       cursor: not-allowed;
+    }
+    .btn-view {
+      background: #0284c7;
+      color: white;
+      padding: 6px 10px;
+      font-size: 12px;
+      border-radius: 6px;
+      border: none;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .btn-view:hover {
+      background: #0369a1;
     }
     .table-container {
       overflow-x: auto;
@@ -114,28 +148,133 @@
       text-align: center;
       font-weight: 500;
     }
+
+    /* สไตล์ Modal แสดงภาพพิกัด */
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 1000;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0,0,0,0.65);
+      backdrop-filter: blur(2px);
+      justify-content: center;
+      align-items: center;
+    }
+    .modal-content {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      width: 90%;
+      max-width: 950px;
+      max-height: 90vh;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+    }
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 10px;
+      margin-bottom: 12px;
+    }
+    .modal-title {
+      font-size: 16px;
+      font-weight: bold;
+      color: #0f172a;
+    }
+    .close-btn {
+      font-size: 24px;
+      font-weight: bold;
+      cursor: pointer;
+      color: #64748b;
+    }
+    .close-btn:hover {
+      color: #0f172a;
+    }
+    .canvas-wrapper {
+      position: relative;
+      overflow: auto;
+      text-align: center;
+      background: #334155;
+      padding: 10px;
+      border-radius: 8px;
+      max-height: 65vh;
+    }
+    #viewerCanvas {
+      max-width: 100%;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+    }
+    .location-desc {
+      margin-top: 10px;
+      font-size: 14px;
+      color: #334155;
+      background: #f8fafc;
+      padding: 10px;
+      border-radius: 6px;
+      border-left: 4px solid #0284c7;
+    }
   </style>
 </head>
 <body>
 
-  <h2>🏗️ SCG AI BOQ & Material Estimator</h2>
+  <h2>🏗️ SCG AI BOQ & Visual Grounding Estimator</h2>
 
   <!-- ส่วนตั้งค่า API Key -->
   <div class="card">
     <label for="apiKey">Gemini API Key:</label>
     <input type="password" id="apiKey" placeholder="วางรหัส AIzaSy... ที่นี่">
-    <button type="button" onclick="saveApiKey()">บันทึก API Key</button>
+    <button type="button" style="width: 100%;" onclick="saveApiKey()">บันทึก API Key</button>
   </div>
 
-  <!-- ส่วนอัปโหลดเอกสาร -->
+  <!-- ส่วนเลือกวัสดุและอัปโหลดเอกสาร -->
   <div class="card">
+    <label>เลือกสเปกหรือวัสดุทดแทนที่ต้องการคำนวณเปรียบเทียบ:</label>
+    <div class="grid-options">
+      <div>
+        <label for="roofOption">หมวดงานหลังคา:</label>
+        <select id="roofOption">
+          <option value="auto">คำนวณตามแบบระบุ (Default)</option>
+          <option value="metal_snaplock">SCG Metal Sheet ลอน Snap Lock (ซ่อนสกรู)</option>
+          <option value="metal_760">SCG Metal Sheet ลอน 760 Noise Shield (กันเสียงฝน)</option>
+          <option value="cpac">หลังคาคอนกรีต CPAC</option>
+          <option value="roman">กระเบื้องหลังคาลอนคู่ SCG</option>
+          <option value="excella">หลังคาเซรามิก SCG Excella</option>
+        </select>
+      </div>
+
+      <div>
+        <label for="wallOption">หมวดงานผนัง:</label>
+        <select id="wallOption">
+          <option value="auto">คำนวณตามแบบระบุ (Default)</option>
+          <option value="qcon">ก่ออิฐมวลเบา Q-CON + ปูนฉาบเสือมอร์ตาร์</option>
+          <option value="smartboard">ผนังเบา แผ่นสมาร์ทบอร์ด SCG + โครง C-Stud</option>
+          <option value="clay_brick">ก่ออิฐมอญ/บล็อก + ปูนเสือซีเมนต์ผสม</option>
+        </select>
+      </div>
+
+      <div>
+        <label for="floorOption">หมวดงานพื้น:</label>
+        <select id="floorOption">
+          <option value="auto">คำนวณตามแบบระบุ (Default)</option>
+          <option value="cotto_tile">กระเบื้อง COTTO + ปูนกาวเสือ</option>
+          <option value="smartwood_floor">ไม้พื้น SCG D-COR / Smartwood</option>
+          <option value="smartboard_floor">แผ่นพื้นสมาร์ทบอร์ด SCG หนา 16-20 มม.</option>
+        </select>
+      </div>
+    </div>
+
     <label for="planFile">1. แบบแปลน (Drawing) - รองรับ PDF, PNG, JPG:</label>
     <input type="file" id="planFile" accept="image/*,application/pdf">
 
-    <label for="specFile">2. สเปกหรือรายการประกอบแบบ (ถ้ามี) - รองรับ PDF, PNG, JPG:</label>
+    <label for="specFile">2. รายการประกอบแบบ/สเปก (ถ้ามี) - รองรับ PDF, PNG, JPG:</label>
     <input type="file" id="specFile" accept="image/*,application/pdf">
 
-    <button id="processBtn" onclick="processDocuments()">เริ่มวิเคราะห์ด้วย Gemini 3.5 Flash-Lite</button>
+    <button id="processBtn" style="width: 100%;" onclick="processDocuments()">เริ่มวิเคราะห์ด้วย Gemini 3.5 Flash-Lite</button>
     <div id="status" class="status-text"></div>
   </div>
 
@@ -150,18 +289,35 @@
             <th>รหัสอ้างอิง</th>
             <th>รายการงานตามแบบ</th>
             <th>ปริมาณสุทธิ</th>
-            <th>สินค้า SCG ที่แนะนำ</th>
-            <th>ประมาณการสั่งซื้อจริง (รวมเผื่อเศษ)</th>
+            <th>สินค้า SCG ที่แนะนำ/ทดแทน</th>
+            <th>ประมาณการสั่งซื้อจริง</th>
             <th>หมายเหตุและวิธีคำนวณ</th>
+            <th>ตำแหน่งในแบบ</th>
           </tr>
         </thead>
         <tbody id="boqBody"></tbody>
       </table>
     </div>
-    <button style="margin-top: 16px; background: #16a34a;" onclick="exportCSV()">Export เป็น Excel (CSV)</button>
+    <button style="margin-top: 16px; background: #16a34a; width: 100%;" onclick="exportCSV()">Export เป็น Excel (CSV)</button>
+  </div>
+
+  <!-- Modal ป๊อปอัปแสดงภาพและตำแหน่ง Bounding Box -->
+  <div id="viewerModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div class="modal-title" id="modalTitle">ตำแหน่งอ้างอิงบนแบบแปลน</div>
+        <span class="close-btn" onclick="closeModal()">&times;</span>
+      </div>
+      <div class="canvas-wrapper">
+        <canvas id="viewerCanvas"></canvas>
+      </div>
+      <div class="location-desc" id="modalDesc">คำอธิบายตำแหน่ง...</div>
+    </div>
   </div>
 
   <script>
+    let renderedBaseImage = null; // เก็บภาพ Canvas ฐานสำหรับวาดกรอบ
+
     document.addEventListener("DOMContentLoaded", () => {
       const savedKey = localStorage.getItem("GEMINI_API_KEY");
       if (savedKey) {
@@ -177,15 +333,43 @@
       }
     }
 
-    // ฟังก์ชันแปลงไฟล์เป็น Base64 พร้อมดึง MIME Type ที่ถูกต้อง
+    // ฟังก์ชันแปลงไฟล์ภาพหรือหน้าแรกของ PDF ให้กลายเป็น Image Element เพื่อใช้วาด Canvas
+    async function prepareBaseImage(file) {
+      if (file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")) {
+        const arrayBuffer = await file.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        const page = await pdf.getPage(1);
+        const viewport = page.getViewport({ scale: 2.0 });
+
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d");
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+
+        await page.render({ canvasContext: ctx, viewport: viewport }).promise;
+        const img = new Image();
+        img.src = canvas.toDataURL();
+        await img.decode();
+        return img;
+      } else {
+        const dataUrl = await new Promise(resolve => {
+          const r = new FileReader();
+          r.onload = () => resolve(r.result);
+          r.readAsDataURL(file);
+        });
+        const img = new Image();
+        img.src = dataUrl;
+        await img.decode();
+        return img;
+      }
+    }
+
     function fileToGenerativePart(file) {
       return new Promise((resolve, reject) => {
         let mimeType = file.type;
-        // กรณีเบราว์เซอร์ไม่อ่าน mimeType ของ PDF
         if (!mimeType && file.name.toLowerCase().endsWith(".pdf")) {
           mimeType = "application/pdf";
         }
-
         const reader = new FileReader();
         reader.readAsDataURL(file);
         reader.onload = () => {
@@ -205,6 +389,9 @@
       const apiKey = document.getElementById("apiKey").value.trim();
       const planFile = document.getElementById("planFile").files[0];
       const specFile = document.getElementById("specFile").files[0];
+      const roofChoice = document.getElementById("roofOption").value;
+      const wallChoice = document.getElementById("wallOption").value;
+      const floorChoice = document.getElementById("floorOption").value;
       const statusDiv = document.getElementById("status");
       const btn = document.getElementById("processBtn");
 
@@ -218,9 +405,12 @@
       }
 
       btn.disabled = true;
-      statusDiv.innerText = "กำลังแปลงข้อมูลไฟล์...";
+      statusDiv.innerText = "กำลังประมวลผลไฟล์และเตรียมภาพอ้างอิง...";
 
       try {
+        // เตรียม Base Image สำหรับทำ Visual Grounding
+        renderedBaseImage = await prepareBaseImage(planFile);
+
         const parts = [];
         const planPart = await fileToGenerativePart(planFile);
         parts.push(planPart);
@@ -230,57 +420,40 @@
           parts.push(specPart);
         }
 
-        statusDiv.innerText = "กำลังวิเคราะห์และถอดแบบด้วย Gemini 3.5 Flash-Lite...";
+        statusDiv.innerText = "กำลังวิเคราะห์และหาพิกัดตำแหน่งด้วย Gemini 3.5 Flash-Lite...";
 
         const promptText = `
 คุณเป็นผู้เชี่ยวชาญการถอดแบบและประมาณราคา (Quantity Surveyor) ประจำเครือ SCG
-วิเคราะห์เอกสารแบบแปลนและรายการประกอบแบบที่แนบมานี้ ถอดปริมาณงาน และจับคู่สินค้าในเครือ SCG ให้ครบถ้วนตามหมวดงานต่อไปนี้:
+วิเคราะห์แบบแปลนที่แนบมานี้ ถอดปริมาณงาน และคำนวณปริมาณสินค้า SCG ตามเงื่อนไขด้านล่าง:
 
-[ฐานข้อมูลสินค้า SCG และสูตรการแปลงหน่วยที่ต้องใช้]:
-1. หมวดงานผนังและฉาบ (Wall & Partition):
-   - งานก่อผนังมวลเบา: "อิฐมวลเบา Q-CON" (8.33 ก้อน/ตร.ม. เผื่อเศษ 5%) + "ปูนก่ออิฐมวลเบา เสือ มอร์ตาร์" (1 ถุง 50กก. ได้ ~25 ตร.ม.)
-   - งานฉาบผนัง: "ปูนฉาบอิฐมวลเบา เสือ มอร์ตาร์" (1 ถุง 50กก. ได้ ~2.5 ตร.ม. ที่ความหนา 1 ซม. คิด 2 ด้าน)
-   - งานก่ออิฐมอญ/บล็อก: "ปูนซีเมนต์ผสม เสือ ซีเมนต์" (ถุง 50กก.)
-   - งานโครงสร้าง คสล./เสาเอ็น-ทับหลัง: "ปูนซีเมนต์ปอร์ตแลนด์ ตราช้าง" (ถุง 50กก.)
-   - งานผนังเบากั้นห้อง: "แผ่นสมาร์ทบอร์ด SCG หนา 8/10/12 มม." (แผ่น 1.2x2.4 ม. เผื่อ 7%) + "โครงคร่าวโลหะ ตราช้าง C-Stud/U-Track" (ท่อน 3 ม.)
-   - งานผนังตกแต่ง: "ไม้ตกแต่ง SCG D-COR" หรือ "ไม้สังเคราะห์ SCG Smartwood" (ท่อน/แผ่น)
+[เงื่อนไขวัสดุทดแทน]:
+- หลังคา: "${roofChoice}" (ถ้าเป็น metal_snaplock ใช้ SCG Metal Sheet ลอน Snap Lock, ถ้าเป็น metal_760 ใช้ SCG Metal Sheet ลอน 760 Noise Shield)
+- ผนัง: "${wallChoice}"
+- พื้น: "${floorChoice}"
 
-2. หมวดงานพื้น (Floor Finishes & Structure):
-   - งานเทพื้นโครงสร้าง: "คอนกรีตผสมเสร็จ CPAC" (คิว หรือ ลบ.ม.)
-   - งานปรับระดับพื้น: "ปูนเทปรับระดับ เสือ มอร์ตาร์ Floor Screed" (1 ถุง 50กก. ได้ ~0.9 ตร.ม. หนา 3 ซม.)
-   - งานปูกระเบื้อง: "กระเบื้อง COTTO" (คำนวณเป็นกล่อง เผื่อเศษ 5-10%) + "ปูนกาวซีเมนต์ เสือ/COTTO" (1 ถุง 20กก. ปูได้ ~4 ตร.ม.) + "กาวยาแนว COTTO/เสือ" (1 ถุง 1กก. ได้ ~4 ตร.ม.)
-   - งานพื้นเบา/ยกระดับ: "แผ่นพื้นสมาร์ทบอร์ด SCG หนา 16/18/20 มม." (แผ่น 1.2x2.4 ม.)
-   - งานไม้พื้นระเบียง/ภายนอก: "ไม้พื้น SCG D-COR / Smartwood" (แผ่น/ท่อน)
+[คำสั่งพิเศษด้านตำแหน่ง - VISUAL GROUNDING]:
+สำหรับแต่ละรายการที่ถอดได้ ให้ระบุพิกัด Bounding Box บนภาพแบบแปลนที่ใช้ถอดตัวเลขนั้น (box_2d) เป็นพิกัด Normalized [ymin, xmin, ymax, xmax] ในช่วง 0 ถึง 1000 เสมอ พร้อมระบุคำอธิบายตำแหน่ง เช่น "โซนหลังคาหลัก แกนกริด 1-4" หรือ "แนวผนังห้องนอน 1"
 
-3. หมวดงานหลังคาและฝ้าเพดาน (Roof & Ceiling):
-   - แผ่นหลังคา: "กระเบื้องหลังคาลอนคู่ SCG", "หลังคาคอนกรีต CPAC", หรือ "หลังคาเซรามิก Excella" (คำนวณเป็น แผ่น ตามระยะซ้อนทับ)
-   - อุปกรณ์หลังคา: "ระบบครอบแห้ง SCG Dry Tech System" (เมตร/กล่อง)
-   - งานฉนวน: "ฉนวนกันความร้อน STAY COOL ตราช้าง" หรือ "แผ่นสะท้อนความร้อน SCG" (คำนวณเป็น ม้วน)
-   - เชิงชายและรางน้ำ: "ไม้เชิงชาย SCG Smartwood" (ท่อน 3 ม.) + "รางน้ำฝนไวนิล SCG รุ่น Smart/Deluxe" (ท่อนและชุดอุปกรณ์)
-   - งานฝ้าเพดาน: "แผ่นฝ้าสมาร์ทบอร์ด SCG หนา 3.5/4/6 มม." (แผ่น) + "โครงคร่าวฝ้าเพดาน ตราช้าง C-Line" (ท่อน 4 ม.)
-
-4. หมวดงานสุขาภิบาลและระบบน้ำ (Sanitary & Plumbing):
-   - สุขภัณฑ์: "โถสุขภัณฑ์ COTTO", "อ่างล้างหน้า COTTO", "ก๊อกน้ำและฝักบัว COTTO" (ชุด/ชิ้น)
-   - ท่อและข้อต่อ: "ท่อ SCG ตราช้าง สีฟ้า (ประปา)", "สีเทา (ระบายน้ำ)", "สีเหลือง (ร้อยสายไฟ)" (ท่อน 4 ม.)
-   - ระบบบำบัด/สำรองน้ำ: "ถังบำบัดน้ำเสีย SCG", "ถังเก็บน้ำบนดิน SCG" (ใบ)
-
-ส่งคำตอบกลับมาเป็น JSON Array เท่านั้น โดยแต่ละ Object มีโครงสร้าง:
+ส่งคำตอบกลับมาเป็น JSON Array เท่านั้น:
 [
   {
-    "category": "หมวดงาน (เช่น งานผนัง, งานพื้น, งานหลังคาและฝ้า, งานสุขาภิบาลและระบบน้ำ)",
-    "code_ref": "รหัสสัญลักษณ์บนแบบ เช่น W1, F1 หรือ -",
+    "category": "หมวดงาน",
+    "code_ref": "รหัสสัญลักษณ์บนแบบ หรือ -",
     "item_name": "ชื่อรายการงานตามแบบแปลน",
-    "net_quantity": "ปริมาณสุทธิ เช่น 65 ตร.ม. หรือ 18 ม.",
-    "scg_product": "ชื่อสินค้า SCG ที่แนะนำ",
-    "order_estimate": "จำนวนและหน่วยสั่งซื้อจริง เช่น 569 ก้อน, 26 ถุง, 45 กล่อง",
-    "calculation_note": "สูตรคำนวณและ % เผื่อเศษที่ใช้"
+    "net_quantity": "ปริมาณสุทธิ เช่น 180 ตร.ม.",
+    "scg_product": "ชื่อสินค้า SCG ที่แนะนำ/ทดแทน",
+    "order_estimate": "จำนวนและหน่วยสั่งซื้อจริง",
+    "calculation_note": "สูตรคำนวณและ % เผื่อเศษ",
+    "source_location": {
+      "box_2d": [ymin, xmin, ymax, xmax],
+      "location_description": "คำอธิบายว่านำตัวเลขมาจากส่วนใดบนแบบแปลน"
+    }
   }
 ]
 `;
 
         parts.unshift({ text: promptText });
 
-        // เรียกใช้โมเดล gemini-3.5-flash-lite
         const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key=${apiKey}`;
 
         const response = await fetch(endpoint, {
@@ -295,7 +468,7 @@
         });
 
         if (!response.ok) {
-          throw new Error("API Response Error");
+          throw new Error("API Connection Error");
         }
 
         const data = await response.json();
@@ -303,7 +476,7 @@
         const boqItems = JSON.parse(rawContent);
 
         renderBOQTable(boqItems);
-        statusDiv.innerText = "ประมวลผลและประมาณการสำเร็จ!";
+        statusDiv.innerText = "ประมวลผลและจับคู่พิกัดสำเร็จ!";
       } catch (err) {
         statusDiv.innerText = "เกิดข้อผิดพลาดในการประมวลผล กรุณาลองใหม่อีกครั้ง";
       } finally {
@@ -316,13 +489,15 @@
       tbody.innerHTML = "";
       window.currentBOQData = items;
 
-      items.forEach(item => {
+      items.forEach((item, index) => {
         let badgeClass = "badge badge-other";
         const cat = item.category || "";
         if (cat.includes("ผนัง")) badgeClass = "badge badge-wall";
         else if (cat.includes("พื้น")) badgeClass = "badge badge-floor";
         else if (cat.includes("หลังคา") || cat.includes("ฝ้า")) badgeClass = "badge badge-roof";
         else if (cat.includes("สุขาภิบาล") || cat.includes("ระบบ") || cat.includes("ท่อ")) badgeClass = "badge badge-mep";
+
+        const hasLocation = item.source_location && item.source_location.box_2d;
 
         const row = document.createElement("tr");
         row.innerHTML = `
@@ -333,6 +508,11 @@
           <td style="color: #b91c1c; font-weight: 600;">${item.scg_product || "-"}</td>
           <td><b>${item.order_estimate || "-"}</b></td>
           <td style="color: #64748b;">${item.calculation_note || "-"}</td>
+          <td style="text-align: center;">
+            ${hasLocation 
+              ? `<button class="btn-view" onclick="showLocation(${index})">🔍 ดูตำแหน่ง</button>` 
+              : `<span style="color: #94a3b8; font-size: 11px;">ไม่มีพิกัด</span>`}
+          </td>
         `;
         tbody.appendChild(row);
       });
@@ -340,19 +520,86 @@
       document.getElementById("resultCard").style.display = "block";
     }
 
+    // ฟังก์ชันเปิด Modal และวาดไฮไลต์ Bounding Box
+    function showLocation(index) {
+      const item = window.currentBOQData[index];
+      if (!item || !item.source_location || !renderedBaseImage) return;
+
+      const loc = item.source_location;
+      const box = loc.box_2d; // [ymin, xmin, ymax, xmax] 0-1000
+
+      document.getElementById("modalTitle").innerText = `🔍 ตำแหน่งอ้างอิง: ${item.item_name} (${item.net_quantity})`;
+      document.getElementById("modalDesc").innerHTML = `<b>คำอธิบายตำแหน่ง:</b> ${loc.location_description || "ไม่มีคำอธิบายเพิ่มเติม"}`;
+
+      const canvas = document.getElementById("viewerCanvas");
+      const ctx = canvas.getContext("2d");
+
+      // ปรับขนาด Canvas ให้เท่าภาพต้นฉบับ
+      canvas.width = renderedBaseImage.width;
+      canvas.height = renderedBaseImage.height;
+
+      // 1. วาดภาพแบบแปลนลงบน Canvas
+      ctx.drawImage(renderedBaseImage, 0, 0);
+
+      if (box && box.length === 4) {
+        const ymin = (box[0] / 1000) * canvas.height;
+        const xmin = (box[1] / 1000) * canvas.width;
+        const ymax = (box[2] / 1000) * canvas.height;
+        const xmax = (box[3] / 1000) * canvas.width;
+        const w = xmax - xmin;
+        const h = ymax - ymin;
+
+        // 2. เคลือบฟิล์มสีดำโปร่งใสรอบนอกเพื่อให้จุดไฮไลต์เด่นขึ้น
+        ctx.fillStyle = "rgba(0, 0, 0, 0.35)";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // 3. เจาะช่องสว่างตรงตำแหน่ง Bounding Box
+        ctx.drawImage(renderedBaseImage, xmin, ymin, w, h, xmin, ymin, w, h);
+
+        // 4. วาดเส้นกรอบสี่เหลี่ยมสีแดง SCG และพื้นหลังโปร่งแสง
+        ctx.strokeStyle = "#dc2626";
+        ctx.lineWidth = 6;
+        ctx.strokeRect(xmin, ymin, w, h);
+
+        ctx.fillStyle = "rgba(220, 38, 38, 0.2)";
+        ctx.fillRect(xmin, ymin, w, h);
+
+        // 5. ป้ายแท็กข้อความเหนือกรอบ
+        ctx.fillStyle = "#dc2626";
+        ctx.fillRect(xmin, ymin > 30 ? ymin - 30 : ymin, 160, 30);
+        ctx.fillStyle = "#ffffff";
+        ctx.font = "bold 16px sans-serif";
+        ctx.fillText("📍 พื้นที่คำนวณ", xmin + 10, (ymin > 30 ? ymin - 30 : ymin) + 21);
+      }
+
+      document.getElementById("viewerModal").style.display = "flex";
+    }
+
+    function closeModal() {
+      document.getElementById("viewerModal").style.display = "none";
+    }
+
+    window.onclick = function(event) {
+      const modal = document.getElementById("viewerModal");
+      if (event.target === modal) {
+        closeModal();
+      }
+    };
+
     function exportCSV() {
       if (!window.currentBOQData || window.currentBOQData.length === 0) return;
 
-      let csvContent = "\uFEFFหมวดงาน,รหัสอ้างอิง,รายการงาน,ปริมาณสุทธิ,สินค้า SCG แนะนำ,ประมาณการสั่งซื้อจริง,หมายเหตุการคำนวณ\n";
+      let csvContent = "\uFEFFหมวดงาน,รหัสอ้างอิง,รายการงาน,ปริมาณสุทธิ,สินค้า SCG แนะนำ,ประมาณการสั่งซื้อจริง,หมายเหตุการคำนวณ,คำอธิบายตำแหน่ง\n";
       window.currentBOQData.forEach(row => {
-        csvContent += `"${row.category}","${row.code_ref}","${row.item_name}","${row.net_quantity}","${row.scg_product}","${row.order_estimate}","${row.calculation_note}"\n`;
+        const desc = (row.source_location && row.source_location.location_description) ? row.source_location.location_description : "-";
+        csvContent += `"${row.category}","${row.code_ref}","${row.item_name}","${row.net_quantity}","${row.scg_product}","${row.order_estimate}","${row.calculation_note}","${desc}"\n`;
       });
 
       const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.setAttribute("href", url);
-      link.setAttribute("download", `SCG_BOQ_Full_${new Date().toISOString().slice(0,10)}.csv`);
+      link.setAttribute("download", `SCG_BOQ_Visual_${new Date().toISOString().slice(0,10)}.csv`);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
