@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SCG AI BOQ & Visual Grounding Estimator</title>
-  <!-- โหลด pdf.js จาก CDN เพื่อเรนเดอร์ PDF บน Browser -->
+  <title>SCG AI BOQ & Multi-Page Visual Grounding Estimator</title>
+  <!-- โหลด pdf.js จาก CDN เพื่อเรนเดอร์ PDF หลายหน้า -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script>
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
@@ -239,7 +239,7 @@
 </head>
 <body>
 
-  <h2>🏗️ SCG AI BOQ & Visual Grounding Estimator</h2>
+  <h2>🏗️ SCG AI BOQ & Multi-Page Visual Grounding Estimator</h2>
 
   <!-- ส่วนตั้งค่า API Key -->
   <div class="card">
@@ -285,7 +285,7 @@
       </div>
     </div>
 
-    <label for="planFile">1. แบบแปลน (Drawing) - รองรับ PDF, PNG, JPG:</label>
+    <label for="planFile">1. แบบแปลน (Drawing - รองรับ PDF หลายหน้า, PNG, JPG):</label>
     <input type="file" id="planFile" accept="image/*,application/pdf">
 
     <label for="specFile">2. รายการประกอบแบบ/สเปก (ถ้ามี) - รองรับ PDF, PNG, JPG:</label>
@@ -336,8 +336,10 @@
   </div>
 
   <script>
-    let renderedBaseImage = null; // เก็บภาพ Canvas ฐานสำหรับวาดกรอบ
-    let lastRawBOQItems = null;   // จำผลการถอดปริมาณดิบไว้ใช้คำนวณซ้ำเมื่อเปลี่ยนสเปก
+    let currentUploadedFile = null;  // เก็บอ้างอิงไฟล์แปลน
+    let pdfDocumentInstance = null;  // เก็บ instance ของ PDF เมื่อโหลดด้วย pdf.js
+    let singleImageInstance = null;  // เก็บภาพกรณีเป็น PNG/JPG
+    let lastRawBOQItems = null;      // แคชรายการถอดแบบดิบ
 
     document.addEventListener("DOMContentLoaded", () => {
       const savedKey = localStorage.getItem("GEMINI_API_KEY");
@@ -351,36 +353,6 @@
       if (key) {
         localStorage.setItem("GEMINI_API_KEY", key);
         alert("บันทึก API Key เรียบร้อยแล้ว");
-      }
-    }
-
-    async function prepareBaseImage(file) {
-      if (file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")) {
-        const arrayBuffer = await file.arrayBuffer();
-        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-        const page = await pdf.getPage(1);
-        const viewport = page.getViewport({ scale: 2.0 });
-
-        const canvas = document.createElement("canvas");
-        const ctx = canvas.getContext("2d");
-        canvas.width = viewport.width;
-        canvas.height = viewport.height;
-
-        await page.render({ canvasContext: ctx, viewport: viewport }).promise;
-        const img = new Image();
-        img.src = canvas.toDataURL();
-        await img.decode();
-        return img;
-      } else {
-        const dataUrl = await new Promise(resolve => {
-          const r = new FileReader();
-          r.onload = () => resolve(r.result);
-          r.readAsDataURL(file);
-        });
-        const img = new Image();
-        img.src = dataUrl;
-        await img.decode();
-        return img;
       }
     }
 
@@ -405,7 +377,51 @@
       });
     }
 
-    // ฟังก์ชันวิเคราะห์ใหม่ทั้งหมดจากไฟล์แบบแปลน
+    // เตรียมตัวโหลดเอกสารเก็บไว้ในหน่วยความจำ
+    async function loadPlanDocument(file) {
+      currentUploadedFile = file;
+      pdfDocumentInstance = null;
+      singleImageInstance = null;
+
+      if (file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")) {
+        const arrayBuffer = await file.arrayBuffer();
+        pdfDocumentInstance = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      } else {
+        const dataUrl = await new Promise(resolve => {
+          const r = new FileReader();
+          r.onload = () => resolve(r.result);
+          r.readAsDataURL(file);
+        });
+        singleImageInstance = new Image();
+        singleImageInstance.src = dataUrl;
+        await singleImageInstance.decode();
+      }
+    }
+
+    // ฟังก์ชันเรนเดอร์หน้าเอกสารที่ต้องการ (PDF Page หรือ Image) เป็น Image Object
+    async function getPageImage(pageNum) {
+      if (pdfDocumentInstance) {
+        const pageIndex = Math.min(Math.max(1, pageNum || 1), pdfDocumentInstance.numPages);
+        const page = await pdfDocumentInstance.getPage(pageIndex);
+        const viewport = page.getViewport({ scale: 2.0 });
+
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d");
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+
+        await page.render({ canvasContext: ctx, viewport: viewport }).promise;
+
+        const img = new Image();
+        img.src = canvas.toDataURL();
+        await img.decode();
+        return { image: img, page: pageIndex, total: pdfDocumentInstance.numPages };
+      } else if (singleImageInstance) {
+        return { image: singleImageInstance, page: 1, total: 1 };
+      }
+      return null;
+    }
+
     async function processDocuments() {
       const apiKey = document.getElementById("apiKey").value.trim();
       const planFile = document.getElementById("planFile").files[0];
@@ -428,10 +444,10 @@
 
       btn.disabled = true;
       recalcBtn.disabled = true;
-      statusDiv.innerText = "กำลังแปลงข้อมูลไฟล์และเรนเดอร์ภาพอ้างอิง...";
+      statusDiv.innerText = "กำลังประมวลผลเอกสารและเตรียมระบบ Multi-Page...";
 
       try {
-        renderedBaseImage = await prepareBaseImage(planFile);
+        await loadPlanDocument(planFile);
 
         const parts = [];
         const planPart = await fileToGenerativePart(planFile);
@@ -442,19 +458,22 @@
           parts.push(specPart);
         }
 
-        statusDiv.innerText = "กำลังวิเคราะห์แบบและคำนวณตำแหน่งด้วย Gemini 3.5 Flash-Lite...";
+        statusDiv.innerText = "Gemini กำลังอ่านทุกหน้าของแบบแปลน และจับคู่พิกัดตำแหน่ง...";
 
         const promptText = `
 คุณเป็นผู้เชี่ยวชาญการถอดแบบและประมาณราคา (Quantity Surveyor) ประจำเครือ SCG
-วิเคราะห์แบบแปลนที่แนบมานี้ ถอดปริมาณงาน และคำนวณปริมาณสินค้า SCG ตามเงื่อนไขด้านล่าง:
+วิเคราะห์แบบแปลนที่แนบมานี้ (ซึ่งอาจมีหลายหน้า เช่น แปลนชั้น 1, แปลนชั้น 2, แปลนหลังคา) ถอดปริมาณงาน และคำนวณปริมาณสินค้า SCG ตามเงื่อนไขด้านล่าง:
 
 [เงื่อนไขวัสดุทดแทน]:
 - สเปกหลังคา: "${roofChoice}" (ถ้าเป็น metal_snaplock ใช้ SCG Metal Sheet ลอน Snap Lock ซ่อนสกรู กว้างใช้งาน 0.30ม., ถ้าเป็น metal_760 ใช้ SCG Metal Sheet ลอน 760 Noise Shield กว้างใช้งาน 0.76ม.)
 - สเปกผนัง: "${wallChoice}"
 - สเปกพื้น: "${floorChoice}"
 
-[คำสั่งพิเศษด้านตำแหน่ง - VISUAL GROUNDING]:
-สำหรับแต่ละรายการที่ถอดได้ ให้ระบุพิกัด Bounding Box บนภาพแบบแปลนที่ใช้ถอดตัวเลขนั้น (box_2d) เป็นพิกัด Normalized [ymin, xmin, ymax, xmax] ในช่วง 0 ถึง 1000 เสมอ พร้อมระบุคำอธิบายตำแหน่ง
+[คำสั่งพิเศษด้าน Multi-Page Visual Grounding]:
+สำหรับแต่ละรายการที่ถอดได้:
+1. ระบุเลขหน้าในเอกสาร (page_number เริ่มต้นที่ 1) ที่พบข้อมูลหรือรูปแปลนส่วนนั้น
+2. ระบุพิกัด Bounding Box บนหน้าเอกสารนั้น (box_2d) เป็นพิกัด Normalized [ymin, xmin, ymax, xmax] ในช่วง 0 ถึง 1000 เสมอ
+3. ระบุคำอธิบายตำแหน่งอย่างชัดเจน (location_description)
 
 ส่งคำตอบกลับมาเป็น JSON Array เท่านั้น:
 [
@@ -467,8 +486,9 @@
     "order_estimate": "จำนวนและหน่วยสั่งซื้อจริง",
     "calculation_note": "สูตรคำนวณและ % เผื่อเศษ",
     "source_location": {
+      "page_number": 1,
       "box_2d": [ymin, xmin, ymax, xmax],
-      "location_description": "คำอธิบายว่านำตัวเลขมาจากส่วนใดบนแบบแปลน"
+      "location_description": "คำอธิบายตำแหน่ง เช่น แปลนหลังคา หน้า 3 โซนแกน A-D"
     }
   }
 ]
@@ -497,11 +517,11 @@
         const rawContent = data.candidates[0].content.parts[0].text;
         const boqItems = JSON.parse(rawContent);
 
-        lastRawBOQItems = boqItems; // จำข้อมูลดิบไว้ใช้คำนวณซ้ำ
-        recalcBtn.disabled = false;  // เปิดให้กดปุ่มคำนวณใหม่ได้
+        lastRawBOQItems = boqItems;
+        recalcBtn.disabled = false;
 
         renderBOQTable(boqItems);
-        statusDiv.innerText = "ประมวลผลและประมาณการสำเร็จ!";
+        statusDiv.innerText = "ประมวลผลแบบแปลนหลายหน้าและประมาณการสำเร็จ!";
       } catch (err) {
         statusDiv.innerText = "เกิดข้อผิดพลาดในการประมวลผล กรุณาลองใหม่อีกครั้ง";
       } finally {
@@ -509,7 +529,6 @@
       }
     }
 
-    // ฟังก์ชันคำนวณใหม่ตามสเปกที่เปลี่ยน โดยใช้ตัวเลขเดิม (เร็วและไม่เปลืองโควตาสแกนภาพ)
     async function recalculateWithNewSpecs() {
       if (!lastRawBOQItems || lastRawBOQItems.length === 0) {
         alert("กรุณาวิเคราะห์แบบแปลนก่อนอย่างน้อยหนึ่งครั้ง");
@@ -529,7 +548,7 @@
       try {
         const promptText = `
 คุณเป็น Quantity Surveyor ประจำ SCG
-นี่คือรายการปริมาณงานสุทธิเดิมที่ถอดได้จากแบบ:
+นี่คือรายการปริมาณงานเดิมที่ถอดได้จากแบบ:
 ${JSON.stringify(lastRawBOQItems, null, 2)}
 
 ผู้ใช้ต้องการเปลี่ยนสเปกวัสดุใหม่ดังนี้:
@@ -537,7 +556,7 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
 - สเปกผนังใหม่: "${wallChoice}" (ถ้าเป็น qcon ใช้อิฐมวลเบา Q-CON 8.33 ก้อน/ตร.ม. + ปูนฉาบเสือมอร์ตาร์, ถ้าเป็น smartboard ใช้แผ่นสมาร์ทบอร์ด SCG + โครง C-Stud)
 - สเปกพื้นใหม่: "${floorChoice}" (ถ้าเป็น cotto_tile ใช้กระเบื้อง COTTO + ปูนกาวเสือ, ถ้าเป็น smartwood_floor ใช้ไม้พื้น SCG D-COR/Smartwood)
 
-กรุณาแปลงสินค้า SCG (scg_product), คำนวณจำนวนสั่งซื้อใหม่ (order_estimate) และอัปเดตวิธีคำนวณ (calculation_note) ให้สอดคล้องกับสเปกใหม่ โดยยังคงรักษาข้อมูลปริมาณสุทธิ (net_quantity) และพิกัดตำแหน่งเดิม (source_location) ไว้ครบถ้วน
+กรุณาแปลงสินค้า SCG (scg_product), คำนวณจำนวนสั่งซื้อใหม่ (order_estimate) และอัปเดตวิธีคำนวณ (calculation_note) ให้สอดคล้องกับสเปกใหม่ โดยยังคงรักษาข้อมูลปริมาณสุทธิ (net_quantity) และพิกัดตำแหน่งรวมถึง page_number เดิม (source_location) ไว้ครบถ้วน
 
 ส่งผลลัพธ์กลับมาเป็น JSON Array เท่านั้น:
 [
@@ -550,6 +569,7 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
     "order_estimate": "จำนวนและหน่วยสั่งซื้อใหม่",
     "calculation_note": "สูตรคำนวณของสินค้าใหม่",
     "source_location": {
+      "page_number": 1,
       "box_2d": [ymin, xmin, ymax, xmax],
       "location_description": "คำอธิบายเดิม"
     }
@@ -601,7 +621,8 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
         else if (cat.includes("หลังคา") || cat.includes("ฝ้า")) badgeClass = "badge badge-roof";
         else if (cat.includes("สุขาภิบาล") || cat.includes("ระบบ") || cat.includes("ท่อ")) badgeClass = "badge badge-mep";
 
-        const hasLocation = item.source_location && item.source_location.box_2d;
+        const loc = item.source_location;
+        const pageLabel = loc && loc.page_number ? `หน้า ${loc.page_number}` : "";
 
         const row = document.createElement("tr");
         row.innerHTML = `
@@ -613,8 +634,8 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
           <td><b>${item.order_estimate || "-"}</b></td>
           <td style="color: #64748b;">${item.calculation_note || "-"}</td>
           <td style="text-align: center;">
-            ${hasLocation 
-              ? `<button class="btn-view" onclick="showLocation(${index})">🔍 ดูตำแหน่ง</button>` 
+            ${loc && loc.box_2d 
+              ? `<button class="btn-view" onclick="showLocation(${index})">🔍 ดู ${pageLabel}</button>` 
               : `<span style="color: #94a3b8; font-size: 11px;">ไม่มีพิกัด</span>`}
           </td>
         `;
@@ -624,23 +645,31 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
       document.getElementById("resultCard").style.display = "block";
     }
 
-    function showLocation(index) {
+    // ฟังก์ชันเปิด Modal และวาดไฮไลต์ตามหน้าและพิกัดจริง
+    async function showLocation(index) {
       const item = window.currentBOQData[index];
-      if (!item || !item.source_location || !renderedBaseImage) return;
+      if (!item || !item.source_location) return;
 
       const loc = item.source_location;
+      const targetPage = loc.page_number || 1;
       const box = loc.box_2d;
 
-      document.getElementById("modalTitle").innerText = `🔍 ตำแหน่งอ้างอิง: ${item.item_name} (${item.net_quantity})`;
+      // เรนเดอร์ภาพของหน้านั้นๆ
+      const pageResult = await getPageImage(targetPage);
+      if (!pageResult) return;
+
+      const baseImg = pageResult.image;
+
+      document.getElementById("modalTitle").innerText = `🔍 ตำแหน่งอ้างอิง (หน้า ${pageResult.page}/${pageResult.total}): ${item.item_name} (${item.net_quantity})`;
       document.getElementById("modalDesc").innerHTML = `<b>คำอธิบายตำแหน่ง:</b> ${loc.location_description || "ไม่มีคำอธิบายเพิ่มเติม"}`;
 
       const canvas = document.getElementById("viewerCanvas");
       const ctx = canvas.getContext("2d");
 
-      canvas.width = renderedBaseImage.width;
-      canvas.height = renderedBaseImage.height;
+      canvas.width = baseImg.width;
+      canvas.height = baseImg.height;
 
-      ctx.drawImage(renderedBaseImage, 0, 0);
+      ctx.drawImage(baseImg, 0, 0);
 
       if (box && box.length === 4) {
         const ymin = (box[0] / 1000) * canvas.height;
@@ -650,11 +679,14 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
         const w = xmax - xmin;
         const h = ymax - ymin;
 
+        // เคลือบดำโปร่งใสรอบนอก
         ctx.fillStyle = "rgba(0, 0, 0, 0.35)";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        ctx.drawImage(renderedBaseImage, xmin, ymin, w, h, xmin, ymin, w, h);
+        // เจาะช่องสว่างตรงตำแหน่ง Bounding Box
+        ctx.drawImage(baseImg, xmin, ymin, w, h, xmin, ymin, w, h);
 
+        // วาดกรอบสี่เหลี่ยมสีแดง SCG
         ctx.strokeStyle = "#dc2626";
         ctx.lineWidth = 6;
         ctx.strokeRect(xmin, ymin, w, h);
@@ -662,11 +694,12 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
         ctx.fillStyle = "rgba(220, 38, 38, 0.2)";
         ctx.fillRect(xmin, ymin, w, h);
 
+        // ป้ายข้อความบอกหน้าและตำแหน่ง
         ctx.fillStyle = "#dc2626";
-        ctx.fillRect(xmin, ymin > 30 ? ymin - 30 : ymin, 160, 30);
+        ctx.fillRect(xmin, ymin > 30 ? ymin - 30 : ymin, 180, 30);
         ctx.fillStyle = "#ffffff";
-        ctx.font = "bold 16px sans-serif";
-        ctx.fillText("📍 พื้นที่คำนวณ", xmin + 10, (ymin > 30 ? ymin - 30 : ymin) + 21);
+        ctx.font = "bold 15px sans-serif";
+        ctx.fillText(`📍 หน้า ${pageResult.page}: พื้นที่คำนวณ`, xmin + 8, (ymin > 30 ? ymin - 30 : ymin) + 21);
       }
 
       document.getElementById("viewerModal").style.display = "flex";
@@ -686,17 +719,18 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
     function exportCSV() {
       if (!window.currentBOQData || window.currentBOQData.length === 0) return;
 
-      let csvContent = "\uFEFFหมวดงาน,รหัสอ้างอิง,รายการงาน,ปริมาณสุทธิ,สินค้า SCG แนะนำ,ประมาณการสั่งซื้อจริง,หมายเหตุการคำนวณ,คำอธิบายตำแหน่ง\n";
+      let csvContent = "\uFEFFหมวดงาน,รหัสอ้างอิง,รายการงาน,ปริมาณสุทธิ,สินค้า SCG แนะนำ,ประมาณการสั่งซื้อจริง,หมายเหตุการคำนวณ,หน้าที่พบ,คำอธิบายตำแหน่ง\n";
       window.currentBOQData.forEach(row => {
+        const page = (row.source_location && row.source_location.page_number) ? row.source_location.page_number : "-";
         const desc = (row.source_location && row.source_location.location_description) ? row.source_location.location_description : "-";
-        csvContent += `"${row.category}","${row.code_ref}","${row.item_name}","${row.net_quantity}","${row.scg_product}","${row.order_estimate}","${row.calculation_note}"\n`;
+        csvContent += `"${row.category}","${row.code_ref}","${row.item_name}","${row.net_quantity}","${row.scg_product}","${row.order_estimate}","${row.calculation_note}","${page}","${desc}"\n`;
       });
 
       const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.setAttribute("href", url);
-      link.setAttribute("download", `SCG_BOQ_Recalc_${new Date().toISOString().slice(0,10)}.csv`);
+      link.setAttribute("download", `SCG_BOQ_MultiPage_${new Date().toISOString().slice(0,10)}.csv`);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
