@@ -9,7 +9,6 @@
   <script>
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
   </script>
-
   <style>
     :root {
       --primary: #dc2626; /* SCG Red */
@@ -145,6 +144,7 @@
     th, td {
       border: 1px solid var(--border);
       padding: 8px 10px;
+      vertical-align: top;
     }
     th {
       background: #f1f5f9;
@@ -173,7 +173,15 @@
       text-align: center;
       font-weight: 500;
     }
-
+    .audit-text {
+      font-size: 12px;
+      color: #0369a1;
+      background: #f0f9ff;
+      padding: 6px 8px;
+      border-radius: 6px;
+      border-left: 3px solid #0284c7;
+      line-height: 1.4;
+    }
     /* Modal แสดงตำแหน่ง */
     .modal {
       display: none;
@@ -228,7 +236,7 @@
       background: #334155;
       padding: 10px;
       border-radius: 8px;
-      max-height: 65vh;
+      max-height: 60vh;
     }
     #viewerCanvas {
       max-width: 100%;
@@ -236,26 +244,24 @@
     }
     .location-desc {
       margin-top: 10px;
-      font-size: 14px;
+      font-size: 13px;
       color: #334155;
       background: #f8fafc;
       padding: 10px;
       border-radius: 6px;
       border-left: 4px solid #0284c7;
+      line-height: 1.5;
     }
   </style>
 </head>
 <body>
-
   <h2>🏗️ SCG AI BOQ & Multi-Page Visual Grounding Estimator</h2>
-
   <!-- ตั้งค่า API Key -->
   <div class="card">
     <label for="apiKey">Gemini API Key:</label>
     <input type="password" id="apiKey" placeholder="วางรหัส AIzaSy... ที่นี่">
     <button type="button" style="width: 100%;" onclick="saveApiKey()">บันทึก API Key</button>
   </div>
-
   <!-- เลือกวัสดุและอัปโหลดเอกสาร -->
   <div class="card">
     <label>เลือกสเปกหรือวัสดุทดแทนที่ต้องการคำนวณเปรียบเทียบ:</label>
@@ -272,7 +278,6 @@
           <option value="excella">หลังคาเซรามิก SCG Excella</option>
         </select>
       </div>
-
       <!-- 2. ผนัง -->
       <div>
         <label for="wallOption">2. หมวดงานผนัง:</label>
@@ -284,7 +289,6 @@
           <option value="clay_brick">ก่ออิฐมอญ/บล็อก + ปูนเสือซีเมนต์ผสม</option>
         </select>
       </div>
-
       <!-- 3. พื้น -->
       <div>
         <label for="floorOption">3. หมวดงานพื้น:</label>
@@ -295,7 +299,6 @@
           <option value="smartboard_floor">แผ่นพื้นสมาร์ทบอร์ด SCG หนา 16-20 มม.</option>
         </select>
       </div>
-
       <!-- 4. ฝ้าเพดาน -->
       <div>
         <label for="ceilingOption">4. หมวดงานฝ้าเพดาน:</label>
@@ -306,7 +309,6 @@
           <option value="gypsum_ceiling">แผ่นยิปซัม SCG ตราช้าง ขอบลาด หนา 9 มม. + โครงพลัสไลน์</option>
         </select>
       </div>
-
       <!-- 5. ฉนวนกันความร้อน -->
       <div>
         <label for="insulationOption">5. หมวดฉนวนกันความร้อน:</label>
@@ -319,7 +321,6 @@
           <option value="none">ไม่ติดตั้งฉนวน</option>
         </select>
       </div>
-
       <!-- 6. ไม้สังเคราะห์ตกแต่ง Smartwood -->
       <div>
         <label for="woodOption">6. หมวดไม้ตกแต่ง Smartwood:</label>
@@ -331,20 +332,16 @@
         </select>
       </div>
     </div>
-
     <label for="planFile">1. แบบแปลน (Drawing - รองรับ PDF หลายหน้า, PNG, JPG):</label>
     <input type="file" id="planFile" accept="image/*,application/pdf">
-
     <label for="specFile">2. รายการประกอบแบบ/สเปก (ถ้ามี) - รองรับ PDF, PNG, JPG:</label>
     <input type="file" id="specFile" accept="image/*,application/pdf">
-
     <div class="btn-group">
       <button id="processBtn" onclick="processDocuments()">เริ่มวิเคราะห์จากแบบใหม่</button>
       <button id="recalcBtn" class="btn-recalc" onclick="recalculateWithNewSpecs()" disabled>🔄 คำนวณใหม่ตามสเปกที่เลือก (ไม่ต้องอัปโหลดใหม่)</button>
     </div>
     <div id="status" class="status-text"></div>
   </div>
-
   <!-- ตาราง BOQ -->
   <div class="card" id="resultCard" style="display: none;">
     <h3>รายการประเมินปริมาณงานและสินค้า SCG</h3>
@@ -359,6 +356,7 @@
             <th>สินค้า SCG ที่แนะนำ/ทดแทน</th>
             <th>ประมาณการสั่งซื้อจริง</th>
             <th>หมายเหตุและวิธีคำนวณ</th>
+            <th>🔍 วิธีตรวจสอบที่มาปริมาณ (Audit Trail)</th>
             <th>ตำแหน่งในแบบ</th>
           </tr>
         </thead>
@@ -367,7 +365,6 @@
     </div>
     <button style="margin-top: 16px; background: #16a34a; width: 100%;" onclick="exportCSV()">Export เป็น Excel (CSV)</button>
   </div>
-
   <!-- Modal ป๊อปอัป -->
   <div id="viewerModal" class="modal">
     <div class="modal-content">
@@ -381,7 +378,6 @@
       <div class="location-desc" id="modalDesc">คำอธิบายตำแหน่ง...</div>
     </div>
   </div>
-
   <script>
     let currentUploadedFile = null;
     let pdfDocumentInstance = null;
@@ -428,7 +424,6 @@
       currentUploadedFile = file;
       pdfDocumentInstance = null;
       singleImageInstance = null;
-
       if (file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")) {
         const arrayBuffer = await file.arrayBuffer();
         pdfDocumentInstance = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
@@ -449,14 +444,11 @@
         const pageIndex = Math.min(Math.max(1, pageNum || 1), pdfDocumentInstance.numPages);
         const page = await pdfDocumentInstance.getPage(pageIndex);
         const viewport = page.getViewport({ scale: 2.0 });
-
         const canvas = document.createElement("canvas");
         const ctx = canvas.getContext("2d");
         canvas.width = viewport.width;
         canvas.height = viewport.height;
-
         await page.render({ canvasContext: ctx, viewport: viewport }).promise;
-
         const img = new Image();
         img.src = canvas.toDataURL();
         await img.decode();
@@ -477,7 +469,6 @@
       const ceilingChoice = document.getElementById("ceilingOption").value;
       const insulationChoice = document.getElementById("insulationOption").value;
       const woodChoice = document.getElementById("woodOption").value;
-
       const statusDiv = document.getElementById("status");
       const btn = document.getElementById("processBtn");
       const recalcBtn = document.getElementById("recalcBtn");
@@ -497,17 +488,15 @@
 
       try {
         await loadPlanDocument(planFile);
-
         const parts = [];
         const planPart = await fileToGenerativePart(planFile);
         parts.push(planPart);
-
         if (specFile) {
           const specPart = await fileToGenerativePart(specFile);
           parts.push(specPart);
         }
 
-        statusDiv.innerText = "Gemini กำลังถอดแบบทุกหน้าและคำนวณสินค้า SCG พร้อมฉนวนกันความร้อน...";
+        statusDiv.innerText = "Gemini กำลังถอดแบบทุกหน้า วิเคราะห์ที่มาปริมาณ และคำนวณสินค้า SCG...";
 
         const promptText = `
 คุณเป็นผู้เชี่ยวชาญการถอดแบบและประมาณราคา (Quantity Surveyor) ประจำเครือ SCG
@@ -534,11 +523,12 @@
 - ไม้ฝา SCG Smartwood: กว้าง 15 ซม. ใช้ ~2.22 แผ่น/ตร.ม., กว้าง 20 ซม. ใช้ ~1.67 แผ่น/ตร.ม. เผื่อเศษ 5%
 - ไม้เชิงชาย SCG Smartwood: ความยาวรอบแนวชายคาหลังคา (เมตร) / 3.0 ม. เผื่อเศษ 5%
 
-[คำสั่งพิเศษ Multi-Page Visual Grounding]:
+[คำสั่งพิเศษ: Multi-Page Visual Grounding & วิธีตรวจสอบที่มาปริมาณ (Audit Trail)]:
 สำหรับแต่ละรายการที่ถอดได้:
 1. ระบุเลขหน้าในเอกสาร (page_number เริ่มต้นที่ 1) ที่พบข้อมูล
 2. ระบุพิกัด Bounding Box บนหน้าเอกสารนั้น (box_2d) เป็นพิกัด Normalized [ymin, xmin, ymax, xmax] ในช่วง 0 ถึง 1000 เสมอ
 3. ระบุคำอธิบายตำแหน่ง เช่น "แปลนหลังคา หน้า 3" หรือ "แปลนฝ้าเพดาน ชั้น 1"
+4. ระบุ "verification_method": วิธีตรวจสอบที่มาของปริมาณอย่างละเอียด เช่น ขนาดระยะ Dimension ที่วัด (กว้าง x ยาว x สูง), แนวกริตไลน์ (Grid line), การหักลบช่องเปิดประตู-หน้าต่าง หรือข้อความระบุชนิดในแบบ เพื่อให้วิศวกร/ผู้ตรวจแบบ Re-check ตามได้ทันที
 
 ส่งคำตอบกลับมาเป็น JSON Array เท่านั้น:
 [
@@ -550,6 +540,7 @@
     "scg_product": "ชื่อสินค้า SCG ที่แนะนำ/ทดแทน",
     "order_estimate": "จำนวนและหน่วยสั่งซื้อจริง เช่น 53 ม้วน, 45 แผ่น, 18 ท่อน",
     "calculation_note": "สูตรคำนวณ หน้ากว้างใช้งาน หรือ % เผื่อเศษที่ใช้",
+    "verification_method": "วิธีตรวจสอบที่มาปริมาณ เช่น คำนวณจากห้องนอน 1-3 ตามกริต 1-4/A-C รวม 72 ตร.ม. หักช่องท่อ 2 ตร.ม.",
     "source_location": {
       "page_number": 1,
       "box_2d": [ymin, xmin, ymax, xmax],
@@ -558,11 +549,8 @@
   }
 ]
 `;
-
         parts.unshift({ text: promptText });
-
-        const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key=${apiKey}`;
-
+        const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
         const response = await fetch(endpoint, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -581,10 +569,8 @@
         const data = await response.json();
         const rawContent = data.candidates[0].content.parts[0].text;
         const boqItems = JSON.parse(rawContent);
-
         lastRawBOQItems = boqItems;
         recalcBtn.disabled = false;
-
         renderBOQTable(boqItems);
         statusDiv.innerText = "ประมวลผลและประมาณการสำเร็จ!";
       } catch (err) {
@@ -599,7 +585,6 @@
         alert("กรุณาวิเคราะห์แบบแปลนก่อนอย่างน้อยหนึ่งครั้ง");
         return;
       }
-
       const apiKey = document.getElementById("apiKey").value.trim();
       const roofChoice = document.getElementById("roofOption").value;
       const wallChoice = document.getElementById("wallOption").value;
@@ -607,7 +592,6 @@
       const ceilingChoice = document.getElementById("ceilingOption").value;
       const insulationChoice = document.getElementById("insulationOption").value;
       const woodChoice = document.getElementById("woodOption").value;
-
       const statusDiv = document.getElementById("status");
       const recalcBtn = document.getElementById("recalcBtn");
 
@@ -634,8 +618,7 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
 )
 - สเปกไม้ตกแต่ง: "${woodChoice}" (ถ้าเป็น smartwood_eaves ใช้ ไม้เชิงชาย SCG Smartwood 2 in 1, ถ้าเป็น smartwood_lath ใช้ ไม้ระแนง SCG Smartwood 3")
 
-กรุณาแปลงสินค้า SCG (scg_product), คำนวณจำนวนสั่งซื้อใหม่ (order_estimate) และอัปเดตวิธีคำนวณ (calculation_note) ให้สอดคล้องกับสเปกใหม่ โดยยังคงรักษาข้อมูลปริมาณสุทธิ (net_quantity) และพิกัดตำแหน่งรวมถึง page_number เดิม (source_location) ไว้ครบถ้วน
-
+กรุณาแปลงสินค้า SCG (scg_product), คำนวณจำนวนสั่งซื้อใหม่ (order_estimate) และอัปเดตวิธีคำนวณ (calculation_note) ให้สอดคล้องกับสเปกใหม่ โดยยังคงรักษาข้อมูลปริมาณสุทธิ (net_quantity), วิธีตรวจสอบที่มา (verification_method) และพิกัดตำแหน่งรวมถึง page_number เดิม (source_location) ไว้ครบถ้วน
 ส่งผลลัพธ์กลับมาเป็น JSON Array เท่านั้น:
 [
   {
@@ -646,6 +629,7 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
     "scg_product": "ชื่อสินค้า SCG ตามสเปกใหม่",
     "order_estimate": "จำนวนและหน่วยสั่งซื้อใหม่",
     "calculation_note": "สูตรคำนวณของสินค้าใหม่",
+    "verification_method": "วิธีตรวจสอบที่มาปริมาณเดิม",
     "source_location": {
       "page_number": 1,
       "box_2d": [ymin, xmin, ymax, xmax],
@@ -654,9 +638,7 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
   }
 ]
 `;
-
-        const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key=${apiKey}`;
-
+        const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
         const response = await fetch(endpoint, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -675,7 +657,6 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
         const data = await response.json();
         const rawContent = data.candidates[0].content.parts[0].text;
         const updatedItems = JSON.parse(rawContent);
-
         lastRawBOQItems = updatedItems;
         renderBOQTable(updatedItems);
         statusDiv.innerText = "คำนวณและอัปเดตสเปกสินค้าใหม่สำเร็จ!";
@@ -714,40 +695,38 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
           <td style="color: #b91c1c; font-weight: 600;">${item.scg_product || "-"}</td>
           <td><b>${item.order_estimate || "-"}</b></td>
           <td style="color: #64748b;">${item.calculation_note || "-"}</td>
+          <td><div class="audit-text">${item.verification_method || "คำนวณตามพื้นที่/ความยาวที่ปรากฏในแบบ"}</div></td>
           <td style="text-align: center;">
-            ${loc && loc.box_2d 
-              ? `<button class="btn-view" onclick="showLocation(${index})">🔍 ดู ${pageLabel}</button>` 
+            ${loc && loc.box_2d
+              ? `<button class="btn-view" onclick="showLocation(${index})">🔍 ดู ${pageLabel}</button>`
               : `<span style="color: #94a3b8; font-size: 11px;">ไม่มีพิกัด</span>`}
           </td>
         `;
         tbody.appendChild(row);
       });
-
       document.getElementById("resultCard").style.display = "block";
     }
 
     async function showLocation(index) {
       const item = window.currentBOQData[index];
       if (!item || !item.source_location) return;
-
       const loc = item.source_location;
       const targetPage = loc.page_number || 1;
       const box = loc.box_2d;
 
       const pageResult = await getPageImage(targetPage);
       if (!pageResult) return;
-
       const baseImg = pageResult.image;
 
       document.getElementById("modalTitle").innerText = `🔍 ตำแหน่งอ้างอิง (หน้า ${pageResult.page}/${pageResult.total}): ${item.item_name} (${item.net_quantity})`;
-      document.getElementById("modalDesc").innerHTML = `<b>คำอธิบายตำแหน่ง:</b> ${loc.location_description || "ไม่มีคำอธิบายเพิ่มเติม"}`;
+      
+      const verificationInfo = item.verification_method ? `<br><b>🔍 วิธีตรวจสอบที่มาปริมาณ:</b> ${item.verification_method}` : "";
+      document.getElementById("modalDesc").innerHTML = `<b>คำอธิบายตำแหน่ง:</b> ${loc.location_description || "ไม่มีคำอธิบายเพิ่มเติม"}${verificationInfo}`;
 
       const canvas = document.getElementById("viewerCanvas");
       const ctx = canvas.getContext("2d");
-
       canvas.width = baseImg.width;
       canvas.height = baseImg.height;
-
       ctx.drawImage(baseImg, 0, 0);
 
       if (box && box.length === 4) {
@@ -771,12 +750,12 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
         ctx.fillRect(xmin, ymin, w, h);
 
         ctx.fillStyle = "#dc2626";
-        ctx.fillRect(xmin, ymin > 30 ? ymin - 30 : ymin, 180, 30);
+        ctx.fillRect(xmin, ymin > 30 ? ymin - 30 : ymin, 200, 30);
+
         ctx.fillStyle = "#ffffff";
         ctx.font = "bold 15px sans-serif";
         ctx.fillText(`📍 หน้า ${pageResult.page}: พื้นที่คำนวณ`, xmin + 8, (ymin > 30 ? ymin - 30 : ymin) + 21);
       }
-
       document.getElementById("viewerModal").style.display = "flex";
     }
 
@@ -793,19 +772,18 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
 
     function exportCSV() {
       if (!window.currentBOQData || window.currentBOQData.length === 0) return;
-
-      let csvContent = "\uFEFFหมวดงาน,รหัสอ้างอิง,รายการงาน,ปริมาณสุทธิ,สินค้า SCG แนะนำ,ประมาณการสั่งซื้อจริง,หมายเหตุการคำนวณ,หน้าที่พบ,คำอธิบายตำแหน่ง\n";
+      let csvContent = "\uFEFFหมวดงาน,รหัสอ้างอิง,รายการงาน,ปริมาณสุทธิ,สินค้า SCG แนะนำ,ประมาณการสั่งซื้อจริง,หมายเหตุการคำนวณ,วิธีตรวจสอบที่มาปริมาณ,หน้าที่พบ,คำอธิบายตำแหน่ง\n";
       window.currentBOQData.forEach(row => {
         const page = (row.source_location && row.source_location.page_number) ? row.source_location.page_number : "-";
         const desc = (row.source_location && row.source_location.location_description) ? row.source_location.location_description : "-";
-        csvContent += `"${row.category}","${row.code_ref}","${row.item_name}","${row.net_quantity}","${row.scg_product}","${row.order_estimate}","${row.calculation_note}","${page}","${desc}"\n`;
+        const audit = row.verification_method ? row.verification_method.replace(/"/g, '""') : "-";
+        csvContent += `"${row.category}","${row.code_ref}","${row.item_name}","${row.net_quantity}","${row.scg_product}","${row.order_estimate}","${row.calculation_note}","${audit}","${page}","${desc}"\n`;
       });
-
       const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.setAttribute("href", url);
-      link.setAttribute("download", `SCG_BOQ_Insulation_${new Date().toISOString().slice(0,10)}.csv`);
+      link.setAttribute("download", `SCG_BOQ_Audit_${new Date().toISOString().slice(0,10)}.csv`);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
