@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SCG AI BOQ & Multi-Page Visual Grounding Estimator</title>
+  <title>SCG AI BOQ & Interactive Manual Bounding Box Estimator</title>
   <!-- โหลด pdf.js จาก CDN เพื่อเรนเดอร์ PDF หลายหน้า -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script>
@@ -118,6 +118,12 @@
     .btn-recalc:hover {
       background: #0369a1;
     }
+    .btn-draw {
+      background: #059669;
+    }
+    .btn-draw:hover {
+      background: #047857;
+    }
     .btn-view {
       background: #0284c7;
       color: white;
@@ -167,7 +173,6 @@
     .badge-mep { background: #dcfce7; color: #166534; }
     .badge-other { background: #f1f5f9; color: #475569; }
     
-    /* สไตล์สำหรับ Confidence Score */
     .confidence-badge {
       display: inline-flex;
       align-items: center;
@@ -194,7 +199,6 @@
       border: 1px solid #fecaca;
     }
 
-    /* สไตล์สำหรับช่องแก้ไขปริมาณสุทธิ */
     .edit-qty-wrapper {
       display: flex;
       flex-direction: column;
@@ -243,7 +247,8 @@
       border-left: 3px solid #0284c7;
       line-height: 1.4;
     }
-    /* Modal แสดงตำแหน่ง */
+
+    /* Modal ทั่วไป */
     .modal {
       display: none;
       position: fixed;
@@ -299,9 +304,13 @@
       border-radius: 8px;
       max-height: 60vh;
     }
-    #viewerCanvas {
+    #viewerCanvas, #drawCanvas {
       max-width: 100%;
       box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+      cursor: default;
+    }
+    #drawCanvas {
+      cursor: crosshair;
     }
     .location-desc {
       margin-top: 10px;
@@ -313,10 +322,24 @@
       border-left: 4px solid #0284c7;
       line-height: 1.5;
     }
+
+    /* กล่องควบคุมของ Drawing Tool */
+    .draw-controls {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 10px;
+      flex-wrap: wrap;
+    }
+    .draw-controls select, .draw-controls input {
+      margin-bottom: 0;
+      width: auto;
+      padding: 8px;
+    }
   </style>
 </head>
 <body>
-  <h2>🏗️ SCG AI BOQ & Multi-Page Visual Grounding Estimator</h2>
+  <h2>🏗️ SCG AI BOQ & Interactive Manual Bounding Box Estimator</h2>
   <!-- ตั้งค่า API Key -->
   <div class="card">
     <label for="apiKey">Gemini API Key:</label>
@@ -394,15 +417,17 @@
       </div>
     </div>
     <label for="planFile">1. แบบแปลน (Drawing - รองรับ PDF หลายหน้า, PNG, JPG):</label>
-    <input type="file" id="planFile" accept="image/*,application/pdf">
+    <input type="file" id="planFile" accept="image/*,application/pdf" onchange="onFileSelected()">
     <label for="specFile">2. รายการประกอบแบบ/สเปก (ถ้ามี) - รองรับ PDF, PNG, JPG:</label>
     <input type="file" id="specFile" accept="image/*,application/pdf">
     <div class="btn-group">
-      <button id="processBtn" onclick="processDocuments()">เริ่มวิเคราะห์จากแบบใหม่</button>
-      <button id="recalcBtn" class="btn-recalc" onclick="recalculateWithNewSpecs()" disabled>🔄 คำนวณใหม่ตามสเปกที่เลือก (ไม่ต้องอัปโหลดใหม่)</button>
+      <button id="processBtn" onclick="processDocuments()">เริ่มวิเคราะห์จากแบบใหม่ (อัตโนมัติทั้งแผ่น)</button>
+      <button id="drawBtn" class="btn-draw" onclick="openManualDrawModal()" disabled>🎯 ลากตีกรอบคำนวณพื้นที่เอง (Manual Box)</button>
+      <button id="recalcBtn" class="btn-recalc" onclick="recalculateWithNewSpecs()" disabled>🔄 คำนวณใหม่ตามสเปกที่เลือก</button>
     </div>
     <div id="status" class="status-text"></div>
   </div>
+
   <!-- ตาราง BOQ -->
   <div class="card" id="resultCard" style="display: none;">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
@@ -430,12 +455,13 @@
     </div>
     <button style="margin-top: 16px; background: #16a34a; width: 100%;" onclick="exportCSV()">Export เป็น Excel (CSV)</button>
   </div>
-  <!-- Modal ป๊อปอัป -->
+
+  <!-- Modal แสดงตำแหน่งอ้างอิงเดิม -->
   <div id="viewerModal" class="modal">
     <div class="modal-content">
       <div class="modal-header">
         <div class="modal-title" id="modalTitle">ตำแหน่งอ้างอิงบนแบบแปลน</div>
-        <span class="close-btn" onclick="closeModal()">&times;</span>
+        <span class="close-btn" onclick="closeModal('viewerModal')">&times;</span>
       </div>
       <div class="canvas-wrapper">
         <canvas id="viewerCanvas"></canvas>
@@ -443,11 +469,48 @@
       <div class="location-desc" id="modalDesc">คำอธิบายตำแหน่ง...</div>
     </div>
   </div>
+
+  <!-- Modal สำหรับลากตีกรอบ Bounding Box เอง (Interactive Drawing Tool) -->
+  <div id="drawModal" class="modal">
+    <div class="modal-content" style="max-width: 1050px;">
+      <div class="modal-header">
+        <div class="modal-title">🎯 ลากตีกรอบสี่เหลี่ยมบนแบบเพื่อคำนวณพื้นที่เจาะจง</div>
+        <span class="close-btn" onclick="closeModal('drawModal')">&times;</span>
+      </div>
+      <div class="draw-controls">
+        <label style="margin: 0;">เลือกหน้าแบบ:</label>
+        <select id="drawPageSelect" onchange="onDrawPageChange()"></select>
+
+        <label style="margin: 0;">หมวดงาน:</label>
+        <select id="drawCategorySelect">
+          <option value="งานหลังคา">งานหลังคา</option>
+          <option value="งานฝ้าเพดาน">งานฝ้าเพดาน</option>
+          <option value="งานผนัง">งานผนัง</option>
+          <option value="งานพื้น">งานพื้น</option>
+        </select>
+
+        <button type="button" class="btn-draw" style="padding: 8px 16px; flex: none;" onclick="analyzeCroppedArea()">🚀 ส่งเฉพาะพื้นที่ที่เลือกให้ AI คำนวณ</button>
+        <button type="button" style="padding: 8px 16px; background: #64748b; flex: none;" onclick="clearDrawBox()">ล้างกรอบ</button>
+        <span style="font-size: 12px; color: #64748b;">(คลิกเมาส์ค้างแล้วลากเพื่อตีกรอบคลุมเฉพาะพื้นที่ที่ต้องการ)</span>
+      </div>
+      <div class="canvas-wrapper">
+        <canvas id="drawCanvas"></canvas>
+      </div>
+      <div id="drawStatus" style="font-size: 13px; color: #0284c7; margin-top: 8px; font-weight: 500;"></div>
+    </div>
+  </div>
+
   <script>
     let currentUploadedFile = null;
     let pdfDocumentInstance = null;
     let singleImageInstance = null;
-    let lastRawBOQItems = null;
+    let lastRawBOQItems = [];
+    
+    // ตัวแปรสำหรับ Manual Bounding Box Drawing
+    let currentDrawPageImg = null;
+    let isDrawing = false;
+    let startX = 0, startY = 0;
+    let selectedBox = null; // { x, y, w, h } ในพิกัดแท้ของภาพต้นฉบับ
 
     document.addEventListener("DOMContentLoaded", () => {
       const savedKey = localStorage.getItem("GEMINI_API_KEY");
@@ -461,6 +524,14 @@
       if (key) {
         localStorage.setItem("GEMINI_API_KEY", key);
         alert("บันทึก API Key เรียบร้อยแล้ว");
+      }
+    }
+
+    async function onFileSelected() {
+      const file = document.getElementById("planFile").files[0];
+      if (file) {
+        await loadPlanDocument(file);
+        document.getElementById("drawBtn").disabled = false;
       }
     }
 
@@ -524,6 +595,218 @@
       return null;
     }
 
+    /* ==========================================================
+       ระบบ INTERACTIVE MANUAL BOUNDING BOX (โหมดตีกรอบเอง)
+       ========================================================== */
+    async function openManualDrawModal() {
+      if (!currentUploadedFile) {
+        alert("กรุณาเลือกไฟล์แบบแปลนก่อน");
+        return;
+      }
+      const select = document.getElementById("drawPageSelect");
+      select.innerHTML = "";
+      const totalPages = pdfDocumentInstance ? pdfDocumentInstance.numPages : 1;
+      for (let i = 1; i <= totalPages; i++) {
+        const opt = document.createElement("option");
+        opt.value = i;
+        opt.innerText = `หน้า ${i}`;
+        select.appendChild(opt);
+      }
+      document.getElementById("drawModal").style.display = "flex";
+      await loadDrawCanvasPage(1);
+      setupDrawEvents();
+    }
+
+    async function onDrawPageChange() {
+      const pageNum = parseInt(document.getElementById("drawPageSelect").value);
+      await loadDrawCanvasPage(pageNum);
+    }
+
+    async function loadDrawCanvasPage(pageNum) {
+      const pageResult = await getPageImage(pageNum);
+      if (!pageResult) return;
+      currentDrawPageImg = pageResult.image;
+      selectedBox = null;
+      redrawCanvas();
+    }
+
+    function redrawCanvas() {
+      if (!currentDrawPageImg) return;
+      const canvas = document.getElementById("drawCanvas");
+      const ctx = canvas.getContext("2d");
+      canvas.width = currentDrawPageImg.width;
+      canvas.height = currentDrawPageImg.height;
+      ctx.drawImage(currentDrawPageImg, 0, 0);
+
+      if (selectedBox) {
+        // วาดฉากหลังมืดโปร่งใส
+        ctx.fillStyle = "rgba(0, 0, 0, 0.4)";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // วาดภาพสว่างเฉพาะในกรอบที่เลือก
+        ctx.drawImage(currentDrawPageImg, selectedBox.x, selectedBox.y, selectedBox.w, selectedBox.h, selectedBox.x, selectedBox.y, selectedBox.w, selectedBox.h);
+
+        // วาดเส้นขอบสีเขียวสด
+        ctx.strokeStyle = "#10b981";
+        ctx.lineWidth = 6;
+        ctx.strokeRect(selectedBox.x, selectedBox.y, selectedBox.w, selectedBox.h);
+
+        // ป้ายหัวข้อ
+        ctx.fillStyle = "#10b981";
+        ctx.fillRect(selectedBox.x, selectedBox.y > 32 ? selectedBox.y - 32 : selectedBox.y, 220, 32);
+        ctx.fillStyle = "#ffffff";
+        ctx.font = "bold 15px sans-serif";
+        ctx.fillText("🎯 พื้นที่เลือกคำนวณ", selectedBox.x + 8, (selectedBox.y > 32 ? selectedBox.y - 32 : selectedBox.y) + 22);
+      }
+    }
+
+    function setupDrawEvents() {
+      const canvas = document.getElementById("drawCanvas");
+      canvas.onmousedown = (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+        startX = (e.clientX - rect.left) * scaleX;
+        startY = (e.clientY - rect.top) * scaleY;
+        isDrawing = true;
+      };
+
+      canvas.onmousemove = (e) => {
+        if (!isDrawing) return;
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+        const currentX = (e.clientX - rect.left) * scaleX;
+        const currentY = (e.clientY - rect.top) * scaleY;
+
+        const x = Math.min(startX, currentX);
+        const y = Math.min(startY, currentY);
+        const w = Math.abs(currentX - startX);
+        const h = Math.abs(currentY - startY);
+        selectedBox = { x, y, w, h };
+        redrawCanvas();
+      };
+
+      canvas.onmouseup = () => {
+        isDrawing = false;
+        if (selectedBox && (selectedBox.w < 20 || selectedBox.h < 20)) {
+          selectedBox = null;
+          redrawCanvas();
+        }
+      };
+    }
+
+    function clearDrawBox() {
+      selectedBox = null;
+      redrawCanvas();
+      document.getElementById("drawStatus").innerText = "";
+    }
+
+    // ฟังก์ชันตัดภาพเฉพาะในกรอบ (Crop) แล้วส่งให้ AI คำนวณแบบเจาะจง
+    async function analyzeCroppedArea() {
+      if (!selectedBox) {
+        alert("กรุณาใช้เมาส์ลากตีกรอบสี่เหลี่ยมบนแบบก่อนกดคำนวณ");
+        return;
+      }
+      const apiKey = document.getElementById("apiKey").value.trim();
+      if (!apiKey) {
+        alert("กรุณากรอกและบันทึก API Key ก่อน");
+        return;
+      }
+
+      const statusElem = document.getElementById("drawStatus");
+      statusElem.innerText = "กำลังตัดภาพเฉพาะส่วนและส่งให้ Gemini วิเคราะห์ขนาด Dimension และคำนวณสินค้า...";
+
+      // 1. Crop ภาพ
+      const cropCanvas = document.createElement("canvas");
+      cropCanvas.width = selectedBox.w;
+      cropCanvas.height = selectedBox.h;
+      const cropCtx = cropCanvas.getContext("2d");
+      cropCtx.drawImage(currentDrawPageImg, selectedBox.x, selectedBox.y, selectedBox.w, selectedBox.h, 0, 0, selectedBox.w, selectedBox.h);
+      
+      const croppedBase64 = cropCanvas.toDataURL("image/jpeg", 0.95).split(',')[1];
+      const category = document.getElementById("drawCategorySelect").value;
+      const pageNum = parseInt(document.getElementById("drawPageSelect").value);
+
+      // คำนวณพิกัด Normalized 0-1000
+      const ymin = Math.round((selectedBox.y / currentDrawPageImg.height) * 1000);
+      const xmin = Math.round((selectedBox.x / currentDrawPageImg.width) * 1000);
+      const ymax = Math.round(((selectedBox.y + selectedBox.h) / currentDrawPageImg.height) * 1000);
+      const xmax = Math.round(((selectedBox.x + selectedBox.w) / currentDrawPageImg.width) * 1000);
+
+      const promptText = `
+คุณเป็นผู้เชี่ยวชาญการถอดแบบและประมาณราคา (QS) ของ SCG
+ผู้ใช้งานได้เลือก "ตีกรอบพื้นที่เฉพาะส่วน" มาให้คุณวิเคราะห์ (ภาพที่แนบมานี้คือภาพที่ถูก Crop เจาะจงเฉพาะบริเวณที่ต้องการ):
+- หมวดงานที่ต้องการ: "${category}"
+- สเปกวัสดุอ้างอิง: หลังคา=${document.getElementById("roofOption").value}, ผนัง=${document.getElementById("wallOption").value}, ฝ้า=${document.getElementById("ceilingOption").value}, ฉนวน=${document.getElementById("insulationOption").value}
+
+หน้าที่ของคุณ:
+1. อ่านตัวเลขบอกระยะ (Dimension) และแนว Grid Line หรือสเกลที่ปรากฏในภาพ Crop นี้
+2. คำนวณพื้นที่สุทธิ (Net Quantity) เฉพาะในส่วนที่เลือกนี้
+3. แปลงเป็นรายการสินค้า SCG ที่เหมาะสม พร้อมคำนวณจำนวนสั่งซื้อจริง (Order Estimate)
+4. ประเมิน Confidence Score (0-100) และอธิบายที่มามิติการคำนวณอย่างชัดเจน
+
+ส่งผลลัพธ์เป็น JSON Array ที่มี 1 รายการเท่านั้น:
+[
+  {
+    "category": "${category}",
+    "code_ref": "Manual-Zone",
+    "item_name": "พื้นที่เฉพาะส่วนที่เลือกด้วยตนเอง (${category})",
+    "net_quantity": "ปริมาณสุทธิ เช่น 45.60 ตร.ม.",
+    "scg_product": "ชื่อสินค้า SCG ที่แนะนำ",
+    "order_estimate": "จำนวนและหน่วยสั่งซื้อ",
+    "confidence_score": 95,
+    "calculation_note": "สูตรคำนวณที่ใช้",
+    "verification_method": "คำนวณจากพื้นที่ที่ตีกรอบ กว้าง x ยาว ตาม Dimension ที่อ่านได้ในภาพ Crop",
+    "source_location": {
+      "page_number": ${pageNum},
+      "box_2d": [${ymin}, ${xmin}, ${ymax}, ${xmax}],
+      "location_description": "พื้นที่ที่ผู้ใช้ตีกรอบเลือกเอง หน้า ${pageNum}"
+    }
+  }
+]
+`;
+
+      try {
+        const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key=${apiKey}`;
+        const response = await fetch(endpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{
+              parts: [
+                { text: promptText },
+                { inlineData: { data: croppedBase64, mimeType: "image/jpeg" } }
+              ]
+            }],
+            generationConfig: { responseMimeType: "application/json" }
+          })
+        });
+
+        if (!response.ok) throw new Error("API Connection Error");
+        const data = await response.json();
+        const rawContent = data.candidates[0].content.parts[0].text;
+        const parsed = JSON.parse(rawContent);
+
+        if (parsed && parsed.length > 0) {
+          const newItem = parsed[0];
+          newItem.is_manual_modified = true;
+          lastRawBOQItems.push(newItem);
+          renderBOQTable(lastRawBOQItems);
+          document.getElementById("recalcBtn").disabled = false;
+          statusElem.innerText = "✅ คำนวณพื้นที่ที่เลือกสำเร็จและเพิ่มลงในตาราง BOQ แล้ว!";
+          setTimeout(() => {
+            closeModal('drawModal');
+          }, 1200);
+        }
+      } catch (err) {
+        statusElem.innerText = "เกิดข้อผิดพลาดในการคำนวณ กรุณาลองใหม่อีกครั้ง";
+      }
+    }
+
+    /* ==========================================================
+       ระบบเดิม: ถอดแบบอัตโนมัติทั้งแผ่น & คำนวณสเปกใหม่
+       ========================================================== */
     async function processDocuments() {
       const apiKey = document.getElementById("apiKey").value.trim();
       const planFile = document.getElementById("planFile").files[0];
@@ -553,6 +836,8 @@
 
       try {
         await loadPlanDocument(planFile);
+        document.getElementById("drawBtn").disabled = false;
+
         const parts = [];
         const planPart = await fileToGenerativePart(planFile);
         parts.push(planPart);
@@ -599,10 +884,7 @@
 - ในช่อง "verification_method": ต้องแสดงการแยกส่วนคำนวณอย่างชัดเจน พร้อมระบุมิติตามแนว Grid Line
 
 [การประเมินค่าความมั่นใจ (Confidence Score)]:
-- ประเมินค่าความมั่นใจเป็นตัวเลขเปอร์เซ็นต์ (0 - 100) สำหรับแต่ละรายการ:
-  - 90-100%: มั่นใจสูงมาก มีระยะ Dimension, สัญลักษณ์ หรือตาราง Schedule ระบุตัวเลขชัดเจน
-  - 75-89%: มั่นใจปานกลาง-สูง ตัวเลขชัดเกือบหมด มีบางระยะที่ต้องคำนวณผลรวมจากระยะย่อย
-  - ต่ำกว่า 75%: แบบไม่ชัดเจน หรือต้องประมาณการสเกล
+- ประเมินค่าความมั่นใจเป็นตัวเลขเปอร์เซ็นต์ (0 - 100) สำหรับแต่ละรายการ
 
 [คำสั่งพิเศษ: Multi-Page Visual Grounding]:
 สำหรับแต่ละรายการที่ถอดได้:
@@ -643,9 +925,7 @@
           })
         });
 
-        if (!response.ok) {
-          throw new Error("API Connection Error");
-        }
+        if (!response.ok) throw new Error("API Connection Error");
 
         const data = await response.json();
         const rawContent = data.candidates[0].content.parts[0].text;
@@ -699,7 +979,7 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
 )
 - สเปกไม้ตกแต่ง: "${woodChoice}" (ถ้าเป็น smartwood_eaves ใช้ ไม้เชิงชาย SCG Smartwood 2 in 1, ถ้าเป็น smartwood_lath ใช้ ไม้ระแนง SCG Smartwood 3")
 
-กรุณาแปลงสินค้า SCG (scg_product), คำนวณจำนวนสั่งซื้อใหม่ (order_estimate) และอัปเดตวิธีคำนวณ (calculation_note) ให้สอดคล้องกับสเปกใหม่ โดยยังคงรักษาข้อมูลปริมาณสุทธิ (net_quantity), ค่าความมั่นใจ (confidence_score), วิธีตรวจสอบที่มาการแยกส่วนพื้นที่เดิม (verification_method) และพิกัดตำแหน่งรวมถึง page_number เดิม (source_location) ไว้ครบถ้วน
+กรุณาแปลงสินค้า SCG (scg_product), คำนวณจำนวนสั่งซื้อใหม่ (order_estimate) และอัปเดตวิธีคำนวณ (calculation_note) ให้สอดคล้องกับสเปกใหม่ โดยยังคงรักษาข้อมูลปริมาณสุทธิ (net_quantity), ค่าความมั่นใจ (confidence_score), วิธีตรวจสอบที่มาเดิม (verification_method) และพิกัดตำแหน่งรวมถึง page_number เดิมไว้ครบถ้วน
 ส่งผลลัพธ์กลับมาเป็น JSON Array เท่านั้น:
 [
   {
@@ -726,15 +1006,11 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             contents: [{ parts: [{ text: promptText }] }],
-            generationConfig: {
-              responseMimeType: "application/json"
-            }
+            generationConfig: { responseMimeType: "application/json" }
           })
         });
 
-        if (!response.ok) {
-          throw new Error("Recalculate Error");
-        }
+        if (!response.ok) throw new Error("Recalculate Error");
 
         const data = await response.json();
         const rawContent = data.candidates[0].content.parts[0].text;
@@ -765,7 +1041,6 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
         else if (cat.includes("ไม้") || cat.includes("ตกแต่ง") || cat.includes("เชิงชาย") || cat.includes("ระแนง")) badgeClass = "badge badge-wood";
         else if (cat.includes("สุขาภิบาล") || cat.includes("ระบบ") || cat.includes("ท่อ")) badgeClass = "badge badge-mep";
 
-        // ประเมินสีของ Confidence Score
         const conf = typeof item.confidence_score === "number" ? item.confidence_score : 90;
         let confClass = "conf-high";
         let confIcon = "🟢";
@@ -780,7 +1055,7 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
         const loc = item.source_location;
         const pageLabel = loc && loc.page_number ? `หน้า ${loc.page_number}` : "";
         const isModified = item.is_manual_modified ? "modified" : "";
-        const manualBadge = item.is_manual_modified ? `<span class="manual-badge">✏️ ปรับแก้เอง</span>` : "";
+        const manualBadge = item.is_manual_modified ? `<span class="manual-badge">✏️ ปรับแก้/เลือกเอง</span>` : "";
 
         const row = document.createElement("tr");
         row.innerHTML = `
@@ -813,7 +1088,6 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
       document.getElementById("resultCard").style.display = "block";
     }
 
-    // ฟังก์ชันจัดการเมื่อผู้ใช้แก้ไข ปริมาณสุทธิ ด้วยตนเอง (Manual Override)
     function updateNetQuantity(index, newValue) {
       if (!window.currentBOQData || !window.currentBOQData[index]) return;
       const item = window.currentBOQData[index];
@@ -821,16 +1095,13 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
       item.net_quantity = trimmed;
       item.is_manual_modified = true;
 
-      // ดึงเฉพาะตัวเลขออกมาคำนวณใหม่
       const numericMatch = trimmed.match(/[\d,.]+/);
       if (numericMatch) {
         const rawNum = parseFloat(numericMatch[0].replace(/,/g, ''));
         if (!isNaN(rawNum) && rawNum > 0) {
           const product = (item.scg_product || "").toLowerCase();
-          const category = (item.category || "").toLowerCase();
           let newEstimate = "";
 
-          // คำนวณสัดส่วนตามสเปกสินค้า SCG
           if (product.includes("stay cool") || product.includes("สเตย์คูล")) {
             const rolls = Math.ceil((rawNum / 2.40) * 1.05);
             newEstimate = `${rolls} ม้วน`;
@@ -862,14 +1133,12 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
         }
       }
 
-      // อัปเดตในชุดข้อมูลหลักที่ใช้สำหรับ recalculate และ export
       if (lastRawBOQItems && lastRawBOQItems[index]) {
         lastRawBOQItems[index].net_quantity = item.net_quantity;
         lastRawBOQItems[index].order_estimate = item.order_estimate;
         lastRawBOQItems[index].is_manual_modified = true;
       }
 
-      // แสดงไฮไลท์สีเตือนว่าถูกแก้ไข
       const inputElem = document.getElementById(`qty-input-${index}`);
       if (inputElem) {
         inputElem.classList.add("modified");
@@ -929,14 +1198,13 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
       document.getElementById("viewerModal").style.display = "flex";
     }
 
-    function closeModal() {
-      document.getElementById("viewerModal").style.display = "none";
+    function closeModal(modalId) {
+      document.getElementById(modalId).style.display = "none";
     }
 
     window.onclick = function(event) {
-      const modal = document.getElementById("viewerModal");
-      if (event.target === modal) {
-        closeModal();
+      if (event.target.classList.contains("modal")) {
+        event.target.style.display = "none";
       }
     };
 
@@ -948,7 +1216,7 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
         const desc = (row.source_location && row.source_location.location_description) ? row.source_location.location_description : "-";
         const audit = row.verification_method ? row.verification_method.replace(/"/g, '""') : "-";
         const conf = row.confidence_score || "-";
-        const modifiedStatus = row.is_manual_modified ? "แก้ไขโดยผู้ใช้" : "คำนวณโดย AI";
+        const modifiedStatus = row.is_manual_modified ? "แก้ไข/ตีกรอบเอง" : "คำนวณอัตโนมัติ";
         csvContent += `"${row.category}","${row.code_ref}","${row.item_name}","${row.net_quantity}","${modifiedStatus}","${row.scg_product}","${row.order_estimate}","${conf}","${row.calculation_note}","${audit}","${page}","${desc}"\n`;
       });
       const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
