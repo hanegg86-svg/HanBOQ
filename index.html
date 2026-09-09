@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SCG AI BOQ & Interactive Manual Bounding Box Estimator</title>
+  <title>SCG AI BOQ & Multi-Bounding Box Estimator</title>
   <!-- โหลด pdf.js จาก CDN เพื่อเรนเดอร์ PDF หลายหน้า -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script>
@@ -248,7 +248,7 @@
       line-height: 1.4;
     }
 
-    /* Modal ทั่วไป */
+    /* Modal */
     .modal {
       display: none;
       position: fixed;
@@ -336,10 +336,18 @@
       width: auto;
       padding: 8px;
     }
+    .box-counter {
+      background: #0284c7;
+      color: white;
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: bold;
+    }
   </style>
 </head>
 <body>
-  <h2>🏗️ SCG AI BOQ & Interactive Manual Bounding Box Estimator</h2>
+  <h2>🏗️ SCG AI BOQ & Multi-Bounding Box Estimator</h2>
   <!-- ตั้งค่า API Key -->
   <div class="card">
     <label for="apiKey">Gemini API Key:</label>
@@ -422,7 +430,7 @@
     <input type="file" id="specFile" accept="image/*,application/pdf">
     <div class="btn-group">
       <button id="processBtn" onclick="processDocuments()">เริ่มวิเคราะห์จากแบบใหม่ (อัตโนมัติทั้งแผ่น)</button>
-      <button id="drawBtn" class="btn-draw" onclick="openManualDrawModal()" disabled>🎯 ลากตีกรอบคำนวณพื้นที่เอง (Manual Box)</button>
+      <button id="drawBtn" class="btn-draw" onclick="openManualDrawModal()" disabled>🎯 ตีกรอบเลือกพื้นที่เอง (หลายกรอบได้)</button>
       <button id="recalcBtn" class="btn-recalc" onclick="recalculateWithNewSpecs()" disabled>🔄 คำนวณใหม่ตามสเปกที่เลือก</button>
     </div>
     <div id="status" class="status-text"></div>
@@ -470,15 +478,15 @@
     </div>
   </div>
 
-  <!-- Modal สำหรับลากตีกรอบ Bounding Box เอง (Interactive Drawing Tool) -->
+  <!-- Modal สำหรับลากตีกรอบ Bounding Box เอง (รองรับหลายกรอบ Multi-Box) -->
   <div id="drawModal" class="modal">
-    <div class="modal-content" style="max-width: 1050px;">
+    <div class="modal-content" style="max-width: 1100px;">
       <div class="modal-header">
-        <div class="modal-title">🎯 ลากตีกรอบสี่เหลี่ยมบนแบบเพื่อคำนวณพื้นที่เจาะจง</div>
+        <div class="modal-title">🎯 ลากตีกรอบสี่เหลี่ยมบนแบบ (ตีกรอบได้หลายกรอบ เช่น รูปตัว L, หลายห้อง)</div>
         <span class="close-btn" onclick="closeModal('drawModal')">&times;</span>
       </div>
       <div class="draw-controls">
-        <label style="margin: 0;">เลือกหน้าแบบ:</label>
+        <label style="margin: 0;">หน้า:</label>
         <select id="drawPageSelect" onchange="onDrawPageChange()"></select>
 
         <label style="margin: 0;">หมวดงาน:</label>
@@ -489,9 +497,11 @@
           <option value="งานพื้น">งานพื้น</option>
         </select>
 
-        <button type="button" class="btn-draw" style="padding: 8px 16px; flex: none;" onclick="analyzeCroppedArea()">🚀 ส่งเฉพาะพื้นที่ที่เลือกให้ AI คำนวณ</button>
-        <button type="button" style="padding: 8px 16px; background: #64748b; flex: none;" onclick="clearDrawBox()">ล้างกรอบ</button>
-        <span style="font-size: 12px; color: #64748b;">(คลิกเมาส์ค้างแล้วลากเพื่อตีกรอบคลุมเฉพาะพื้นที่ที่ต้องการ)</span>
+        <span class="box-counter" id="boxCounterLabel">เลือกแล้ว 0 กรอบ</span>
+
+        <button type="button" class="btn-draw" style="padding: 8px 14px; flex: none;" onclick="analyzeMultipleBoxes()">🚀 คำนวณทุกกรอบที่เลือก</button>
+        <button type="button" style="padding: 8px 12px; background: #eab308; color: #000; flex: none;" onclick="undoLastBox()">↩️ ลบกรอบล่าสุด</button>
+        <button type="button" style="padding: 8px 12px; background: #64748b; flex: none;" onclick="clearAllDrawBoxes()">🗑️ ล้างทั้งหมด</button>
       </div>
       <div class="canvas-wrapper">
         <canvas id="drawCanvas"></canvas>
@@ -506,11 +516,12 @@
     let singleImageInstance = null;
     let lastRawBOQItems = [];
     
-    // ตัวแปรสำหรับ Manual Bounding Box Drawing
+    // ตัวแปรสำหรับ Multi-Bounding Box Drawing
     let currentDrawPageImg = null;
     let isDrawing = false;
     let startX = 0, startY = 0;
-    let selectedBox = null; // { x, y, w, h } ในพิกัดแท้ของภาพต้นฉบับ
+    let currentDragBox = null;
+    let selectedBoxes = []; // Array ของ { x, y, w, h } ในพิกัดภาพแท้
 
     document.addEventListener("DOMContentLoaded", () => {
       const savedKey = localStorage.getItem("GEMINI_API_KEY");
@@ -596,7 +607,7 @@
     }
 
     /* ==========================================================
-       ระบบ INTERACTIVE MANUAL BOUNDING BOX (โหมดตีกรอบเอง)
+       ระบบ MULTI-BOUNDING BOX DRAWING TOOL (ตีกรอบหลายกรอบได้)
        ========================================================== */
     async function openManualDrawModal() {
       if (!currentUploadedFile) {
@@ -619,6 +630,8 @@
 
     async function onDrawPageChange() {
       const pageNum = parseInt(document.getElementById("drawPageSelect").value);
+      selectedBoxes = [];
+      updateBoxCounter();
       await loadDrawCanvasPage(pageNum);
     }
 
@@ -626,8 +639,13 @@
       const pageResult = await getPageImage(pageNum);
       if (!pageResult) return;
       currentDrawPageImg = pageResult.image;
-      selectedBox = null;
+      currentDragBox = null;
       redrawCanvas();
+    }
+
+    function updateBoxCounter() {
+      const label = document.getElementById("boxCounterLabel");
+      label.innerText = `เลือกแล้ว ${selectedBoxes.length} กรอบ`;
     }
 
     function redrawCanvas() {
@@ -638,25 +656,40 @@
       canvas.height = currentDrawPageImg.height;
       ctx.drawImage(currentDrawPageImg, 0, 0);
 
-      if (selectedBox) {
-        // วาดฉากหลังมืดโปร่งใส
+      // ถ้ารูปมีกรอบที่เลือกไว้แล้ว ให้ทำฉากหลังมืดโปร่งใส
+      if (selectedBoxes.length > 0 || currentDragBox) {
         ctx.fillStyle = "rgba(0, 0, 0, 0.4)";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
+      }
 
-        // วาดภาพสว่างเฉพาะในกรอบที่เลือก
-        ctx.drawImage(currentDrawPageImg, selectedBox.x, selectedBox.y, selectedBox.w, selectedBox.h, selectedBox.x, selectedBox.y, selectedBox.w, selectedBox.h);
+      // วาดทุกกรอบที่บันทึกไว้ใน Array
+      selectedBoxes.forEach((box, idx) => {
+        // เจาะภาพสว่างตรงตำแหน่งกรอบ
+        ctx.drawImage(currentDrawPageImg, box.x, box.y, box.w, box.h, box.x, box.y, box.w, box.h);
 
         // วาดเส้นขอบสีเขียวสด
         ctx.strokeStyle = "#10b981";
         ctx.lineWidth = 6;
-        ctx.strokeRect(selectedBox.x, selectedBox.y, selectedBox.w, selectedBox.h);
+        ctx.strokeRect(box.x, box.y, box.w, box.h);
 
-        // ป้ายหัวข้อ
+        // ป้ายหัวข้อกำกับลำดับกรอบ #1, #2, #3
+        const badgeText = `🎯 กรอบ #${idx + 1}`;
         ctx.fillStyle = "#10b981";
-        ctx.fillRect(selectedBox.x, selectedBox.y > 32 ? selectedBox.y - 32 : selectedBox.y, 220, 32);
+        const badgeY = box.y > 30 ? box.y - 30 : box.y;
+        ctx.fillRect(box.x, badgeY, 130, 30);
         ctx.fillStyle = "#ffffff";
         ctx.font = "bold 15px sans-serif";
-        ctx.fillText("🎯 พื้นที่เลือกคำนวณ", selectedBox.x + 8, (selectedBox.y > 32 ? selectedBox.y - 32 : selectedBox.y) + 22);
+        ctx.fillText(badgeText, box.x + 8, badgeY + 21);
+      });
+
+      // วาดกรอบที่กำลังคลิกลากอยู่แบบ Real-time
+      if (currentDragBox) {
+        ctx.drawImage(currentDrawPageImg, currentDragBox.x, currentDragBox.y, currentDragBox.w, currentDragBox.h, currentDragBox.x, currentDragBox.y, currentDragBox.w, currentDragBox.h);
+        ctx.strokeStyle = "#38bdf8";
+        ctx.lineWidth = 4;
+        ctx.setLineDash([8, 6]);
+        ctx.strokeRect(currentDragBox.x, currentDragBox.y, currentDragBox.w, currentDragBox.h);
+        ctx.setLineDash([]);
       }
     }
 
@@ -683,29 +716,42 @@
         const y = Math.min(startY, currentY);
         const w = Math.abs(currentX - startX);
         const h = Math.abs(currentY - startY);
-        selectedBox = { x, y, w, h };
+        currentDragBox = { x, y, w, h };
         redrawCanvas();
       };
 
       canvas.onmouseup = () => {
+        if (!isDrawing) return;
         isDrawing = false;
-        if (selectedBox && (selectedBox.w < 20 || selectedBox.h < 20)) {
-          selectedBox = null;
-          redrawCanvas();
+        if (currentDragBox && currentDragBox.w > 20 && currentDragBox.h > 20) {
+          selectedBoxes.push(currentDragBox);
+          updateBoxCounter();
         }
+        currentDragBox = null;
+        redrawCanvas();
       };
     }
 
-    function clearDrawBox() {
-      selectedBox = null;
+    function undoLastBox() {
+      if (selectedBoxes.length > 0) {
+        selectedBoxes.pop();
+        updateBoxCounter();
+        redrawCanvas();
+      }
+    }
+
+    function clearAllDrawBoxes() {
+      selectedBoxes = [];
+      currentDragBox = null;
+      updateBoxCounter();
       redrawCanvas();
       document.getElementById("drawStatus").innerText = "";
     }
 
-    // ฟังก์ชันตัดภาพเฉพาะในกรอบ (Crop) แล้วส่งให้ AI คำนวณแบบเจาะจง
-    async function analyzeCroppedArea() {
-      if (!selectedBox) {
-        alert("กรุณาใช้เมาส์ลากตีกรอบสี่เหลี่ยมบนแบบก่อนกดคำนวณ");
+    // ฟังก์ชันส่งทุกกรอบ (Multi-Box) ให้ AI คำนวณแยกส่วนแล้วรวมยอด
+    async function analyzeMultipleBoxes() {
+      if (selectedBoxes.length === 0) {
+        alert("กรุณาคลิกลากตีกรอบสี่เหลี่ยมบนแบบอย่างน้อย 1 กรอบก่อนกดคำนวณ");
         return;
       }
       const apiKey = document.getElementById("apiKey").value.trim();
@@ -715,57 +761,76 @@
       }
 
       const statusElem = document.getElementById("drawStatus");
-      statusElem.innerText = "กำลังตัดภาพเฉพาะส่วนและส่งให้ Gemini วิเคราะห์ขนาด Dimension และคำนวณสินค้า...";
+      statusElem.innerText = `กำลังตัดภาพย่อยทั้ง ${selectedBoxes.length} กรอบ และส่งให้ Gemini วิเคราะห์และรวมยอดพื้นที่...`;
 
-      // 1. Crop ภาพ
-      const cropCanvas = document.createElement("canvas");
-      cropCanvas.width = selectedBox.w;
-      cropCanvas.height = selectedBox.h;
-      const cropCtx = cropCanvas.getContext("2d");
-      cropCtx.drawImage(currentDrawPageImg, selectedBox.x, selectedBox.y, selectedBox.w, selectedBox.h, 0, 0, selectedBox.w, selectedBox.h);
-      
-      const croppedBase64 = cropCanvas.toDataURL("image/jpeg", 0.95).split(',')[1];
       const category = document.getElementById("drawCategorySelect").value;
       const pageNum = parseInt(document.getElementById("drawPageSelect").value);
 
-      // คำนวณพิกัด Normalized 0-1000
-      const ymin = Math.round((selectedBox.y / currentDrawPageImg.height) * 1000);
-      const xmin = Math.round((selectedBox.x / currentDrawPageImg.width) * 1000);
-      const ymax = Math.round(((selectedBox.y + selectedBox.h) / currentDrawPageImg.height) * 1000);
-      const xmax = Math.round(((selectedBox.x + selectedBox.w) / currentDrawPageImg.width) * 1000);
+      // สร้างภาพ Crop ของแต่ละกรอบ และคำนวณ Normalized Box
+      const parts = [];
+      const boxesSummary = [];
+
+      selectedBoxes.forEach((box, i) => {
+        const cropCanvas = document.createElement("canvas");
+        cropCanvas.width = box.w;
+        cropCanvas.height = box.h;
+        const cropCtx = cropCanvas.getContext("2d");
+        cropCtx.drawImage(currentDrawPageImg, box.x, box.y, box.w, box.h, 0, 0, box.w, box.h);
+        const b64 = cropCanvas.toDataURL("image/jpeg", 0.95).split(',')[1];
+        
+        parts.push({
+          inlineData: { data: b64, mimeType: "image/jpeg" }
+        });
+
+        const ymin = Math.round((box.y / currentDrawPageImg.height) * 1000);
+        const xmin = Math.round((box.x / currentDrawPageImg.width) * 1000);
+        const ymax = Math.round(((box.y + box.h) / currentDrawPageImg.height) * 1000);
+        const xmax = Math.round(((box.x + box.w) / currentDrawPageImg.width) * 1000);
+        boxesSummary.push({ segment_index: i + 1, box_2d: [ymin, xmin, ymax, xmax] });
+      });
+
+      // กรอบที่ 1 เป็นกรอบหลักสำหรับ Bounding Box รวม
+      const primaryBox = selectedBoxes[0];
+      const mainYmin = Math.round((primaryBox.y / currentDrawPageImg.height) * 1000);
+      const mainXmin = Math.round((primaryBox.x / currentDrawPageImg.width) * 1000);
+      const mainYmax = Math.round(((primaryBox.y + primaryBox.h) / currentDrawPageImg.height) * 1000);
+      const mainXmax = Math.round(((primaryBox.x + primaryBox.w) / currentDrawPageImg.width) * 1000);
 
       const promptText = `
-คุณเป็นผู้เชี่ยวชาญการถอดแบบและประมาณราคา (QS) ของ SCG
-ผู้ใช้งานได้เลือก "ตีกรอบพื้นที่เฉพาะส่วน" มาให้คุณวิเคราะห์ (ภาพที่แนบมานี้คือภาพที่ถูก Crop เจาะจงเฉพาะบริเวณที่ต้องการ):
+คุณเป็น Quantity Surveyor (QS) ผู้เชี่ยวชาญของเครือ SCG
+ผู้ใช้งานได้เลือก "ตีกรอบพื้นที่แยกส่วน" มาให้คุณทั้งหมด ${selectedBoxes.length} ส่วน (เช่น ปีกอาคารรูปตัว L หรือหลายห้องรวมกัน)
+ภาพที่แนบมานี้มี ${parts.length} รูป เรียงตามลำดับกรอบ #1 ถึง #${parts.length}:
 - หมวดงานที่ต้องการ: "${category}"
 - สเปกวัสดุอ้างอิง: หลังคา=${document.getElementById("roofOption").value}, ผนัง=${document.getElementById("wallOption").value}, ฝ้า=${document.getElementById("ceilingOption").value}, ฉนวน=${document.getElementById("insulationOption").value}
 
 หน้าที่ของคุณ:
-1. อ่านตัวเลขบอกระยะ (Dimension) และแนว Grid Line หรือสเกลที่ปรากฏในภาพ Crop นี้
-2. คำนวณพื้นที่สุทธิ (Net Quantity) เฉพาะในส่วนที่เลือกนี้
+1. อ่านตัวเลข Dimension และมิติความกว้าง x ยาว ในแต่ละภาพกรอบย่อย
+2. คำนวณพื้นที่ย่อยของแต่ละกรอบ (Segment 1, Segment 2, ...) แล้วนำมารวมกันเป็นพื้นที่สุทธิทั้งหมด (Total Net Area)
 3. แปลงเป็นรายการสินค้า SCG ที่เหมาะสม พร้อมคำนวณจำนวนสั่งซื้อจริง (Order Estimate)
-4. ประเมิน Confidence Score (0-100) และอธิบายที่มามิติการคำนวณอย่างชัดเจน
+4. ในช่อง "verification_method": ให้แสดงการคำนวณแจกแจงแยกชิ้นของแต่ละกรอบชัดเจน เช่น "กรอบ #1 (4.0x8.0 = 32 ตร.ม.) + กรอบ #2 (3.0x5.0 = 15 ตร.ม.) = รวมสุทธิ 47 ตร.ม."
+5. ประเมินค่าความมั่นใจ (Confidence Score 0-100)
 
-ส่งผลลัพธ์เป็น JSON Array ที่มี 1 รายการเท่านั้น:
+ส่งผลลัพธ์เป็น JSON Array ที่มี 1 รายการสุทธิเท่านั้น:
 [
   {
     "category": "${category}",
-    "code_ref": "Manual-Zone",
-    "item_name": "พื้นที่เฉพาะส่วนที่เลือกด้วยตนเอง (${category})",
-    "net_quantity": "ปริมาณสุทธิ เช่น 45.60 ตร.ม.",
+    "code_ref": "Multi-Zone (${selectedBoxes.length} ส่วน)",
+    "item_name": "พื้นที่รวมจากการเลือก ${selectedBoxes.length} กรอบ (${category})",
+    "net_quantity": "ปริมาณสุทธิรวม เช่น 47.00 ตร.ม.",
     "scg_product": "ชื่อสินค้า SCG ที่แนะนำ",
     "order_estimate": "จำนวนและหน่วยสั่งซื้อ",
     "confidence_score": 95,
-    "calculation_note": "สูตรคำนวณที่ใช้",
-    "verification_method": "คำนวณจากพื้นที่ที่ตีกรอบ กว้าง x ยาว ตาม Dimension ที่อ่านได้ในภาพ Crop",
+    "calculation_note": "สูตรคำนวณและสัดส่วนเผื่อเศษ",
+    "verification_method": "แสดงผลรวมแยกรายกรอบอย่างละเอียด",
     "source_location": {
       "page_number": ${pageNum},
-      "box_2d": [${ymin}, ${xmin}, ${ymax}, ${xmax}],
-      "location_description": "พื้นที่ที่ผู้ใช้ตีกรอบเลือกเอง หน้า ${pageNum}"
+      "box_2d": [${mainYmin}, ${mainXmin}, ${mainYmax}, ${mainXmax}],
+      "location_description": "พื้นที่ที่ผู้ใช้ตีกรอบ ${selectedBoxes.length} จุด บนหน้า ${pageNum}"
     }
   }
 ]
 `;
+      parts.unshift({ text: promptText });
 
       try {
         const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key=${apiKey}`;
@@ -773,12 +838,7 @@
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            contents: [{
-              parts: [
-                { text: promptText },
-                { inlineData: { data: croppedBase64, mimeType: "image/jpeg" } }
-              ]
-            }],
+            contents: [{ parts: parts }],
             generationConfig: { responseMimeType: "application/json" }
           })
         });
@@ -794,7 +854,7 @@
           lastRawBOQItems.push(newItem);
           renderBOQTable(lastRawBOQItems);
           document.getElementById("recalcBtn").disabled = false;
-          statusElem.innerText = "✅ คำนวณพื้นที่ที่เลือกสำเร็จและเพิ่มลงในตาราง BOQ แล้ว!";
+          statusElem.innerText = `✅ คำนวณรวมทั้ง ${selectedBoxes.length} กรอบสำเร็จและเพิ่มลงในตาราง BOQ แล้ว!`;
           setTimeout(() => {
             closeModal('drawModal');
           }, 1200);
@@ -805,7 +865,7 @@
     }
 
     /* ==========================================================
-       ระบบเดิม: ถอดแบบอัตโนมัติทั้งแผ่น & คำนวณสเปกใหม่
+       ระบบอัตโนมัติทั้งแผ่น & ฟังก์ชันพื้นฐาน
        ========================================================== */
     async function processDocuments() {
       const apiKey = document.getElementById("apiKey").value.trim();
@@ -867,20 +927,14 @@
 6. สเปกไม้สังเคราะห์ตกแต่ง: "${woodChoice}" (ถ้าเป็น smartwood_eaves ใช้ ไม้เชิงชาย SCG Smartwood 2 in 1 ตามแนวชายคา, ถ้าเป็น smartwood_lath ใช้ ไม้ระแนงบังแดด SCG Smartwood 3")
 
 [ฐานข้อมูลสูตรคำนวณสินค้า SCG]:
-- ฉนวน STAY COOL SCG (75 หรือ 150 มม.): จำนวนม้วน = (พื้นที่ฝ้าเพดาน ตร.ม. / 2.40) x 1.05 (เผื่อเศษ 5%) พร้อมแนะนำเทปอะลูมิเนียมฟอยล์ SCG ปิดรอยต่อ
+- ฉนวน STAY COOL SCG (75 หรือ 150 มม.): จำนวนม้วน = (พื้นที่ฝ้าเพดาน ตร.ม. / 2.40) x 1.05 (เผื่อเศษ 5%)
 - แผ่นสะท้อนความร้อน SCG: คำนวณตามพื้นที่ลาดเอียงหลังคา เผื่อระยะซ้อนทับ 10 ซม. (ประมาณ 7-10%)
 - แผ่นสมาร์ทบอร์ด SCG (ฝ้า/ผนัง): ขนาด 1.20x2.40 ม. (2.88 ตร.ม./แผ่น) คำนวณแผ่น = (พื้นที่ / 2.88) เผื่อ 5%
 - ไม้ฝา SCG Smartwood: กว้าง 15 ซม. ใช้ ~2.22 แผ่น/ตร.ม., กว้าง 20 ซม. ใช้ ~1.67 แผ่น/ตร.ม. เผื่อเศษ 5%
 - ไม้เชิงชาย SCG Smartwood: ความยาวรอบแนวชายคาหลังคา (เมตร) / 3.0 ม. เผื่อเศษ 5%
 
-[กฎเหล็กการคำนวณพื้นที่รูปทรงไม่สม่ำเสมอ / ตัว L (Segmented Area Decomposition Rule)]:
-- กรณีพื้นที่อาคาร/หลังคา/พื้น ไม่ใช่สี่เหลี่ยมผืนผ้าเดี่ยว เช่น เป็นรูปตัว L, ตัว U หรือมีช่องเปิด (Void/Skylight)
-- **ห้ามนำความกว้างสูงสุดมาคูณความยาวสูงสุดเด็ดขาด**
-- **ต้องแยกคำนวณเป็นส่วนย่อย (Segments) เสมอ**:
-  1. ส่วนหลัก/ปีกที่ 1 = กว้าง x ยาว
-  2. ส่วนปีกยื่นที่ 2 = กว้าง x ยาว
-  3. หักลบช่องเปิด/ช่องแสง (Void) = ลบ (กว้าง x ยาว ของช่องเปิด)
-  4. นำมารวมกันเป็นพื้นที่สุทธิ (Net Area) ก่อนคิด Slope factor (ถ้าเป็นหลังคา)
+[กฎเหล็กการคำนวณพื้นที่รูปทรงไม่สม่ำเสมอ / ตัว L]:
+- กรณีพื้นที่อาคาร/หลังคา/พื้น ไม่ใช่สี่เหลี่ยมผืนผ้าเดี่ยว ต้องแยกคำนวณเป็นส่วนย่อยเสมอ
 - ในช่อง "verification_method": ต้องแสดงการแยกส่วนคำนวณอย่างชัดเจน พร้อมระบุมิติตามแนว Grid Line
 
 [การประเมินค่าความมั่นใจ (Confidence Score)]:
@@ -888,22 +942,22 @@
 
 [คำสั่งพิเศษ: Multi-Page Visual Grounding]:
 สำหรับแต่ละรายการที่ถอดได้:
-1. ระบุเลขหน้าในเอกสาร (page_number เริ่มต้นที่ 1) ที่พบข้อมูล
-2. ระบุพิกัด Bounding Box บนหน้าเอกสารนั้น (box_2d) เป็นพิกัด Normalized [ymin, xmin, ymax, xmax] ในช่วง 0 ถึง 1000 ที่ครอบคลุมขอบเขตพื้นที่ที่คำนวณ
-3. ระบุคำอธิบายตำแหน่ง เช่น "แปลนหลังคา หน้า 3" หรือ "แปลนฝ้าเพดาน ชั้น 1"
+1. ระบุเลขหน้าในเอกสาร (page_number เริ่มต้นที่ 1)
+2. ระบุพิกัด Bounding Box Normalized [ymin, xmin, ymax, xmax] ในช่วง 0 ถึง 1000
+3. ระบุคำอธิบายตำแหน่ง
 
 ส่งคำตอบกลับมาเป็น JSON Array เท่านั้น:
 [
   {
-    "category": "หมวดงาน (งานหลังคา, งานผนัง, งานพื้น, งานฝ้าเพดาน, งานฉนวนกันความร้อน, งานไม้ตกแต่ง, งานสุขาภิบาล)",
+    "category": "หมวดงาน",
     "code_ref": "รหัสสัญลักษณ์บนแบบ หรือ -",
     "item_name": "ชื่อรายการงานตามแบบแปลน",
-    "net_quantity": "ปริมาณสุทธิ เช่น 115.92 ตร.ม., 45 ม.",
+    "net_quantity": "ปริมาณสุทธิ",
     "scg_product": "ชื่อสินค้า SCG ที่แนะนำ/ทดแทน",
-    "order_estimate": "จำนวนและหน่วยสั่งซื้อจริง เช่น 53 ม้วน, 45 แผ่น, 18 ท่อน",
+    "order_estimate": "จำนวนและหน่วยสั่งซื้อจริง",
     "confidence_score": 95,
     "calculation_note": "สูตรคำนวณ หน้ากว้างใช้งาน หรือ % เผื่อเศษที่ใช้",
-    "verification_method": "แสดงแจกแจงแยกส่วนมิติ กริตไลน์ ช่องเปิด และผลบวกสุทธิอย่างละเอียด",
+    "verification_method": "แสดงแจกแจงแยกส่วนมิติและผลบวกสุทธิอย่างละเอียด",
     "source_location": {
       "page_number": 1,
       "box_2d": [ymin, xmin, ymax, xmax],
@@ -919,9 +973,7 @@
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             contents: [{ parts: parts }],
-            generationConfig: {
-              responseMimeType: "application/json"
-            }
+            generationConfig: { responseMimeType: "application/json" }
           })
         });
 
@@ -966,39 +1018,15 @@
 ${JSON.stringify(lastRawBOQItems, null, 2)}
 
 ผู้ใช้ต้องการเปลี่ยนสเปกวัสดุใหม่ดังนี้:
-- สเปกหลังคา: "${roofChoice}" (ถ้าเป็น metal_snaplock ใช้ SCG Metal Sheet Snap Lock 0.30 ม., ถ้าเป็น metal_760 ใช้ SCG Metal Sheet ลอน 760 Noise Shield 0.76 ม., ถ้าเป็น cpac ใช้กระเบื้องคอนกรีต CPAC ~11 แผ่น/ตร.ม.)
-- สเปกผนัง: "${wallChoice}" (ถ้าเป็น smartboard_wall ใช้ สมาร์ทบอร์ด SCG 8-10 มม. แผ่น 1.2x2.4 ม. / 2.88 ตร.ม., ถ้าเป็น smartwood_siding ใช้ ไม้ฝา SCG Smartwood ลายไม้สัก ~2.22 แผ่น/ตร.ม.)
-- สเปกพื้น: "${floorChoice}" (ถ้าเป็น smartwood_floor ใช้ ไม้พื้น SCG Smartwood/D-COR, ถ้าเป็น smartboard_floor ใช้ แผ่นพื้นสมาร์ทบอร์ด SCG 16-20 มม.)
-- สเปกฝ้า: "${ceilingChoice}" (ถ้าเป็น smartboard_ceiling ใช้ ฝ้าสมาร์ทบอร์ด SCG ขอบเรียบ 3.5-4 มม., ถ้าเป็น smartboard_vent ใช้ ฝ้าสมาร์ทบอร์ด SCG มีรูระบายอากาศ)
-- สเปกฉนวน: "${insulationChoice}" (
-  - staycool_75: ฉนวนเหนือฝ้า SCG STAY COOL หนา 75 มม. (2.40 ตร.ม./ม้วน) คำนวณจากพื้นที่ฝ้าเพดาน
-  - staycool_150: ฉนวนเหนือฝ้า SCG STAY COOL หนา 150 มม. (2.40 ตร.ม./ม้วน) คำนวณจากพื้นที่ฝ้าเพดาน
-  - radiant_barrier: แผ่นสะท้อนความร้อน SCG ใต้หลังคา เผื่อซ้อนทับ 7-10%
-  - roof_batt: ฉนวนใยแก้วบุใต้เมทัลชีท
-  - none: ตัดรายการฉนวนออก
-)
-- สเปกไม้ตกแต่ง: "${woodChoice}" (ถ้าเป็น smartwood_eaves ใช้ ไม้เชิงชาย SCG Smartwood 2 in 1, ถ้าเป็น smartwood_lath ใช้ ไม้ระแนง SCG Smartwood 3")
+- สเปกหลังคา: "${roofChoice}"
+- สเปกผนัง: "${wallChoice}"
+- สเปกพื้น: "${floorChoice}"
+- สเปกฝ้า: "${ceilingChoice}"
+- สเปกฉนวน: "${insulationChoice}"
+- สเปกไม้ตกแต่ง: "${woodChoice}"
 
-กรุณาแปลงสินค้า SCG (scg_product), คำนวณจำนวนสั่งซื้อใหม่ (order_estimate) และอัปเดตวิธีคำนวณ (calculation_note) ให้สอดคล้องกับสเปกใหม่ โดยยังคงรักษาข้อมูลปริมาณสุทธิ (net_quantity), ค่าความมั่นใจ (confidence_score), วิธีตรวจสอบที่มาเดิม (verification_method) และพิกัดตำแหน่งรวมถึง page_number เดิมไว้ครบถ้วน
-ส่งผลลัพธ์กลับมาเป็น JSON Array เท่านั้น:
-[
-  {
-    "category": "หมวดงาน",
-    "code_ref": "รหัสสัญลักษณ์เดิม",
-    "item_name": "ชื่อรายการงานเดิม",
-    "net_quantity": "ปริมาณสุทธิเดิม",
-    "scg_product": "ชื่อสินค้า SCG ตามสเปกใหม่",
-    "order_estimate": "จำนวนและหน่วยสั่งซื้อใหม่",
-    "confidence_score": 95,
-    "calculation_note": "สูตรคำนวณของสินค้าใหม่",
-    "verification_method": "วิธีตรวจสอบที่มาปริมาณเดิม",
-    "source_location": {
-      "page_number": 1,
-      "box_2d": [ymin, xmin, ymax, xmax],
-      "location_description": "คำอธิบายเดิม"
-    }
-  }
-]
+กรุณาแปลงสินค้า SCG (scg_product), คำนวณจำนวนสั่งซื้อใหม่ (order_estimate) และอัปเดตวิธีคำนวณ (calculation_note) ให้สอดคล้องกับสเปกใหม่ โดยยังคงรักษาข้อมูลปริมาณสุทธิ (net_quantity), ค่าความมั่นใจ (confidence_score), วิธีตรวจสอบที่มาเดิม (verification_method) และพิกัดตำแหน่งเดิมไว้ครบถ้วน
+ส่งผลลัพธ์กลับมาเป็น JSON Array เท่านั้น
 `;
         const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key=${apiKey}`;
         const response = await fetch(endpoint, {
@@ -1055,7 +1083,7 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
         const loc = item.source_location;
         const pageLabel = loc && loc.page_number ? `หน้า ${loc.page_number}` : "";
         const isModified = item.is_manual_modified ? "modified" : "";
-        const manualBadge = item.is_manual_modified ? `<span class="manual-badge">✏️ ปรับแก้/เลือกเอง</span>` : "";
+        const manualBadge = item.is_manual_modified ? `<span class="manual-badge">✏️ ปรับแก้/ตีกรอบเอง</span>` : "";
 
         const row = document.createElement("tr");
         row.innerHTML = `
