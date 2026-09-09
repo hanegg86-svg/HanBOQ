@@ -144,7 +144,7 @@
     th, td {
       border: 1px solid var(--border);
       padding: 8px 10px;
-      vertical-align: top;
+      vertical-align: middle;
     }
     th {
       background: #f1f5f9;
@@ -192,6 +192,39 @@
       background: #fee2e2;
       color: #b91c1c;
       border: 1px solid #fecaca;
+    }
+
+    /* สไตล์สำหรับช่องแก้ไขปริมาณสุทธิ */
+    .edit-qty-wrapper {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .input-qty {
+      width: 115px;
+      padding: 6px 8px;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: bold;
+      color: #0f172a;
+      background: #ffffff;
+      outline: none;
+      transition: all 0.15s ease-in-out;
+    }
+    .input-qty:focus {
+      border-color: #0284c7;
+      box-shadow: 0 0 0 2px rgba(2, 132, 199, 0.2);
+    }
+    .input-qty.modified {
+      background: #fffbeb;
+      border-color: #f59e0b;
+      color: #b45309;
+    }
+    .manual-badge {
+      font-size: 10px;
+      color: #d97706;
+      font-weight: 600;
     }
 
     .status-text {
@@ -372,7 +405,10 @@
   </div>
   <!-- ตาราง BOQ -->
   <div class="card" id="resultCard" style="display: none;">
-    <h3>รายการประเมินปริมาณงานและสินค้า SCG</h3>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+      <h3 style="margin: 0;">รายการประเมินปริมาณงานและสินค้า SCG</h3>
+      <span style="font-size: 12px; color: #64748b;">💡 สามารถคลิกแก้ไขตัวเลขในช่อง <b>"ปริมาณสุทธิ"</b> ได้โดยตรง</span>
+    </div>
     <div class="table-container">
       <table id="boqTable">
         <thead>
@@ -380,7 +416,7 @@
             <th>หมวดงาน</th>
             <th>รหัสอ้างอิง</th>
             <th>รายการงานตามแบบ</th>
-            <th>ปริมาณสุทธิ</th>
+            <th>ปริมาณสุทธิ (แก้ไขได้)</th>
             <th>สินค้า SCG ที่แนะนำ/ทดแทน</th>
             <th>ประมาณการสั่งซื้อจริง</th>
             <th>ความมั่นใจ</th>
@@ -646,7 +682,7 @@
       try {
         const promptText = `
 คุณเป็น Quantity Surveyor ประจำ SCG
-นี่คือรายการปริมาณงานเดิมที่ถอดได้จากแบบ:
+นี่คือรายการปริมาณงานเดิมที่ถอดได้จากแบบ (รวมถึงค่าที่อาจมีการปรับปรุง):
 ${JSON.stringify(lastRawBOQItems, null, 2)}
 
 ผู้ใช้ต้องการเปลี่ยนสเปกวัสดุใหม่ดังนี้:
@@ -743,15 +779,22 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
 
         const loc = item.source_location;
         const pageLabel = loc && loc.page_number ? `หน้า ${loc.page_number}` : "";
+        const isModified = item.is_manual_modified ? "modified" : "";
+        const manualBadge = item.is_manual_modified ? `<span class="manual-badge">✏️ ปรับแก้เอง</span>` : "";
 
         const row = document.createElement("tr");
         row.innerHTML = `
           <td><span class="${badgeClass}">${item.category || "-"}</span></td>
           <td>${item.code_ref || "-"}</td>
           <td>${item.item_name || "-"}</td>
-          <td><b>${item.net_quantity || "-"}</b></td>
+          <td>
+            <div class="edit-qty-wrapper">
+              <input type="text" class="input-qty ${isModified}" id="qty-input-${index}" value="${item.net_quantity || ""}" onchange="updateNetQuantity(${index}, this.value)">
+              ${manualBadge}
+            </div>
+          </td>
           <td style="color: #b91c1c; font-weight: 600;">${item.scg_product || "-"}</td>
-          <td><b>${item.order_estimate || "-"}</b></td>
+          <td><b id="order-estimate-${index}">${item.order_estimate || "-"}</b></td>
           <td style="text-align: center;">
             <span class="confidence-badge ${confClass}">
               ${confIcon} ${conf}%
@@ -768,6 +811,69 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
         tbody.appendChild(row);
       });
       document.getElementById("resultCard").style.display = "block";
+    }
+
+    // ฟังก์ชันจัดการเมื่อผู้ใช้แก้ไข ปริมาณสุทธิ ด้วยตนเอง (Manual Override)
+    function updateNetQuantity(index, newValue) {
+      if (!window.currentBOQData || !window.currentBOQData[index]) return;
+      const item = window.currentBOQData[index];
+      const trimmed = newValue.trim();
+      item.net_quantity = trimmed;
+      item.is_manual_modified = true;
+
+      // ดึงเฉพาะตัวเลขออกมาคำนวณใหม่
+      const numericMatch = trimmed.match(/[\d,.]+/);
+      if (numericMatch) {
+        const rawNum = parseFloat(numericMatch[0].replace(/,/g, ''));
+        if (!isNaN(rawNum) && rawNum > 0) {
+          const product = (item.scg_product || "").toLowerCase();
+          const category = (item.category || "").toLowerCase();
+          let newEstimate = "";
+
+          // คำนวณสัดส่วนตามสเปกสินค้า SCG
+          if (product.includes("stay cool") || product.includes("สเตย์คูล")) {
+            const rolls = Math.ceil((rawNum / 2.40) * 1.05);
+            newEstimate = `${rolls} ม้วน`;
+          } else if (product.includes("สมาร์ทบอร์ด") || product.includes("smartboard") || product.includes("ยิปซัม")) {
+            const sheets = Math.ceil((rawNum / 2.88) * 1.05);
+            newEstimate = `${sheets} แผ่น`;
+          } else if (product.includes("ไม้ฝา") || product.includes("siding")) {
+            const planks = Math.ceil(rawNum * 2.22 * 1.05);
+            newEstimate = `${planks} แผ่น`;
+          } else if (product.includes("ไม้เชิงชาย") || product.includes("eaves")) {
+            const pcs = Math.ceil((rawNum / 3.0) * 1.05);
+            newEstimate = `${pcs} ท่อน`;
+          } else if (product.includes("cpac") || product.includes("ลอนคู่")) {
+            const tiles = Math.ceil(rawNum * 11 * 1.05);
+            newEstimate = `${tiles} แผ่น`;
+          } else if (product.includes("metal sheet") || product.includes("เมทัลชีท")) {
+            const sqmAmt = (rawNum * 1.05).toFixed(1);
+            newEstimate = `${sqmAmt} ตร.ม.`;
+          } else if (product.includes("สะท้อนความร้อน") || product.includes("radiant")) {
+            const rolls = Math.ceil((rawNum * 1.10) / 60);
+            newEstimate = `${rolls} ม้วน (60 ตร.ม./ม้วน)`;
+          }
+
+          if (newEstimate) {
+            item.order_estimate = newEstimate;
+            const estElem = document.getElementById(`order-estimate-${index}`);
+            if (estElem) estElem.innerText = newEstimate;
+          }
+        }
+      }
+
+      // อัปเดตในชุดข้อมูลหลักที่ใช้สำหรับ recalculate และ export
+      if (lastRawBOQItems && lastRawBOQItems[index]) {
+        lastRawBOQItems[index].net_quantity = item.net_quantity;
+        lastRawBOQItems[index].order_estimate = item.order_estimate;
+        lastRawBOQItems[index].is_manual_modified = true;
+      }
+
+      // แสดงไฮไลท์สีเตือนว่าถูกแก้ไข
+      const inputElem = document.getElementById(`qty-input-${index}`);
+      if (inputElem) {
+        inputElem.classList.add("modified");
+      }
     }
 
     async function showLocation(index) {
@@ -836,13 +942,14 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
 
     function exportCSV() {
       if (!window.currentBOQData || window.currentBOQData.length === 0) return;
-      let csvContent = "\uFEFFหมวดงาน,รหัสอ้างอิง,รายการงาน,ปริมาณสุทธิ,สินค้า SCG แนะนำ,ประมาณการสั่งซื้อจริง,ความมั่นใจ (%),หมายเหตุการคำนวณ,วิธีตรวจสอบที่มาปริมาณ,หน้าที่พบ,คำอธิบายตำแหน่ง\n";
+      let csvContent = "\uFEFFหมวดงาน,รหัสอ้างอิง,รายการงาน,ปริมาณสุทธิ,สถานะการแก้ไข,สินค้า SCG แนะนำ,ประมาณการสั่งซื้อจริง,ความมั่นใจ (%),หมายเหตุการคำนวณ,วิธีตรวจสอบที่มาปริมาณ,หน้าที่พบ,คำอธิบายตำแหน่ง\n";
       window.currentBOQData.forEach(row => {
         const page = (row.source_location && row.source_location.page_number) ? row.source_location.page_number : "-";
         const desc = (row.source_location && row.source_location.location_description) ? row.source_location.location_description : "-";
         const audit = row.verification_method ? row.verification_method.replace(/"/g, '""') : "-";
         const conf = row.confidence_score || "-";
-        csvContent += `"${row.category}","${row.code_ref}","${row.item_name}","${row.net_quantity}","${row.scg_product}","${row.order_estimate}","${conf}","${row.calculation_note}","${audit}","${page}","${desc}"\n`;
+        const modifiedStatus = row.is_manual_modified ? "แก้ไขโดยผู้ใช้" : "คำนวณโดย AI";
+        csvContent += `"${row.category}","${row.code_ref}","${row.item_name}","${row.net_quantity}","${modifiedStatus}","${row.scg_product}","${row.order_estimate}","${conf}","${row.calculation_note}","${audit}","${page}","${desc}"\n`;
       });
       const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
       const url = URL.createObjectURL(blob);
