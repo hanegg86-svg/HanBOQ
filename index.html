@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SCG AI BOQ & Multi-Bounding Box Estimator</title>
+  <title>SCG AI BOQ & Dual-Image Context Estimator</title>
   <!-- โหลด pdf.js จาก CDN เพื่อเรนเดอร์ PDF หลายหน้า -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script>
@@ -361,7 +361,7 @@
   </style>
 </head>
 <body>
-  <h2>🏗️ SCG AI BOQ & Multi-Bounding Box Estimator</h2>
+  <h2>🏗️ SCG AI BOQ & Dual-Image Context Estimator</h2>
   <!-- ตั้งค่า API Key -->
   <div class="card">
     <label for="apiKey">Gemini API Key:</label>
@@ -497,7 +497,7 @@
   <div id="drawModal" class="modal">
     <div class="modal-content" style="max-width: 1100px;">
       <div class="modal-header">
-        <div class="modal-title">🎯 ลากตีกรอบสี่เหลี่ยมบนแบบ (ตีกรอบได้หลายกรอบ เช่น รูปตัว L, หลายห้อง)</div>
+        <div class="modal-title">🎯 ลากตีกรอบสี่เหลี่ยมบนแบบ (ระบบ Dual-Image เทียบสเกลอัตโนมัติแม้ไม่มีตัวเลขในกรอบ)</div>
         <span class="close-btn" onclick="closeModal('drawModal')">&times;</span>
       </div>
       <div class="draw-controls">
@@ -756,6 +756,9 @@
       document.getElementById("drawStatus").innerText = "";
     }
 
+    /* ==========================================================
+       ระบบ DUAL-IMAGE CONTEXT SCALING (ส่งภาพรวม + ภาพย่อยเทียบสเกล)
+       ========================================================== */
     async function analyzeMultipleBoxes() {
       if (selectedBoxes.length === 0) {
         alert("กรุณาคลิกลากตีกรอบสี่เหลี่ยมบนแบบอย่างน้อย 1 กรอบก่อนกดคำนวณ");
@@ -768,23 +771,44 @@
       }
 
       const statusElem = document.getElementById("drawStatus");
-      statusElem.innerText = `กำลังตัดภาพย่อยทั้ง ${selectedBoxes.length} กรอบ และส่งให้ Gemini วิเคราะห์และรวมยอดพื้นที่...`;
+      statusElem.innerText = `กำลังประมวลผล Dual-Image Context (ส่งภาพเต็มแผ่น + ${selectedBoxes.length} ภาพย่อยเพื่อเทียบสเกลอัตโนมัติ)...`;
 
       const category = document.getElementById("drawCategorySelect").value;
       const pageNum = parseInt(document.getElementById("drawPageSelect").value);
 
       const parts = [];
-      selectedBoxes.forEach((box) => {
+
+      // 1. ส่งภาพเต็มแผ่นของหน้านี้ (Full Drawing Sheet) เพื่อให้อ่าน Dimension / Grid Line / สเกลรอบนอก
+      const fullCanvas = document.createElement("canvas");
+      fullCanvas.width = currentDrawPageImg.width;
+      fullCanvas.height = currentDrawPageImg.height;
+      const fullCtx = fullCanvas.getContext("2d");
+      fullCtx.drawImage(currentDrawPageImg, 0, 0);
+      const fullBase64 = fullCanvas.toDataURL("image/jpeg", 0.90).split(',')[1];
+
+      parts.push({
+        inlineData: { data: fullBase64, mimeType: "image/jpeg" }
+      });
+
+      // 2. ส่งภาพ Crop ของแต่ละกรอบที่ผู้ใช้เลือก พร้อมคำนวณ Normalized Bounding Box
+      const boxesCoordinatesText = [];
+      selectedBoxes.forEach((box, i) => {
         const cropCanvas = document.createElement("canvas");
         cropCanvas.width = box.w;
         cropCanvas.height = box.h;
         const cropCtx = cropCanvas.getContext("2d");
         cropCtx.drawImage(currentDrawPageImg, box.x, box.y, box.w, box.h, 0, 0, box.w, box.h);
-        const b64 = cropCanvas.toDataURL("image/jpeg", 0.95).split(',')[1];
+        const cropB64 = cropCanvas.toDataURL("image/jpeg", 0.95).split(',')[1];
         
         parts.push({
-          inlineData: { data: b64, mimeType: "image/jpeg" }
+          inlineData: { data: cropB64, mimeType: "image/jpeg" }
         });
+
+        const ymin = Math.round((box.y / currentDrawPageImg.height) * 1000);
+        const xmin = Math.round((box.x / currentDrawPageImg.width) * 1000);
+        const ymax = Math.round(((box.y + box.h) / currentDrawPageImg.height) * 1000);
+        const xmax = Math.round(((box.x + box.w) / currentDrawPageImg.width) * 1000);
+        boxesCoordinatesText.push(`- กรอบ #${i + 1}: พิกัดบนภาพเต็มคือ [ymin=${ymin}, xmin=${xmin}, ymax=${ymax}, xmax=${xmax}] ขนาดพิกเซลแท้ (${Math.round(box.w)} x ${Math.round(box.h)} px)`);
       });
 
       const primaryBox = selectedBoxes[0];
@@ -795,34 +819,39 @@
 
       const promptText = `
 คุณเป็น Quantity Surveyor (QS) ผู้เชี่ยวชาญของเครือ SCG
-ผู้ใช้งานได้เลือก "ตีกรอบพื้นที่แยกส่วน" มาให้คุณทั้งหมด ${selectedBoxes.length} ส่วน (เช่น ปีกอาคารรูปตัว L หรือหลายห้องรวมกัน)
-ภาพที่แนบมานี้มี ${parts.length} รูป เรียงตามลำดับกรอบ #1 ถึง #${parts.length}:
-- หมวดงานที่ต้องการ: "${category}"
+ผู้ใช้งานได้เลือกพื้นที่ด้วยเครื่องมือ Interactive Manual Bounding Box เพื่อคำนวณปริมาณงาน
+ระบบได้แนบรูปภาพมาให้คุณทั้งหมด ${parts.length} ภาพ ดังนี้:
+1. [ภาพที่ 1 - สำคัญมาก]: คือ "ภาพแปลนเต็มแผ่น (Full Drawing Context)" ที่มีแนว Grid Line (เช่น 1, 2, 3 หรือ A, B, C) ตัวเลขบอกระยะโดยรอบ (Overall Dimensions) และสเกลกำกับ
+2. [ภาพที่ 2 ถึง ${parts.length}]: คือ "ภาพ Crop ขยายเจาะจง" ของแต่ละกรอบที่ผู้ใช้เลือก เรียงตามลำดับกรอบ #1 ถึง #${selectedBoxes.length}
+
+[ข้อมูลตำแหน่งพิกัดของกรอบบนภาพเต็ม]:
+${boxesCoordinatesText.join("\n")}
+- หมวดงานที่ต้องการคำนวณ: "${category}"
 - สเปกวัสดุอ้างอิง: หลังคา=${document.getElementById("roofOption").value}, ผนัง=${document.getElementById("wallOption").value}, ฝ้า=${document.getElementById("ceilingOption").value}, ฉนวน=${document.getElementById("insulationOption").value}
 
-หน้าที่ของคุณ:
-1. อ่านตัวเลข Dimension และมิติความกว้าง x ยาว ในแต่ละภาพกรอบย่อย
-2. คำนวณพื้นที่ย่อยของแต่ละกรอบ (Segment 1, Segment 2, ...) แล้วนำมารวมกันเป็นพื้นที่สุทธิทั้งหมด (Total Net Area)
-3. แปลงเป็นรายการสินค้า SCG ที่เหมาะสม พร้อมคำนวณจำนวนสั่งซื้อจริง (Order Estimate)
-4. ในช่อง "verification_method": ให้แสดงการคำนวณแจกแจงแยกชิ้นของแต่ละกรอบชัดเจน เช่น "กรอบ #1 (4.0x8.0 = 32 ตร.ม.) + กรอบ #2 (3.0x5.0 = 15 ตร.ม.) = รวมสุทธิ 47 ตร.ม."
-5. ประเมินค่าความมั่นใจ (Confidence Score 0-100)
+[กระบวนการคำนวณเทียบสเกลอัตโนมัติ (Dual-Image Context Scaling)]:
+1. แม้ว่าในภาพ Crop จะไม่มีตัวเลขบอกระยะติดมา ให้คุณเทียบพิกัด Bounding Box กับ "ภาพที่ 1 (ภาพเต็มแผ่น)" เพื่อดูว่าขอบของแต่ละกรอบตรงกับแนวเสา/Grid Line ใด หรือคำนวณอัตราส่วนสเกลจากระยะรวมของอาคาร (Pixel-to-Meter Ratio)
+2. คำนวณขนาดกว้าง x ยาว (เมตร) ของแต่ละกรอบย่อยอย่างสมเหตุสมผล
+3. รวมพื้นที่ย่อยทั้งหมด (${selectedBoxes.length} กรอบ) เป็น "พื้นที่สุทธิรวม (Total Net Area)"
+4. แปลงเป็นรายการสินค้า SCG ที่เหมาะสม พร้อมคำนวณยอดสั่งซื้อจริง (Order Estimate)
+5. ในช่อง "verification_method": ให้เขียนอธิบายว่าเทียบสเกลจาก Grid Line หรือระยะอ้างอิงใดในภาพเต็ม และแจกแจงมิติ กว้าง x ยาว ของแต่ละกรอบชัดเจน เช่น "เทียบสเกลจาก Grid A-B (4.00 ม.): กรอบ #1 (4.00 x 3.50 ม. = 14.00 ตร.ม.) + กรอบ #2 (2.00 x 4.00 ม. = 8.00 ตร.ม.) รวมสุทธิ 22.00 ตร.ม."
 
 ส่งผลลัพธ์เป็น JSON Array ที่มี 1 รายการสุทธิเท่านั้น:
 [
   {
     "category": "${category}",
-    "code_ref": "Multi-Zone (${selectedBoxes.length} ส่วน)",
+    "code_ref": "Multi-Zone (${selectedBoxes.length} ส่วน - เทียบสเกล Context)",
     "item_name": "พื้นที่รวมจากการเลือก ${selectedBoxes.length} กรอบ (${category})",
-    "net_quantity": "ปริมาณสุทธิรวม เช่น 47.00 ตร.ม.",
+    "net_quantity": "ปริมาณสุทธิรวม เช่น 22.00 ตร.ม.",
     "scg_product": "ชื่อสินค้า SCG ที่แนะนำ",
     "order_estimate": "จำนวนและหน่วยสั่งซื้อ",
     "confidence_score": 95,
     "calculation_note": "สูตรคำนวณและสัดส่วนเผื่อเศษ",
-    "verification_method": "แสดงผลรวมแยกรายกรอบอย่างละเอียด",
+    "verification_method": "คำอธิบายการเทียบสเกลจากภาพเต็มและการรวมมิติของแต่ละกรอบ",
     "source_location": {
       "page_number": ${pageNum},
       "box_2d": [${mainYmin}, ${mainXmin}, ${mainYmax}, ${mainXmax}],
-      "location_description": "พื้นที่ที่ผู้ใช้ตีกรอบ ${selectedBoxes.length} จุด บนหน้า ${pageNum}"
+      "location_description": "พื้นที่ที่เลือก ${selectedBoxes.length} จุด บนหน้า ${pageNum} (เทียบสเกลอัตโนมัติจากภาพเต็ม)"
     }
   }
 ]
@@ -851,7 +880,7 @@
           lastRawBOQItems.push(newItem);
           renderBOQTable(lastRawBOQItems);
           document.getElementById("recalcBtn").disabled = false;
-          statusElem.innerText = `✅ คำนวณรวมทั้ง ${selectedBoxes.length} กรอบสำเร็จและเพิ่มลงในตาราง BOQ แล้ว!`;
+          statusElem.innerText = `✅ คำนวณเทียบสเกลอัตโนมัติทั้ง ${selectedBoxes.length} กรอบสำเร็จและเพิ่มลงในตาราง BOQ แล้ว!`;
           setTimeout(() => {
             closeModal('drawModal');
           }, 1200);
@@ -1117,22 +1146,16 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
       document.getElementById("resultCard").style.display = items.length > 0 ? "block" : "none";
     }
 
-    // ฟังก์ชันลบรายการออกจากตารางและชุดข้อมูล
     function deleteBOQItem(index) {
       if (!window.currentBOQData || !window.currentBOQData[index]) return;
       const targetItem = window.currentBOQData[index];
       const itemName = targetItem.item_name || "รายการนี้";
       
       if (confirm(`คุณต้องการลบ "${itemName}" ออกจากตาราง BOQ ใช่หรือไม่?`)) {
-        // ลบออกจากชุดข้อมูลที่กำลังแสดงผล
         window.currentBOQData.splice(index, 1);
-        
-        // ลบออกจาก lastRawBOQItems ที่ใช้คำนวณสเปกใหม่
         if (lastRawBOQItems && lastRawBOQItems.length > index) {
           lastRawBOQItems.splice(index, 1);
         }
-        
-        // เรนเดอร์ตารางใหม่ทันที
         renderBOQTable(window.currentBOQData);
       }
     }
