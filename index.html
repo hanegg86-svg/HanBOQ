@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SCG AI BOQ & Grid-Line Structural Mapping Estimator</title>
+  <title>SCG AI BOQ & Interactive Scale Calibration Tool</title>
   <!-- โหลด pdf.js จาก CDN เพื่อเรนเดอร์ PDF หลายหน้า -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script>
@@ -323,9 +323,6 @@
       box-shadow: 0 4px 10px rgba(0,0,0,0.3);
       cursor: default;
     }
-    #drawCanvas {
-      cursor: crosshair;
-    }
     .location-desc {
       margin-top: 10px;
       font-size: 13px;
@@ -337,7 +334,7 @@
       line-height: 1.5;
     }
 
-    /* กล่องควบคุมของ Drawing Tool */
+    /* กล่องควบคุมของ Calibration & Drawing Tool */
     .draw-controls {
       display: flex;
       gap: 10px;
@@ -350,26 +347,48 @@
       width: auto;
       padding: 8px;
     }
+    .tool-mode-btn {
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      border: 2px solid transparent;
+      flex: none;
+    }
+    .tool-mode-btn.active {
+      border-color: #0f172a;
+      box-shadow: 0 0 0 2px rgba(15, 23, 42, 0.2);
+    }
+    .btn-mode-calib {
+      background: #8b5cf6;
+      color: white;
+    }
+    .btn-mode-area {
+      background: #059669;
+      color: white;
+    }
+    .scale-info-badge {
+      background: #e0e7ff;
+      color: #3730a3;
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 700;
+      border: 1px solid #c7d2fe;
+    }
     .box-counter {
       background: #0284c7;
       color: white;
-      padding: 4px 10px;
-      border-radius: 12px;
+      padding: 6px 12px;
+      border-radius: 8px;
       font-size: 12px;
       font-weight: bold;
-    }
-    .guide-hint {
-      font-size: 12px;
-      color: #0284c7;
-      background: #f0f9ff;
-      padding: 4px 8px;
-      border-radius: 4px;
-      display: inline-block;
     }
   </style>
 </head>
 <body>
-  <h2>🏗️ SCG AI BOQ & Grid-Line Structural Mapping Estimator</h2>
+  <h2>🏗️ SCG AI BOQ & Interactive Scale Calibration Tool</h2>
   <!-- ตั้งค่า API Key -->
   <div class="card">
     <label for="apiKey">Gemini API Key:</label>
@@ -452,7 +471,7 @@
     <input type="file" id="specFile" accept="image/*,application/pdf">
     <div class="btn-group">
       <button id="processBtn" onclick="processDocuments()">เริ่มวิเคราะห์จากแบบใหม่ (อัตโนมัติทั้งแผ่น)</button>
-      <button id="drawBtn" class="btn-draw" onclick="openManualDrawModal()" disabled>🎯 ตีกรอบวิเคราะห์ด้วยแนวเสา (Grid-Line Mapping)</button>
+      <button id="drawBtn" class="btn-draw" onclick="openManualDrawModal()" disabled>🎯 ตั้งสเกล & ตีกรอบวัดพื้นที่เอง (Calibration Tool)</button>
       <button id="recalcBtn" class="btn-recalc" onclick="recalculateWithNewSpecs()" disabled>🔄 คำนวณใหม่ตามสเปกที่เลือก</button>
     </div>
     <div id="status" class="status-text"></div>
@@ -476,7 +495,7 @@
             <th>ประมาณการสั่งซื้อจริง</th>
             <th>ความมั่นใจ</th>
             <th>หมายเหตุและวิธีคำนวณ</th>
-            <th>🔍 วิธีตรวจสอบที่มาปริมาณ (Audit Trail / Grid Ref)</th>
+            <th>🔍 วิธีตรวจสอบที่มาปริมาณ (Calibration Audit)</th>
             <th>ตำแหน่งในแบบ</th>
             <th style="text-align: center;">จัดการ</th>
           </tr>
@@ -501,16 +520,22 @@
     </div>
   </div>
 
-  <!-- Modal สำหรับลากตีกรอบ Bounding Box เอง (Grid-Line Mapping Tool) -->
+  <!-- Modal สำหรับ Calibration & Area Measurement (แนวทางที่ 3) -->
   <div id="drawModal" class="modal">
-    <div class="modal-content" style="max-width: 1150px;">
+    <div class="modal-content" style="max-width: 1200px;">
       <div class="modal-header">
-        <div class="modal-title">🎯 ลากตีกรอบเทียบแนวเสาและกริตไลน์ (Grid-Line Structural Mapping)</div>
+        <div class="modal-title">📐 เครื่องมือตั้งสเกลและวัดพื้นที่ (Interactive Calibration & Area Tool)</div>
         <span class="close-btn" onclick="closeModal('drawModal')">&times;</span>
       </div>
       <div class="draw-controls">
         <label style="margin: 0;">หน้า:</label>
         <select id="drawPageSelect" onchange="onDrawPageChange()"></select>
+
+        <!-- สลับโหมดการทำงาน -->
+        <button type="button" id="btnModeCalib" class="tool-mode-btn btn-mode-calib" onclick="switchToolMode('calibrate')">📏 1. ตั้งสเกล (ลาก 1 เส้น)</button>
+        <button type="button" id="btnModeArea" class="tool-mode-btn btn-mode-area active" onclick="switchToolMode('area')">🎯 2. ตีกรอบวัดพื้นที่</button>
+
+        <span class="scale-info-badge" id="scaleInfoBadge">⚠️ ยังไม่ได้ตั้งสเกล (คลิกปุ่ม 1 เพื่อตั้ง)</span>
 
         <label style="margin: 0;">หมวดงาน:</label>
         <select id="drawCategorySelect">
@@ -520,12 +545,11 @@
           <option value="งานพื้น">งานพื้น</option>
         </select>
 
-        <span class="box-counter" id="boxCounterLabel">เลือกแล้ว 0 กรอบ</span>
-        <span class="guide-hint">📐 เส้นประสีฟ้า/ส้มจะช่วยนำสายตาไปยัง Grid Line รอบนอก</span>
+        <span class="box-counter" id="boxCounterLabel">เลือกแล้ว 0 กรอบ (0.00 ตร.ม.)</span>
 
-        <button type="button" class="btn-draw" style="padding: 8px 14px; flex: none;" onclick="analyzeGridLineBoxes()">🚀 อ่านแนวเสาและคำนวณ</button>
+        <button type="button" class="btn-draw" style="padding: 8px 14px; flex: none;" onclick="calculateSCGFromCalibratedArea()">🚀 คำนวณสินค้า SCG</button>
         <button type="button" style="padding: 8px 12px; background: #eab308; color: #000; flex: none;" onclick="undoLastBox()">↩️ ลบกรอบล่าสุด</button>
-        <button type="button" style="padding: 8px 12px; background: #64748b; flex: none;" onclick="clearAllDrawBoxes()">🗑️ ล้างทั้งหมด</button>
+        <button type="button" style="padding: 8px 12px; background: #64748b; flex: none;" onclick="clearAllDrawBoxes()">🗑️ ล้างกรอบ</button>
       </div>
       <div class="canvas-wrapper">
         <canvas id="drawCanvas"></canvas>
@@ -540,12 +564,16 @@
     let singleImageInstance = null;
     let lastRawBOQItems = [];
     
-    // ตัวแปรสำหรับ Multi-Bounding Box Drawing
+    // ตัวแปรสำหรับ Calibration & Area Measurement (แนวทางที่ 3)
     let currentDrawPageImg = null;
+    let currentToolMode = "area"; // "calibrate" หรือ "area"
+    let pixelsPerMeter = null; // อัตราส่วนพิกเซลต่อเมตร
+    let calibrationLine = null; // { x1, y1, x2, y2, meters }
     let isDrawing = false;
     let startX = 0, startY = 0;
     let currentDragBox = null;
-    let selectedBoxes = []; // Array ของ { x, y, w, h } ในพิกัดภาพแท้
+    let currentDragLine = null;
+    let selectedBoxes = []; // Array ของ { x, y, w, h, widthM, heightM, areaM }
 
     document.addEventListener("DOMContentLoaded", () => {
       const savedKey = localStorage.getItem("GEMINI_API_KEY");
@@ -631,7 +659,7 @@
     }
 
     /* ==========================================================
-       ระบบ GRID-LINE STRUCTURAL MAPPING DRAWING TOOL
+       ระบบ CALIBRATION & AREA MEASUREMENT TOOL (แนวทางที่ 3)
        ========================================================== */
     async function openManualDrawModal() {
       if (!currentUploadedFile) {
@@ -655,6 +683,9 @@
     async function onDrawPageChange() {
       const pageNum = parseInt(document.getElementById("drawPageSelect").value);
       selectedBoxes = [];
+      calibrationLine = null;
+      pixelsPerMeter = null;
+      updateScaleBadge();
       updateBoxCounter();
       await loadDrawCanvasPage(pageNum);
     }
@@ -664,36 +695,46 @@
       if (!pageResult) return;
       currentDrawPageImg = pageResult.image;
       currentDragBox = null;
+      currentDragLine = null;
       redrawCanvas();
     }
 
-    function updateBoxCounter() {
-      const label = document.getElementById("boxCounterLabel");
-      label.innerText = `เลือกแล้ว ${selectedBoxes.length} กรอบ`;
+    function switchToolMode(mode) {
+      currentToolMode = mode;
+      document.getElementById("btnModeCalib").classList.toggle("active", mode === "calibrate");
+      document.getElementById("btnModeArea").classList.toggle("active", mode === "area");
+      const canvas = document.getElementById("drawCanvas");
+      canvas.style.cursor = mode === "calibrate" ? "crosshair" : "crosshair";
+      
+      const statusElem = document.getElementById("drawStatus");
+      if (mode === "calibrate") {
+        statusElem.innerText = "📏 โหมดตั้งสเกล: คลิกลากเส้นตรงทับผนังหรือเส้นบอกระยะที่มีตัวเลขระบุ 1 เส้น (เช่น เสาถึงเสา หรือสเกลบาร์)";
+      } else {
+        statusElem.innerText = pixelsPerMeter 
+          ? "🎯 โหมดตีกรอบวัดพื้นที่: คลิกลากสี่เหลี่ยมคลุมพื้นที่ห้อง/หลังคา (คำนวณ ตร.ม. อัตโนมัติ)" 
+          : "⚠️ แนะนำให้กดปุ่ม '1. ตั้งสเกล' เพื่อความแม่นยำ หรือตีกรอบเพื่อประเมินแบบสเกลมาตรฐาน";
+      }
     }
 
-    // วาดเส้นประ Projection Rays พุ่งไปยังขอบกระดาษเพื่อหาแนว Grid Line
-    function drawProjectionRays(ctx, box, canvasWidth, canvasHeight, color) {
-      ctx.save();
-      ctx.strokeStyle = color || "#38bdf8";
-      ctx.lineWidth = 1.5;
-      ctx.setLineDash([6, 6]);
+    function updateScaleBadge() {
+      const badge = document.getElementById("scaleInfoBadge");
+      if (pixelsPerMeter) {
+        badge.innerText = `✅ สเกล: 1 ม. = ${pixelsPerMeter.toFixed(1)} px (${calibrationLine ? calibrationLine.meters + "ม." : ""})`;
+        badge.style.background = "#dcfce7";
+        badge.style.color = "#15803d";
+        badge.style.borderColor = "#bbf7d0";
+      } else {
+        badge.innerText = "⚠️ ยังไม่ได้ตั้งสเกล (คลิกปุ่ม 1 เพื่อตั้ง)";
+        badge.style.background = "#e0e7ff";
+        badge.style.color = "#3730a3";
+        badge.style.borderColor = "#c7d2fe";
+      }
+    }
 
-      // เส้นแนวนอนซ้าย-ขวา
-      ctx.beginPath();
-      ctx.moveTo(0, box.y);
-      ctx.lineTo(canvasWidth, box.y);
-      ctx.moveTo(0, box.y + box.h);
-      ctx.lineTo(canvasWidth, box.y + box.h);
-
-      // เส้นแนวตั้งบน-ล่าง
-      ctx.moveTo(box.x, 0);
-      ctx.lineTo(box.x, canvasHeight);
-      ctx.moveTo(box.x + box.w, 0);
-      ctx.lineTo(box.x + box.w, canvasHeight);
-
-      ctx.stroke();
-      ctx.restore();
+    function updateBoxCounter() {
+      const totalArea = selectedBoxes.reduce((sum, b) => sum + (b.areaM || 0), 0);
+      const label = document.getElementById("boxCounterLabel");
+      label.innerText = `เลือกแล้ว ${selectedBoxes.length} กรอบ (${totalArea.toFixed(2)} ตร.ม.)`;
     }
 
     function redrawCanvas() {
@@ -704,42 +745,88 @@
       canvas.height = currentDrawPageImg.height;
       ctx.drawImage(currentDrawPageImg, 0, 0);
 
+      // วาดเส้น Calibration อ้างอิง (ถ้ามี)
+      if (calibrationLine) {
+        ctx.save();
+        ctx.strokeStyle = "#8b5cf6";
+        ctx.lineWidth = 5;
+        ctx.beginPath();
+        ctx.moveTo(calibrationLine.x1, calibrationLine.y1);
+        ctx.lineTo(calibrationLine.x2, calibrationLine.y2);
+        ctx.stroke();
+
+        // ป้ายกำกับเส้นสเกล
+        const midX = (calibrationLine.x1 + calibrationLine.x2) / 2;
+        const midY = (calibrationLine.y1 + calibrationLine.y2) / 2;
+        ctx.fillStyle = "#8b5cf6";
+        ctx.fillRect(midX - 50, midY - 26, 100, 24);
+        ctx.fillStyle = "#ffffff";
+        ctx.font = "bold 13px sans-serif";
+        ctx.fillText(`📏 ${calibrationLine.meters} ม.`, midX - 35, midY - 9);
+        ctx.restore();
+      }
+
+      // วาดเส้นขณะลาก Calibrate อยู่
+      if (currentDragLine) {
+        ctx.save();
+        ctx.strokeStyle = "#a855f7";
+        ctx.lineWidth = 4;
+        ctx.setLineDash([6, 6]);
+        ctx.beginPath();
+        ctx.moveTo(currentDragLine.x1, currentDragLine.y1);
+        ctx.lineTo(currentDragLine.x2, currentDragLine.y2);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      // ทำฉากหลังโปร่งแสงเมื่อมีกรอบ
       if (selectedBoxes.length > 0 || currentDragBox) {
-        ctx.fillStyle = "rgba(0, 0, 0, 0.45)";
+        ctx.fillStyle = "rgba(0, 0, 0, 0.4)";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
       }
 
       // วาดทุกกรอบที่บันทึกไว้
       selectedBoxes.forEach((box, idx) => {
-        // วาด Projection Rays พุ่งไปยังขอบเพื่ออ้างอิง Grid Line
-        drawProjectionRays(ctx, box, canvas.width, canvas.height, "rgba(52, 211, 153, 0.8)");
-
         // เจาะภาพสว่างตรงตำแหน่งกรอบ
         ctx.drawImage(currentDrawPageImg, box.x, box.y, box.w, box.h, box.x, box.y, box.w, box.h);
 
         // วาดขอบเขียว
         ctx.strokeStyle = "#10b981";
-        ctx.lineWidth = 6;
+        ctx.lineWidth = 5;
         ctx.strokeRect(box.x, box.y, box.w, box.h);
 
-        // ป้ายลำดับ
-        const badgeText = `🎯 กรอบ #${idx + 1} (Grid-Zone)`;
+        // ป้ายหัวข้อกำกับขนาดจริงและพื้นที่
+        const areaLabel = box.areaM 
+          ? `🎯 #${idx + 1}: ${box.widthM.toFixed(2)}x${box.heightM.toFixed(2)} ม. (${box.areaM.toFixed(2)} ตร.ม.)` 
+          : `🎯 กรอบ #${idx + 1}`;
+
         ctx.fillStyle = "#10b981";
         const badgeY = box.y > 32 ? box.y - 32 : box.y;
-        ctx.fillRect(box.x, badgeY, 175, 32);
+        const textWidth = ctx.measureText(areaLabel).width + 20;
+        ctx.fillRect(box.x, badgeY, Math.max(180, textWidth), 30);
         ctx.fillStyle = "#ffffff";
-        ctx.font = "bold 15px sans-serif";
-        ctx.fillText(badgeText, box.x + 8, badgeY + 22);
+        ctx.font = "bold 14px sans-serif";
+        ctx.fillText(areaLabel, box.x + 8, badgeY + 20);
       });
 
-      // วาดกรอบที่กำลังคลิกลากอยู่แบบ Real-time พร้อม Projection Rays
+      // วาดกรอบที่กำลังคลิกลากอยู่แบบ Real-time
       if (currentDragBox) {
-        drawProjectionRays(ctx, currentDragBox, canvas.width, canvas.height, "#f59e0b");
-
         ctx.drawImage(currentDrawPageImg, currentDragBox.x, currentDragBox.y, currentDragBox.w, currentDragBox.h, currentDragBox.x, currentDragBox.y, currentDragBox.w, currentDragBox.h);
-        ctx.strokeStyle = "#f59e0b";
+        ctx.strokeStyle = "#38bdf8";
         ctx.lineWidth = 4;
         ctx.strokeRect(currentDragBox.x, currentDragBox.y, currentDragBox.w, currentDragBox.h);
+
+        // แสดงขนาด Real-time ถ้ามีสเกลแล้ว
+        if (pixelsPerMeter) {
+          const wM = currentDragBox.w / pixelsPerMeter;
+          const hM = currentDragBox.h / pixelsPerMeter;
+          const aM = wM * hM;
+          ctx.fillStyle = "#0284c7";
+          ctx.fillRect(currentDragBox.x, currentDragBox.y - 25, 180, 24);
+          ctx.fillStyle = "#ffffff";
+          ctx.font = "bold 13px sans-serif";
+          ctx.fillText(`📐 ${wM.toFixed(2)} x ${hM.toFixed(2)} = ${aM.toFixed(2)} ตร.ม.`, currentDragBox.x + 6, currentDragBox.y - 8);
+        }
       }
     }
 
@@ -762,23 +849,59 @@
         const currentX = (e.clientX - rect.left) * scaleX;
         const currentY = (e.clientY - rect.top) * scaleY;
 
-        const x = Math.min(startX, currentX);
-        const y = Math.min(startY, currentY);
-        const w = Math.abs(currentX - startX);
-        const h = Math.abs(currentY - startY);
-        currentDragBox = { x, y, w, h };
+        if (currentToolMode === "calibrate") {
+          currentDragLine = { x1: startX, y1: startY, x2: currentX, y2: currentY };
+        } else {
+          const x = Math.min(startX, currentX);
+          const y = Math.min(startY, currentY);
+          const w = Math.abs(currentX - startX);
+          const h = Math.abs(currentY - startY);
+          currentDragBox = { x, y, w, h };
+        }
         redrawCanvas();
       };
 
       canvas.onmouseup = () => {
         if (!isDrawing) return;
         isDrawing = false;
-        if (currentDragBox && currentDragBox.w > 20 && currentDragBox.h > 20) {
-          selectedBoxes.push(currentDragBox);
-          updateBoxCounter();
+
+        if (currentToolMode === "calibrate" && currentDragLine) {
+          const dx = currentDragLine.x2 - currentDragLine.x1;
+          const dy = currentDragLine.y2 - currentDragLine.y1;
+          const pixelDist = Math.sqrt(dx * dx + dy * dy);
+
+          if (pixelDist > 20) {
+            const inputVal = prompt("📏 เส้นที่คุณลากยาวจริงกี่เมตร? (เช่น 4.0 หรือ 1.5):", "4.0");
+            if (inputVal && !isNaN(parseFloat(inputVal)) && parseFloat(inputVal) > 0) {
+              const meters = parseFloat(inputVal);
+              pixelsPerMeter = pixelDist / meters;
+              calibrationLine = { ...currentDragLine, meters: meters };
+              updateScaleBadge();
+              // สลับไปโหมดตีกรอบให้อัตโนมัติทันที
+              switchToolMode("area");
+            }
+          }
+          currentDragLine = null;
+          redrawCanvas();
+        } else if (currentToolMode === "area" && currentDragBox) {
+          if (currentDragBox.w > 20 && currentDragBox.h > 20) {
+            let widthM = 0, heightM = 0, areaM = 0;
+            if (pixelsPerMeter) {
+              widthM = currentDragBox.w / pixelsPerMeter;
+              heightM = currentDragBox.h / pixelsPerMeter;
+              areaM = widthM * heightM;
+            }
+            selectedBoxes.push({
+              ...currentDragBox,
+              widthM: widthM,
+              heightM: heightM,
+              areaM: areaM
+            });
+            updateBoxCounter();
+          }
+          currentDragBox = null;
+          redrawCanvas();
         }
-        currentDragBox = null;
-        redrawCanvas();
       };
     }
 
@@ -799,11 +922,11 @@
     }
 
     /* ==========================================================
-       ระบบส่งข้อมูลให้ AI วิเคราะห์ด้วย GRID-LINE REASONING
+       ส่งพื้นที่ที่คำนวณได้ 100% จากสเกล ให้ AI แปลงเป็นสินค้า SCG
        ========================================================== */
-    async function analyzeGridLineBoxes() {
+    async function calculateSCGFromCalibratedArea() {
       if (selectedBoxes.length === 0) {
-        alert("กรุณาคลิกลากตีกรอบสี่เหลี่ยมบนแบบอย่างน้อย 1 กรอบก่อนกดคำนวณ");
+        alert("กรุณาคลิกลากตีกรอบสี่เหลี่ยมบนแบบอย่างน้อย 1 กรอบ");
         return;
       }
       const apiKey = document.getElementById("apiKey").value.trim();
@@ -812,38 +935,23 @@
         return;
       }
 
+      const totalArea = selectedBoxes.reduce((sum, b) => sum + (b.areaM || 0), 0);
       const statusElem = document.getElementById("drawStatus");
-      statusElem.innerText = `กำลังส่งแบบแปลนและพิกัด ${selectedBoxes.length} กรอบ ให้ Gemini ทำการ Trace แนว Grid Line และถอดระยะ...`;
+      statusElem.innerText = `กำลังส่งข้อมูลพื้นที่สุทธิ ${totalArea.toFixed(2)} ตร.ม. ให้ Gemini แปลงเป็นรายการสินค้า SCG...`;
 
       const category = document.getElementById("drawCategorySelect").value;
       const pageNum = parseInt(document.getElementById("drawPageSelect").value);
 
-      const parts = [];
-
-      // 1. ส่งภาพแปลนเต็มแผ่น (Full Sheet) ที่มีแนว Bubble Grid Line โดยรอบ
-      const fullCanvas = document.createElement("canvas");
-      fullCanvas.width = currentDrawPageImg.width;
-      fullCanvas.height = currentDrawPageImg.height;
-      const fullCtx = fullCanvas.getContext("2d");
-      fullCtx.drawImage(currentDrawPageImg, 0, 0);
-      const fullBase64 = fullCanvas.toDataURL("image/jpeg", 0.90).split(',')[1];
-
-      parts.push({
-        inlineData: { data: fullBase64, mimeType: "image/jpeg" }
+      // สร้างข้อความ Audit Trail แสดงแจกแจงแต่ละกรอบ
+      let breakdownLines = [];
+      selectedBoxes.forEach((b, i) => {
+        if (b.areaM > 0) {
+          breakdownLines.push(`กรอบ #${i + 1} (${b.widthM.toFixed(2)}x${b.heightM.toFixed(2)} ม. = ${b.areaM.toFixed(2)} ตร.ม.)`);
+        } else {
+          breakdownLines.push(`กรอบ #${i + 1} (ขนาดพิกเซล ${Math.round(b.w)}x${Math.round(b.h)} px)`);
+        }
       });
-
-      // 2. คำนวณพิกัด Normalized Bounding Box พร้อมระบุขนาดพิกเซลของแต่ละกรอบ
-      const boxesCoordinatesText = [];
-      selectedBoxes.forEach((box, i) => {
-        const ymin = Math.round((box.y / currentDrawPageImg.height) * 1000);
-        const xmin = Math.round((box.x / currentDrawPageImg.width) * 1000);
-        const ymax = Math.round(((box.y + box.h) / currentDrawPageImg.height) * 1000);
-        const xmax = Math.round(((box.x + box.w) / currentDrawPageImg.width) * 1000);
-
-        boxesCoordinatesText.push(
-          `- กรอบ #${i + 1}: พิกัดบนแบบแปลนคือ [ymin=${ymin}, xmin=${xmin}, ymax=${ymax}, xmax=${xmax}] (กว้าง ${Math.round(box.w)} px, ยาว ${Math.round(box.h)} px)`
-        );
-      });
+      const auditSummary = breakdownLines.join(" + ") + ` = รวมสุทธิ ${totalArea.toFixed(2)} ตร.ม.`;
 
       const primaryBox = selectedBoxes[0];
       const mainYmin = Math.round((primaryBox.y / currentDrawPageImg.height) * 1000);
@@ -852,58 +960,49 @@
       const mainXmax = Math.round(((primaryBox.x + primaryBox.w) / currentDrawPageImg.width) * 1000);
 
       const promptText = `
-คุณเป็นวิศวกรโครงสร้างและ Quantity Surveyor (QS) ระดับอาวุโสของเครือ SCG
-ผู้ใช้งานได้ตีกรอบสี่เหลี่ยมเพื่อเลือกพื้นที่เฉพาะส่วนบนแบบแปลน (ภาพที่แนบมาคือแบบแปลนเต็มแผ่นที่มีแนว Grid Line แนวเสาและเส้นบอกระยะโดยรอบครบถ้วน)
-
-[รายการพิกัด Bounding Box ที่ผู้ใช้เลือก ${selectedBoxes.length} กรอบ]:
-${boxesCoordinatesText.join("\n")}
-- หมวดงานที่ต้องการ: "${category}"
+คุณเป็น Quantity Surveyor (QS) ประจำเครือ SCG
+ผู้ใช้งานได้ใช้เครื่องมือ Interactive Scale Calibration Tool วัดขนาดพื้นที่จากแบบแปลนจริงด้วยระบบคณิตศาสตร์ 100% ได้ผลลัพธ์ดังนี้:
+- หมวดงาน: "${category}"
+- รายละเอียดพื้นที่ย่อยแต่ละกรอบ: ${auditSummary}
+- ปริมาณพื้นที่สุทธิรวมแน่นอน: ${totalArea > 0 ? totalArea.toFixed(2) + " ตร.ม." : "อิงตามขนาดกรอบที่ส่งมา"}
 - สเปกวัสดุอ้างอิง: หลังคา=${document.getElementById("roofOption").value}, ผนัง=${document.getElementById("wallOption").value}, ฝ้า=${document.getElementById("ceilingOption").value}, ฉนวน=${document.getElementById("insulationOption").value}
 
-[หน้าที่และหลักการคำนวณแบบ Grid-Line Structural Mapping (แนวทางที่ 2)]:
-1. **Trace แนวเสา/Grid Line**: สังเกตพิกัด [ymin, xmin, ymax, xmax] ของแต่ละกรอบ และลากสายตาไปยังหัว Grid Line แนวตั้ง (เช่น 1, 2, 3...) และแนวนอน (เช่น A, B, C...) บนแบบแปลน
-2. **ระบุช่วงเสา (Span Reference)**:
-   - ตรวจดูว่าขอบซ้าย-ขวา ชนกับแนว Grid Line ใด (เช่น แนวเสา 1 ถึง 3) และมีระยะห่างตามตัวเลขบอกระยะเท่าใด
-   - ตรวจดูว่าขอบบน-ล่าง ชนกับแนว Grid Line ใด (เช่น แนวเสา A ถึง C) และมีระยะห่างตามตัวเลขบอกระยะเท่าใด
-   - หากกรอบมีระยะยื่นเกินแนวเสา (เช่น ชายคา 1.00 ม. หรือแนวระเบียง) ให้ดึงระยะ Offset นั้นมาบวกเพิ่มอย่างสมเหตุสมผล
-3. **คำนวณพื้นที่สุทธิรวม (Total Net Quantity)**:
-   - คำนวณพื้นที่ของแต่ละกรอบย่อยจากมิติเสาจริง (กว้าง x ยาว)
-   - รวมพื้นที่ของทั้ง ${selectedBoxes.length} กรอบเข้าด้วยกัน
-4. **แปลงเป็นรายการสินค้า SCG และประมาณการสั่งซื้อจริง (Order Estimate)**:
-   - แปลงเป็นสินค้า SCG ตามสเปกที่เลือก เผื่อเศษ 5-10% ตามมาตรฐาน
-5. **เขียน Audit Trail อ้างอิง Grid Line ในช่อง "verification_method"**:
-   - ต้องเขียนแจกแจงชื่อแนว Grid Line ชัดเจน เช่น:
-     "กรอบ #1: ช่วงเสา Grid 1 ถึง 3 (8.00 ม.) x Grid B ถึง C (4.00 ม.) = 32.00 ตร.ม. + กรอบ #2: ช่วงเสา Grid 3 ถึง 4 (3.50 ม.) x Grid B ถึง C (4.00 ม.) = 14.00 ตร.ม. รวมสุทธิ 46.00 ตร.ม."
+หน้าที่ของคุณ:
+1. นำพื้นที่สุทธิรวม ${totalArea.toFixed(2)} ตร.ม. ไปแปลงเป็นรายการสินค้า SCG ที่แนะนำ/ทดแทนตามสเปก
+2. คำนวณจำนวนสั่งซื้อจริง (order_estimate) พร้อมคิดเปอร์เซ็นต์เผื่อเศษ (Wastage 5-10%) ตามมาตรฐาน SCG:
+   - ฉนวน STAY COOL: ม้วนละ 2.40 ตร.ม. เผื่อ 5%
+   - สมาร์ทบอร์ด: แผ่นละ 2.88 ตร.ม. เผื่อ 5%
+   - กระเบื้อง CPAC: 11 แผ่น/ตร.ม. เผื่อ 5%
+   - Metal Sheet: คิดตาม ตร.ม. เผื่อ 5%
+3. ประเมินค่าความมั่นใจ (Confidence Score 98-100% เนื่องจากเป็นพื้นที่จากการ Calibrate สเกลจริง)
 
 ส่งผลลัพธ์เป็น JSON Array ที่มี 1 รายการสุทธิเท่านั้น:
 [
   {
     "category": "${category}",
-    "code_ref": "Grid-Mapping (${selectedBoxes.length} โซน)",
-    "item_name": "พื้นที่รวมจากการเลือก ${selectedBoxes.length} กรอบ (วิเคราะห์ตามแนว Grid Line)",
-    "net_quantity": "ปริมาณสุทธิรวม เช่น 46.00 ตร.ม.",
+    "code_ref": "Calibrated (${selectedBoxes.length} กรอบ)",
+    "item_name": "พื้นที่จากการวัดด้วย Scale Calibration (${category})",
+    "net_quantity": "${totalArea.toFixed(2)} ตร.ม.",
     "scg_product": "ชื่อสินค้า SCG ที่แนะนำ",
-    "order_estimate": "จำนวนและหน่วยสั่งซื้อ",
-    "confidence_score": 95,
+    "order_estimate": "จำนวนและหน่วยสั่งซื้อจริง",
+    "confidence_score": 98,
     "calculation_note": "สูตรคำนวณและสัดส่วนเผื่อเศษ",
-    "verification_method": "แจกแจงชื่อ Grid Line และมิติของแต่ละกรอบอย่างชัดเจน",
+    "verification_method": "${auditSummary}",
     "source_location": {
       "page_number": ${pageNum},
       "box_2d": [${mainYmin}, ${mainXmin}, ${mainYmax}, ${mainXmax}],
-      "location_description": "พื้นที่ที่เลือก ${selectedBoxes.length} จุด บนหน้า ${pageNum} (คำนวณอ้างอิงโครงสร้าง Grid Line)"
+      "location_description": "พื้นที่ที่วัดด้วย Scale Calibration บนหน้า ${pageNum}"
     }
   }
 ]
 `;
-      parts.unshift({ text: promptText });
-
       try {
         const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key=${apiKey}`;
         const response = await fetch(endpoint, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            contents: [{ parts: parts }],
+            contents: [{ parts: [{ text: promptText }] }],
             generationConfig: { responseMimeType: "application/json" }
           })
         });
@@ -919,7 +1018,7 @@ ${boxesCoordinatesText.join("\n")}
           lastRawBOQItems.push(newItem);
           renderBOQTable(lastRawBOQItems);
           document.getElementById("recalcBtn").disabled = false;
-          statusElem.innerText = `✅ คำนวณเทียบแนว Grid Line ทั้ง ${selectedBoxes.length} กรอบสำเร็จและเพิ่มลงในตาราง BOQ แล้ว!`;
+          statusElem.innerText = `✅ แปลงพื้นที่เป็นสินค้า SCG สำเร็จและเพิ่มลงในตาราง BOQ แล้ว!`;
           setTimeout(() => {
             closeModal('drawModal');
           }, 1200);
@@ -975,41 +1074,21 @@ ${boxesCoordinatesText.join("\n")}
 
         const promptText = `
 คุณเป็นผู้เชี่ยวชาญการถอดแบบและประมาณราคา (Quantity Surveyor) ประจำเครือ SCG
-วิเคราะห์แบบแปลนที่แนบมานี้ (อาจมีหลายหน้า เช่น แปลนชั้น 1, ชั้น 2, แปลนฝ้าเพดาน, แปลนหลังคา, รูปตัด, รูปด้าน) ถอดปริมาณงาน และคำนวณปริมาณสินค้า SCG ตามเงื่อนไขด้านล่าง:
+วิเคราะห์แบบแปลนที่แนบมานี้ ถอดปริมาณงาน และคำนวณปริมาณสินค้า SCG ตามเงื่อนไขด้านล่าง:
 
 [เงื่อนไขวัสดุทดแทนที่ผู้ใช้เลือก]:
-1. สเปกหลังคา: "${roofChoice}" (ถ้าเป็น metal_snaplock ใช้ SCG Metal Sheet ลอน Snap Lock 0.30ม., ถ้าเป็น metal_760 ใช้ SCG Metal Sheet ลอน 760 Noise Shield 0.76ม., ถ้าเป็น cpac ใช้กระเบื้องคอนกรีต CPAC)
-2. สเปกผนัง: "${wallChoice}" (ถ้าเป็น smartboard_wall ใช้ สมาร์ทบอร์ด SCG 8-10 มม. + โครง C-Stud, ถ้าเป็น smartwood_siding ใช้ ไม้ฝา SCG Smartwood ลายไม้สัก)
-3. สเปกพื้น: "${floorChoice}" (ถ้าเป็น smartwood_floor ใช้ ไม้พื้น SCG D-COR/Smartwood, ถ้าเป็น smartboard_floor ใช้ แผ่นพื้นสมาร์ทบอร์ด SCG 16-20 มม.)
-4. สเปกฝ้าเพดาน: "${ceilingChoice}" (ถ้าเป็น smartboard_ceiling ใช้ แผ่นฝ้าสมาร์ทบอร์ด SCG ขอบเรียบ 3.5-4 มม., ถ้าเป็น smartboard_vent ใช้ แผ่นฝ้าสมาร์ทบอร์ด SCG มีรูระบายอากาศ)
-5. สเปกฉนวนกันความร้อน: "${insulationChoice}" (
-   - staycool_75: ฉนวนเหนือฝ้า SCG STAY COOL หนา 75 มม. (3 นิ้ว) หุ้มฟอยล์รอบด้าน ม้วนละ 0.60x4.0 ม. (2.40 ตร.ม./ม้วน) คำนวณจากพื้นที่ฝ้าเพดาน เผื่อ 5%
-   - staycool_150: ฉนวนเหนือฝ้า SCG STAY COOL หนา 150 มม. (6 นิ้ว) หุ้มฟอยล์รอบด้าน ม้วนละ 0.60x4.0 ม. (2.40 ตร.ม./ม้วน) คำนวณจากพื้นที่ฝ้าเพดาน เผื่อ 5%
-   - radiant_barrier: แผ่นสะท้อนความร้อน SCG ปูใต้แปหลังคา คำนวณจากพื้นที่หลังคา เผื่อซ้อนทับ 7-10%
-   - roof_batt: ฉนวนใยแก้ว SCG สำหรับบุใต้หลังคาเมทัลชีท
-   - none: ไม่ต้องคำนวณฉนวน
-)
-6. สเปกไม้สังเคราะห์ตกแต่ง: "${woodChoice}" (ถ้าเป็น smartwood_eaves ใช้ ไม้เชิงชาย SCG Smartwood 2 in 1 ตามแนวชายคา, ถ้าเป็น smartwood_lath ใช้ ไม้ระแนงบังแดด SCG Smartwood 3")
+1. สเปกหลังคา: "${roofChoice}"
+2. สเปกผนัง: "${wallChoice}"
+3. สเปกพื้น: "${floorChoice}"
+4. สเปกฝ้าเพดาน: "${ceilingChoice}"
+5. สเปกฉนวนกันความร้อน: "${insulationChoice}"
+6. สเปกไม้สังเคราะห์ตกแต่ง: "${woodChoice}"
 
-[ฐานข้อมูลสูตรคำนวณสินค้า SCG]:
-- ฉนวน STAY COOL SCG (75 หรือ 150 มม.): จำนวนม้วน = (พื้นที่ฝ้าเพดาน ตร.ม. / 2.40) x 1.05 (เผื่อเศษ 5%)
-- แผ่นสะท้อนความร้อน SCG: คำนวณตามพื้นที่ลาดเอียงหลังคา เผื่อระยะซ้อนทับ 10 ซม. (ประมาณ 7-10%)
-- แผ่นสมาร์ทบอร์ด SCG (ฝ้า/ผนัง): ขนาด 1.20x2.40 ม. (2.88 ตร.ม./แผ่น) คำนวณแผ่น = (พื้นที่ / 2.88) เผื่อ 5%
-- ไม้ฝา SCG Smartwood: กว้าง 15 ซม. ใช้ ~2.22 แผ่น/ตร.ม., กว้าง 20 ซม. ใช้ ~1.67 แผ่น/ตร.ม. เผื่อเศษ 5%
-- ไม้เชิงชาย SCG Smartwood: ความยาวรอบแนวชายคาหลังคา (เมตร) / 3.0 ม. เผื่อเศษ 5%
-
-[กฎเหล็กการคำนวณพื้นที่รูปทรงไม่สม่ำเสมอ / ตัว L]:
-- กรณีพื้นที่อาคาร/หลังคา/พื้น ไม่ใช่สี่เหลี่ยมผืนผ้าเดี่ยว ต้องแยกคำนวณเป็นส่วนย่อยเสมอ
-- ในช่อง "verification_method": ต้องแสดงการแยกส่วนคำนวณอย่างชัดเจน พร้อมระบุมิติตามแนว Grid Line
-
-[การประเมินค่าความมั่นใจ (Confidence Score)]:
-- ประเมินค่าความมั่นใจเป็นตัวเลขเปอร์เซ็นต์ (0 - 100) สำหรับแต่ละรายการ
-
-[คำสั่งพิเศษ: Multi-Page Visual Grounding]:
-สำหรับแต่ละรายการที่ถอดได้:
-1. ระบุเลขหน้าในเอกสาร (page_number เริ่มต้นที่ 1)
-2. ระบุพิกัด Bounding Box Normalized [ymin, xmin, ymax, xmax] ในช่วง 0 ถึง 1000
-3. ระบุคำอธิบายตำแหน่ง
+[การคำนวณสินค้า SCG]:
+- ฉนวน STAY COOL: ม้วนละ 2.40 ตร.ม. เผื่อ 5%
+- แผ่นสมาร์ทบอร์ด: แผ่นละ 2.88 ตร.ม. เผื่อ 5%
+- ไม้ฝา: ~2.22 แผ่น/ตร.ม. เผื่อ 5%
+- ไม้เชิงชาย: แนวชายคา / 3.0 ม. เผื่อ 5%
 
 ส่งคำตอบกลับมาเป็น JSON Array เท่านั้น:
 [
@@ -1025,7 +1104,7 @@ ${boxesCoordinatesText.join("\n")}
     "verification_method": "แสดงแจกแจงแยกส่วนมิติและผลบวกสุทธิอย่างละเอียด",
     "source_location": {
       "page_number": 1,
-      "box_2d": [ymin, xmin, ymax, xmax],
+      "box_2d": [100, 100, 500, 500],
       "location_description": "คำอธิบายตำแหน่งในแบบ"
     }
   }
@@ -1064,12 +1143,6 @@ ${boxesCoordinatesText.join("\n")}
         return;
       }
       const apiKey = document.getElementById("apiKey").value.trim();
-      const roofChoice = document.getElementById("roofOption").value;
-      const wallChoice = document.getElementById("wallOption").value;
-      const floorChoice = document.getElementById("floorOption").value;
-      const ceilingChoice = document.getElementById("ceilingOption").value;
-      const insulationChoice = document.getElementById("insulationOption").value;
-      const woodChoice = document.getElementById("woodOption").value;
       const statusDiv = document.getElementById("status");
       const recalcBtn = document.getElementById("recalcBtn");
 
@@ -1079,18 +1152,18 @@ ${boxesCoordinatesText.join("\n")}
       try {
         const promptText = `
 คุณเป็น Quantity Surveyor ประจำ SCG
-นี่คือรายการปริมาณงานเดิมที่ถอดได้จากแบบ (รวมถึงค่าที่อาจมีการปรับปรุง):
+นี่คือรายการปริมาณงานเดิม:
 ${JSON.stringify(lastRawBOQItems, null, 2)}
 
 ผู้ใช้ต้องการเปลี่ยนสเปกวัสดุใหม่ดังนี้:
-- สเปกหลังคา: "${roofChoice}"
-- สเปกผนัง: "${wallChoice}"
-- สเปกพื้น: "${floorChoice}"
-- สเปกฝ้า: "${ceilingChoice}"
-- สเปกฉนวน: "${insulationChoice}"
-- สเปกไม้ตกแต่ง: "${woodChoice}"
+- หลังคา: "${document.getElementById("roofOption").value}"
+- ผนัง: "${document.getElementById("wallOption").value}"
+- พื้น: "${document.getElementById("floorOption").value}"
+- ฝ้า: "${document.getElementById("ceilingOption").value}"
+- ฉนวน: "${document.getElementById("insulationOption").value}"
+- ไม้สังเคราะห์: "${document.getElementById("woodOption").value}"
 
-กรุณาแปลงสินค้า SCG (scg_product), คำนวณจำนวนสั่งซื้อใหม่ (order_estimate) และอัปเดตวิธีคำนวณ (calculation_note) ให้สอดคล้องกับสเปกใหม่ โดยยังคงรักษาข้อมูลปริมาณสุทธิ (net_quantity), ค่าความมั่นใจ (confidence_score), วิธีตรวจสอบที่มาเดิม (verification_method) และพิกัดตำแหน่งเดิมไว้ครบถ้วน
+กรุณาแปลงสินค้า SCG (scg_product) และคำนวณจำนวนสั่งซื้อใหม่ (order_estimate) ให้สอดคล้องกับสเปกใหม่ โดยยังคงรักษาข้อมูลปริมาณสุทธิเดิมไว้
 ส่งผลลัพธ์กลับมาเป็น JSON Array เท่านั้น
 `;
         const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key=${apiKey}`;
@@ -1134,7 +1207,7 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
         else if (cat.includes("ไม้") || cat.includes("ตกแต่ง") || cat.includes("เชิงชาย") || cat.includes("ระแนง")) badgeClass = "badge badge-wood";
         else if (cat.includes("สุขาภิบาล") || cat.includes("ระบบ") || cat.includes("ท่อ")) badgeClass = "badge badge-mep";
 
-        const conf = typeof item.confidence_score === "number" ? item.confidence_score : 90;
+        const conf = typeof item.confidence_score === "number" ? item.confidence_score : 95;
         let confClass = "conf-high";
         let confIcon = "🟢";
         if (conf < 75) {
@@ -1148,7 +1221,7 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
         const loc = item.source_location;
         const pageLabel = loc && loc.page_number ? `หน้า ${loc.page_number}` : "";
         const isModified = item.is_manual_modified ? "modified" : "";
-        const manualBadge = item.is_manual_modified ? `<span class="manual-badge">✏️ ปรับแก้/ตีกรอบเอง</span>` : "";
+        const manualBadge = item.is_manual_modified ? `<span class="manual-badge">📐 สเกล/ตีกรอบ</span>` : "";
 
         const row = document.createElement("tr");
         row.id = `boq-row-${index}`;
@@ -1270,7 +1343,7 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
       const confText = item.confidence_score ? ` [ความมั่นใจ: ${item.confidence_score}%]` : "";
       document.getElementById("modalTitle").innerText = `🔍 ตำแหน่งอ้างอิง (หน้า ${pageResult.page}/${pageResult.total}): ${item.item_name} (${item.net_quantity})${confText}`;
       
-      const verificationInfo = item.verification_method ? `<br><b>🔍 วิธีตรวจสอบที่มาปริมาณ (Grid Ref):</b> ${item.verification_method}` : "";
+      const verificationInfo = item.verification_method ? `<br><b>🔍 วิธีตรวจสอบที่มาปริมาณ:</b> ${item.verification_method}` : "";
       document.getElementById("modalDesc").innerHTML = `<b>คำอธิบายตำแหน่ง:</b> ${loc.location_description || "ไม่มีคำอธิบายเพิ่มเติม"}${verificationInfo}`;
 
       const canvas = document.getElementById("viewerCanvas");
@@ -1286,9 +1359,6 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
         const xmax = (box[3] / 1000) * canvas.width;
         const w = xmax - xmin;
         const h = ymax - ymin;
-
-        // วาดเส้นประ Projection Rays นำสายตาไปยัง Grid Line
-        drawProjectionRays(ctx, { x: xmin, y: ymin, w: w, h: h }, canvas.width, canvas.height, "rgba(220, 38, 38, 0.7)");
 
         ctx.fillStyle = "rgba(0, 0, 0, 0.4)";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -1307,7 +1377,7 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
 
         ctx.fillStyle = "#ffffff";
         ctx.font = "bold 15px sans-serif";
-        ctx.fillText(`📍 โซน Grid Line (${item.confidence_score || 90}%)`, xmin + 8, (ymin > 30 ? ymin - 30 : ymin) + 21);
+        ctx.fillText(`📍 พื้นที่คำนวณ (${item.confidence_score || 95}%)`, xmin + 8, (ymin > 30 ? ymin - 30 : ymin) + 21);
       }
       document.getElementById("viewerModal").style.display = "flex";
     }
@@ -1324,20 +1394,20 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
 
     function exportCSV() {
       if (!window.currentBOQData || window.currentBOQData.length === 0) return;
-      let csvContent = "\uFEFFหมวดงาน,รหัสอ้างอิง,รายการงาน,ปริมาณสุทธิ,สถานะการแก้ไข,สินค้า SCG แนะนำ,ประมาณการสั่งซื้อจริง,ความมั่นใจ (%),หมายเหตุการคำนวณ,วิธีตรวจสอบที่มาปริมาณ (Grid Reference),หน้าที่พบ,คำอธิบายตำแหน่ง\n";
+      let csvContent = "\uFEFFหมวดงาน,รหัสอ้างอิง,รายการงาน,ปริมาณสุทธิ,สถานะการแก้ไข,สินค้า SCG แนะนำ,ประมาณการสั่งซื้อจริง,ความมั่นใจ (%),หมายเหตุการคำนวณ,วิธีตรวจสอบที่มาปริมาณ,หน้าที่พบ,คำอธิบายตำแหน่ง\n";
       window.currentBOQData.forEach(row => {
         const page = (row.source_location && row.source_location.page_number) ? row.source_location.page_number : "-";
         const desc = (row.source_location && row.source_location.location_description) ? row.source_location.location_description : "-";
         const audit = row.verification_method ? row.verification_method.replace(/"/g, '""') : "-";
         const conf = row.confidence_score || "-";
-        const modifiedStatus = row.is_manual_modified ? "แก้ไข/ตีกรอบ Grid เอง" : "คำนวณอัตโนมัติ";
+        const modifiedStatus = row.is_manual_modified ? "วัดสเกล/ตีกรอบเอง" : "คำนวณอัตโนมัติ";
         csvContent += `"${row.category}","${row.code_ref}","${row.item_name}","${row.net_quantity}","${modifiedStatus}","${row.scg_product}","${row.order_estimate}","${conf}","${row.calculation_note}","${audit}","${page}","${desc}"\n`;
       });
       const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.setAttribute("href", url);
-      link.setAttribute("download", `SCG_BOQ_GridAudit_${new Date().toISOString().slice(0,10)}.csv`);
+      link.setAttribute("download", `SCG_BOQ_Calibrated_${new Date().toISOString().slice(0,10)}.csv`);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
