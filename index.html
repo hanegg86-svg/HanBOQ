@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SCG AI BOQ & In-Place Drawing Editor</title>
+  <title>SCG AI BOQ & Linear / Perimeter Estimator</title>
   <!-- โหลด pdf.js จาก CDN เพื่อเรนเดอร์ PDF หลายหน้า -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script>
@@ -292,7 +292,7 @@
       border-radius: 12px;
       padding: 16px 20px;
       width: 96%;
-      max-width: 1350px;
+      max-width: 1380px;
       height: 95vh;
       display: flex;
       flex-direction: column;
@@ -418,8 +418,12 @@
       background: #059669;
       color: white;
     }
+    .btn-mode-line {
+      background: #d97706;
+      color: white;
+    }
     .btn-mode-pan {
-      background: #ea580c;
+      background: #475569;
       color: white;
     }
     .scale-info-badge {
@@ -451,6 +455,18 @@
       font-size: 12px;
       font-weight: 600;
     }
+    .measure-type-pill {
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      color: #1d4ed8;
+      padding: 4px 8px;
+      border-radius: 8px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      font-weight: bold;
+    }
     .product-select-wrapper {
       display: inline-flex;
       align-items: center;
@@ -469,7 +485,7 @@
   </style>
 </head>
 <body>
-  <h2>🏗️ SCG AI BOQ & In-Place Drawing Editor</h2>
+  <h2>🏗️ SCG AI BOQ & Linear / Perimeter Estimator</h2>
   <!-- ตั้งค่า API Key -->
   <div class="card">
     <label for="apiKey">Gemini API Key:</label>
@@ -491,7 +507,6 @@
           <option value="roman">กระเบื้องหลังคาลอนคู่ SCG</option>
           <option value="excella">หลังคาเซรามิก SCG Excella</option>
         </select>
-        <!-- ช่องระบุ Slope ของหลังคา -->
         <label for="roofSlopeDeg" style="margin-top: 6px; font-size: 13px; color: #b91c1c;">
           📐 ความชันหลังคา (Slope Angle):
         </label>
@@ -571,7 +586,7 @@
   <div class="card" id="resultCard" style="display: none;">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
       <h3 style="margin: 0;">รายการประเมินปริมาณงานและสินค้า SCG</h3>
-      <span style="font-size: 12px; color: #64748b;">💡 กดปุ่ม <b>"🔍 ดู/แก้ไขในแบบ"</b> เพื่อตั้งสเกล วัดพื้นที่ใหม่ หรือเปลี่ยนสินค้าในแถวนั้นได้ทันที</span>
+      <span style="font-size: 12px; color: #64748b;">💡 กดปุ่ม <b>"🔍 ดู/แก้ไขในแบบ"</b> เพื่อตั้งสเกล วัดพื้นที่/เส้นรอบรูป หรือเปลี่ยนสินค้าในแถวนั้นได้ทันที</span>
     </div>
     <div class="table-container">
       <table id="boqTable">
@@ -585,7 +600,7 @@
             <th>ประมาณการสั่งซื้อจริง</th>
             <th>ความมั่นใจ</th>
             <th>หมายเหตุและวิธีคำนวณ</th>
-            <th>🔍 วิธีตรวจสอบที่มาปริมาณ (Audit Trail & Slope Ref)</th>
+            <th>🔍 วิธีตรวจสอบที่มาปริมาณ (Audit Trail)</th>
             <th style="text-align: center;">ตำแหน่ง & แก้ไขในแบบ</th>
             <th style="text-align: center;">จัดการ</th>
           </tr>
@@ -604,15 +619,25 @@
         <span class="close-btn" onclick="closeModal('drawModal')">&times;</span>
       </div>
       
-      <!-- แถบเมนูด้านบนล็อกอยู่กับที่ ไม่ขยายตามตัวแบบ -->
+      <!-- แถบเมนูด้านบนล็อกอยู่กับที่ -->
       <div class="draw-controls">
         <label style="margin: 0;">หน้า:</label>
         <select id="drawPageSelect" onchange="onDrawPageChange()"></select>
 
-        <!-- สลับโหมดการทำงาน -->
-        <button type="button" id="btnModeCalib" class="tool-mode-btn btn-mode-calib" onclick="switchToolMode('calibrate')">📏 1. ตั้งสเกล (ลาก 1 เส้น)</button>
-        <button type="button" id="btnModeArea" class="tool-mode-btn btn-mode-area active" onclick="switchToolMode('area')">🎯 2. ตีกรอบวัดพื้นที่</button>
-        <button type="button" id="btnModePan" class="tool-mode-btn btn-mode-pan" onclick="switchToolMode('pan')">✋ 3. มือเลื่อนแบบ (Pan)</button>
+        <!-- สลับโหมดเครื่องมือ: ตั้งสเกล, ตีกรอบพื้นที่, ลากเส้นวัดความยาว, มือเลื่อนแบบ -->
+        <button type="button" id="btnModeCalib" class="tool-mode-btn btn-mode-calib" onclick="switchToolMode('calibrate')">📏 1. ตั้งสเกล (1 เส้น)</button>
+        <button type="button" id="btnModeArea" class="tool-mode-btn btn-mode-area active" onclick="switchToolMode('area')">🎯 2. ตีกรอบ</button>
+        <button type="button" id="btnModeLine" class="tool-mode-btn btn-mode-line" onclick="switchToolMode('line')">📐 3. ลากเส้นวัดความยาว (ม.)</button>
+        <button type="button" id="btnModePan" class="tool-mode-btn btn-mode-pan" onclick="switchToolMode('pan')">✋ มือเลื่อนแบบ (Pan)</button>
+
+        <!-- ชนิดการคำนวณของกรอบ: พื้นที่ (ตร.ม.) หรือ เส้นรอบรูป (ม.) -->
+        <div class="measure-type-pill">
+          <span>ชนิดการวัด:</span>
+          <select id="measureTypeSelect" onchange="onMeasureTypeChanged()" style="padding: 2px 6px; font-weight: bold; border: 1px solid #93c5fd;">
+            <option value="area">📐 พื้นที่ (ตร.ม.)</option>
+            <option value="perimeter">🔄 เส้นรอบรูปของกรอบ 2×(W+L) (ม.) [สำหรับไม้เชิงชาย/บัว/รางน้ำ]</option>
+          </select>
+        </div>
 
         <span class="scale-info-badge" id="scaleInfoBadge">⚠️ ยังไม่ได้ตั้งสเกล (คลิกปุ่ม 1 เพื่อตั้ง)</span>
 
@@ -622,12 +647,13 @@
           <option value="งานฝ้าเพดาน">งานฝ้าเพดาน</option>
           <option value="งานผนัง">งานผนัง</option>
           <option value="งานพื้น">งานพื้น</option>
+          <option value="งานไม้สังเคราะห์/ตกแต่ง">งานไม้สังเคราะห์/ตกแต่ง</option>
         </select>
 
         <!-- กล่องเลือกเปลี่ยนสินค้า SCG ในหมวดนั้นโดยตรง -->
         <div class="product-select-wrapper">
-          <span style="font-size: 12px; font-weight: bold; color: #92400e;">🏷️ เปลี่ยนสินค้า SCG:</span>
-          <select id="drawProductSelect"></select>
+          <span style="font-size: 12px; font-weight: bold; color: #92400e;">🏷️ สินค้า SCG:</span>
+          <select id="drawProductSelect" onchange="onProductSelectChanged()"></select>
         </div>
 
         <!-- กล่องระบุ Slope บน Modal เมื่อเป็นงานหลังคา -->
@@ -641,8 +667,8 @@
 
         <!-- ปุ่มบันทึกอัปเดตทับแถวเดิม -->
         <button type="button" class="btn-draw" style="padding: 6px 14px; flex: none;" onclick="saveAndApplyInPlaceMeasurement()">💾 บันทึกอัปเดตรายการนี้</button>
-        <button type="button" style="padding: 6px 10px; background: #eab308; color: #000; flex: none;" onclick="undoLastBox()">↩️ ลบกรอบล่าสุด</button>
-        <button type="button" style="padding: 6px 10px; background: #64748b; flex: none;" onclick="clearAllDrawBoxes()">🗑️ ล้างกรอบทั้งหมด</button>
+        <button type="button" style="padding: 6px 10px; background: #eab308; color: #000; flex: none;" onclick="undoLastBox()">↩️ ลบรูปล่าสุด</button>
+        <button type="button" style="padding: 6px 10px; background: #64748b; flex: none;" onclick="clearAllDrawBoxes()">🗑️ ล้างทั้งหมด</button>
       </div>
 
       <!-- พื้นที่แสดงแบบแปลน พร้อมปุ่มซูมเฉพาะกิจ -->
@@ -668,10 +694,9 @@
     let singleImageInstance = null;
     let lastRawBOQItems = [];
     
-    // ตัวแปรสำหรับ In-Place Editing
-    let editingItemId = null; // null = สร้างใหม่, ถ้ามี string = กำลังแก้ไขแถวนั้นโดยตรง
+    let editingItemId = null; // null = สร้างใหม่, string = กำลังแก้ไขแถวนั้นโดยตรง
 
-    // รายการสินค้า SCG แยกตามหมวดหมู่อย่างละเอียด
+    // รายการสินค้า SCG แยกตามหมวดหมู่
     const SCG_PRODUCT_CATALOG = {
       "งานหลังคา": [
         "SCG Metal Sheet ลอน Snap Lock (ซ่อนสกรู)",
@@ -679,15 +704,23 @@
         "หลังคาคอนกรีต SCG CPAC",
         "กระเบื้องหลังคาลอนคู่ SCG",
         "หลังคาเซรามิก SCG Excella",
-        "แผ่นโปร่งแสง SCG Shinkolite",
+        "ไม้เชิงชาย SCG Smartwood 2 in 1 (ตามแนวชายคา)",
+        "ครอบสันหลังคา SCG CPAC / ลอนคู่",
         "แผ่นสะท้อนความร้อน SCG ใต้แปหลังคา"
+      ],
+      "งานไม้สังเคราะห์/ตกแต่ง": [
+        "ไม้เชิงชาย SCG Smartwood 2 in 1 (3.0 ม./ท่อน)",
+        "ไม้ฝา SCG Smartwood (ลายไม้สัก)",
+        "ไม้บัว SCG Smartwood (3.0 ม./ท่อน)",
+        "ไม้ระแนงบังแดด / ตกแต่ง SCG Smartwood 3 นิ้ว",
+        "ไม้รั้วสังเคราะห์ SCG Smartwood",
+        "ไม้พื้นสังเคราะห์ SCG Smartwood / D-COR"
       ],
       "งานผนัง": [
         "ก่ออิฐมวลเบา Q-CON + ปูนฉาบเสือมอร์ตาร์",
         "ผนังเบา สมาร์ทบอร์ด SCG หนา 8-10 มม. + โครง C-Stud",
         "ผนังตกแต่ง ไม้ฝา SCG Smartwood (ลายไม้สัก)",
-        "ก่ออิฐมอญ/บล็อก + ปูนเสือซีเมนต์ผสม",
-        "ไม้บังตา/ระแนง SCG Smartwood 3 นิ้ว"
+        "ก่ออิฐมอญ/บล็อก + ปูนเสือซีเมนต์ผสม"
       ],
       "งานพื้น": [
         "กระเบื้องปูพื้น COTTO + ปูนกาวเสือ",
@@ -703,21 +736,21 @@
       "งานฉนวน": [
         "ฉนวนเหนือฝ้า SCG STAY COOL หนา 75 มม. (3 นิ้ว)",
         "ฉนวนเหนือฝ้า SCG STAY COOL หนา 150 มม. (6 นิ้ว)",
-        "แผ่นสะท้อนความร้อน SCG Radiant Barrier (ม้วน 60 ตร.ม.)",
-        "ฉนวนใยแก้วบุใต้ Metal Sheet (Noise Shield)"
+        "แผ่นสะท้อนความร้อน SCG Radiant Barrier (ม้วน 60 ตร.ม.)"
       ]
     };
 
-    // ตัวแปรสำหรับ Calibration & Area Measurement
+    // ตัวแปรสำหรับ Calibration, Box & Lines
     let currentDrawPageImg = null;
-    let currentToolMode = "area"; // "calibrate", "area" หรือ "pan"
-    let pixelsPerMeter = null; // อัตราส่วนพิกเซลต่อเมตร
-    let calibrationLine = null; // { x1, y1, x2, y2, meters }
+    let currentToolMode = "area"; // "calibrate", "area", "line", "pan"
+    let pixelsPerMeter = null;
+    let calibrationLine = null;
     let isDrawing = false;
     let startX = 0, startY = 0;
     let currentDragBox = null;
     let currentDragLine = null;
-    let selectedBoxes = []; // Array ของ { x, y, w, h, widthM, heightM, flatAreaM, slopeAreaM, slopeDeg }
+    let selectedBoxes = []; // { x, y, w, h, widthM, heightM, flatAreaM, slopeAreaM, perimeterM, slopeDeg }
+    let measuredLines = []; // { x1, y1, x2, y2, lengthM }
 
     // ตัวแปร Viewport Zoom & Pan
     let zoomScale = 1.0;
@@ -786,7 +819,8 @@
       select.innerHTML = "";
       
       let key = "งานหลังคา";
-      if (category.includes("ผนัง")) key = "งานผนัง";
+      if (category.includes("ไม้")) key = "งานไม้สังเคราะห์/ตกแต่ง";
+      else if (category.includes("ผนัง")) key = "งานผนัง";
       else if (category.includes("พื้น")) key = "งานพื้น";
       else if (category.includes("ฝ้า") || category.includes("เพดาน")) key = "งานฝ้าเพดาน";
       else if (category.includes("ฉนวน") || category.includes("กันความร้อน")) key = "งานฉนวน";
@@ -812,6 +846,25 @@
         customOpt.selected = true;
         select.insertBefore(customOpt, select.firstChild);
       }
+
+      onProductSelectChanged();
+    }
+
+    // เมื่อเปลี่ยนสินค้า ให้ตรวจสอบอัตโนมัติว่าเป็นไม้เชิงชาย/บัว/ครอบหรือไม่ เพื่อสลับหน่วยเป็น "เมตร"
+    function onProductSelectChanged() {
+      const prod = (document.getElementById("drawProductSelect").value || "").toLowerCase();
+      const measureSelect = document.getElementById("measureTypeSelect");
+      const isLinearProduct = prod.includes("เชิงชาย") || prod.includes("บัว") || prod.includes("ครอบ") || prod.includes("รางน้ำ");
+
+      if (isLinearProduct) {
+        measureSelect.value = "perimeter";
+      }
+      onMeasureTypeChanged();
+    }
+
+    function onMeasureTypeChanged() {
+      updateBoxCounter();
+      redrawCanvas();
     }
 
     function onCategoryChangedInDrawModal() {
@@ -819,7 +872,6 @@
       const slopeContainer = document.getElementById("modalSlopeContainer");
       slopeContainer.style.display = (cat === "งานหลังคา") ? "inline-flex" : "none";
       populateProductDropdown(cat, null);
-      redrawCanvas();
     }
 
     function onModalSlopeChanged() {
@@ -974,9 +1026,8 @@
       if (!targetItem) return;
 
       const modalTitle = document.getElementById("drawModalHeaderTitle");
-      modalTitle.innerText = `🔍 ตำแหน่งในแบบ & แก้ไขรายการ: "${targetItem.item_name}" (${targetItem.category})`;
+      modalTitle.innerText = `🔍 ตำแหน่งในแบบ & แก้ไขรายการ: "${targetItem.item_name}"`;
 
-      // เซ็ตหน้าของแปลน
       const loc = targetItem.source_location || {};
       const targetPage = loc.page_number || 1;
 
@@ -991,18 +1042,16 @@
         select.appendChild(opt);
       }
 
-      // เซ็ตหมวดงาน
       const catSelect = document.getElementById("drawCategorySelect");
       const cat = targetItem.category || "";
-      if (cat.includes("หลังคา")) catSelect.value = "งานหลังคา";
+      if (cat.includes("ไม้")) catSelect.value = "งานไม้สังเคราะห์/ตกแต่ง";
+      else if (cat.includes("หลังคา")) catSelect.value = "งานหลังคา";
       else if (cat.includes("ผนัง")) catSelect.value = "งานผนัง";
       else if (cat.includes("พื้น")) catSelect.value = "งานพื้น";
       else if (cat.includes("ฝ้า") || cat.includes("เพดาน")) catSelect.value = "งานฝ้าเพดาน";
       
-      // ดึงสินค้า SCG ในหมวดนั้นมาใส่ Dropdown
       populateProductDropdown(catSelect.value, targetItem.scg_product);
       
-      // จัดการเรื่อง Slope ถ้าเป็นงานหลังคา
       const isRoof = catSelect.value === "งานหลังคา";
       document.getElementById("modalSlopeContainer").style.display = isRoof ? "inline-flex" : "none";
       const slopeMatch = (targetItem.verification_method || "").match(/Slope\s*([\d.]+)/i);
@@ -1010,13 +1059,19 @@
         document.getElementById("modalSlopeDeg").value = slopeMatch[1];
       }
 
+      // ตรวจสอบหน่วยเดิม
+      if ((targetItem.net_quantity || "").includes("ม.") && !(targetItem.net_quantity || "").includes("ตร.ม.")) {
+        document.getElementById("measureTypeSelect").value = "perimeter";
+      }
+
       document.getElementById("drawModal").style.display = "flex";
-      document.getElementById("drawStatus").innerText = `กำลังโหลดตำแหน่งเดิมของ "${targetItem.item_name}"... สามารถกด 1 เพื่อตั้งสเกล หรือตีกรอบวัดใหม่ได้ทันที`;
+      document.getElementById("drawStatus").innerText = `กำลังโหลดตำแหน่งเดิมของ "${targetItem.item_name}"... สามารถกด 1 เพื่อตั้งสเกล หรือตีกรอบ/ลากเส้นวัดใหม่ได้ทันที`;
 
       await loadDrawCanvasPage(targetPage);
 
-      // นำกรอบพิกัดเดิมของรายการนี้มาแสดงบน Canvas ทันที
+      // นำกรอบพิกัดเดิมของรายการนี้มาแสดงบน Canvas
       selectedBoxes = [];
+      measuredLines = [];
       if (loc.box_2d && loc.box_2d.length === 4 && currentDrawPageImg) {
         const box = loc.box_2d;
         const ymin = (box[0] / 1000) * currentDrawPageImg.height;
@@ -1026,9 +1081,8 @@
         const w = xmax - xmin;
         const h = ymax - ymin;
 
-        // ดึงตัวเลขพื้นที่เดิมมาแสดง
         const numMatch = (targetItem.net_quantity || "").match(/[\d,.]+/);
-        const origArea = numMatch ? parseFloat(numMatch[0].replace(/,/g, '')) : 0;
+        const origVal = numMatch ? parseFloat(numMatch[0].replace(/,/g, '')) : 0;
         const currentSlopeDeg = parseFloat(document.getElementById("modalSlopeDeg").value) || 0;
         const slopeMultiplier = getSlopeMultiplier(currentSlopeDeg);
 
@@ -1039,8 +1093,9 @@
           h: h,
           widthM: 0,
           heightM: 0,
-          flatAreaM: isRoof ? (origArea / slopeMultiplier) : origArea,
-          slopeAreaM: origArea,
+          flatAreaM: isRoof ? (origVal / slopeMultiplier) : origVal,
+          slopeAreaM: origVal,
+          perimeterM: origVal, // ถ้าเป็นเชิงชายจะใช้เป็นเส้นรอบรูป
           slopeDeg: currentSlopeDeg
         });
       }
@@ -1051,7 +1106,6 @@
       setTimeout(fitToViewport, 100);
     }
 
-    // ฟังก์ชันสร้างรายการใหม่ (เมื่อกดปุ่มเขียวด้านบน)
     function openManualDrawModal() {
       editingItemId = null;
       document.getElementById("drawModalHeaderTitle").innerText = "📐 สร้างรายการประเมินใหม่ด้วย Scale Calibration Tool";
@@ -1067,6 +1121,7 @@
       document.getElementById("drawModal").style.display = "flex";
       onCategoryChangedInDrawModal();
       selectedBoxes = [];
+      measuredLines = [];
       updateBoxCounter();
       loadDrawCanvasPage(1);
       setupDrawEvents();
@@ -1076,6 +1131,7 @@
     async function onDrawPageChange() {
       const pageNum = parseInt(document.getElementById("drawPageSelect").value);
       selectedBoxes = [];
+      measuredLines = [];
       calibrationLine = null;
       pixelsPerMeter = null;
       updateScaleBadge();
@@ -1097,6 +1153,7 @@
       currentToolMode = mode;
       document.getElementById("btnModeCalib").classList.toggle("active", mode === "calibrate");
       document.getElementById("btnModeArea").classList.toggle("active", mode === "area");
+      document.getElementById("btnModeLine").classList.toggle("active", mode === "line");
       document.getElementById("btnModePan").classList.toggle("active", mode === "pan");
       
       const viewport = document.getElementById("canvasViewport");
@@ -1110,13 +1167,18 @@
       } else if (mode === "calibrate") {
         viewport.style.cursor = "default";
         canvas.style.cursor = "crosshair";
-        statusElem.innerText = "📏 โหมดตั้งสเกล: คลิกลากเส้นตรงทับผนังหรือเส้นบอกระยะที่มีตัวเลขระบุ 1 เส้น (คลิกขวาค้างเพื่อเลื่อนภาพ | ล้อเมาส์เพื่อซูม)";
+        statusElem.innerText = "📏 โหมดตั้งสเกล: คลิกลากเส้นตรงทับผนังหรือเส้นบอกระยะที่มีตัวเลขระบุ 1 เส้น";
+      } else if (mode === "line") {
+        viewport.style.cursor = "default";
+        canvas.style.cursor = "crosshair";
+        statusElem.innerText = "📐 โหมดลากเส้นวัดความยาว: คลิกลากเส้นตรงตามแนวชายคาหรือแนวผนังทีละเส้น (หน่วย: เมตร)";
       } else {
         viewport.style.cursor = "default";
         canvas.style.cursor = "crosshair";
-        statusElem.innerText = pixelsPerMeter 
-          ? "🎯 โหมดตีกรอบวัดพื้นที่: คลิกลากสี่เหลี่ยมคลุมพื้นที่ห้อง/หลังคา (คลิกขวาค้างเพื่อเลื่อนภาพ | ล้อเมาส์เพื่อซูม)" 
-          : "⚠️ แนะนำให้กดปุ่ม '1. ตั้งสเกล' เพื่อความแม่นยำ หรือตีกรอบเพื่อประเมินแบบสเกลมาตรฐาน";
+        const mType = document.getElementById("measureTypeSelect").value;
+        statusElem.innerText = mType === "perimeter" 
+          ? "🔄 โหมดตีกรอบคิดเส้นรอบรูป: คลิกลากสี่เหลี่ยมคลุมแนวชายคา ระบบจะคิด 2×(กว้าง+ยาว) เป็นเมตร" 
+          : "🎯 โหมดตีกรอบคิดพื้นที่: คลิกลากสี่เหลี่ยมคลุมพื้นที่ห้อง/หลังคา (หน่วย: ตร.ม.)";
       }
     }
 
@@ -1137,14 +1199,26 @@
 
     function updateBoxCounter() {
       const isRoof = document.getElementById("drawCategorySelect").value === "งานหลังคา";
-      const totalFlat = selectedBoxes.reduce((sum, b) => sum + (b.flatAreaM || 0), 0);
-      const totalSlope = selectedBoxes.reduce((sum, b) => sum + (b.slopeAreaM || b.flatAreaM || 0), 0);
+      const mType = document.getElementById("measureTypeSelect").value;
       const label = document.getElementById("boxCounterLabel");
-      
-      if (isRoof) {
-        label.innerText = `เลือกแล้ว ${selectedBoxes.length} กรอบ (ราบ: ${totalFlat.toFixed(2)} ตร.ม. | ลาดเอียง: ${totalSlope.toFixed(2)} ตร.ม.)`;
+
+      if (currentToolMode === "line" || measuredLines.length > 0) {
+        const totalLineM = measuredLines.reduce((sum, l) => sum + (l.lengthM || 0), 0);
+        label.innerText = `วัดแล้ว ${measuredLines.length} เส้น (รวมความยาว: ${totalLineM.toFixed(2)} ม.)`;
+        return;
+      }
+
+      if (mType === "perimeter") {
+        const totalPerimeter = selectedBoxes.reduce((sum, b) => sum + (b.perimeterM || 0), 0);
+        label.innerText = `เลือกแล้ว ${selectedBoxes.length} กรอบ (เส้นรอบรูป: ${totalPerimeter.toFixed(2)} ม.)`;
       } else {
-        label.innerText = `เลือกแล้ว ${selectedBoxes.length} กรอบ (${totalFlat.toFixed(2)} ตร.ม.)`;
+        const totalFlat = selectedBoxes.reduce((sum, b) => sum + (b.flatAreaM || 0), 0);
+        const totalSlope = selectedBoxes.reduce((sum, b) => sum + (b.slopeAreaM || b.flatAreaM || 0), 0);
+        if (isRoof) {
+          label.innerText = `เลือกแล้ว ${selectedBoxes.length} กรอบ (ราบ: ${totalFlat.toFixed(2)} ตร.ม. | ลาดเอียง: ${totalSlope.toFixed(2)} ตร.ม.)`;
+        } else {
+          label.innerText = `เลือกแล้ว ${selectedBoxes.length} กรอบ (${totalFlat.toFixed(2)} ตร.ม.)`;
+        }
       }
     }
 
@@ -1157,10 +1231,11 @@
       ctx.drawImage(currentDrawPageImg, 0, 0);
 
       const isRoof = document.getElementById("drawCategorySelect").value === "งานหลังคา";
+      const mType = document.getElementById("measureTypeSelect").value;
       const currentSlopeDeg = parseFloat(document.getElementById("modalSlopeDeg").value) || 0;
       const slopeMultiplier = getSlopeMultiplier(currentSlopeDeg);
 
-      // วาดเส้น Calibration อ้างอิง
+      // วาดเส้น Calibration
       if (calibrationLine) {
         ctx.save();
         ctx.strokeStyle = "#8b5cf6";
@@ -1180,10 +1255,10 @@
         ctx.restore();
       }
 
-      // วาดเส้นขณะลาก Calibrate อยู่
+      // วาดเส้นขณะลาก Calibrate หรือ Line วัดความยาวอยู่
       if (currentDragLine) {
         ctx.save();
-        ctx.strokeStyle = "#a855f7";
+        ctx.strokeStyle = (currentToolMode === "line") ? "#f59e0b" : "#a855f7";
         ctx.lineWidth = 4;
         ctx.setLineDash([6, 6]);
         ctx.beginPath();
@@ -1194,10 +1269,30 @@
       }
 
       // ฉากหลังโปร่งแสง
-      if (selectedBoxes.length > 0 || currentDragBox) {
+      if (selectedBoxes.length > 0 || measuredLines.length > 0 || currentDragBox) {
         ctx.fillStyle = "rgba(0, 0, 0, 0.4)";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
       }
+
+      // วาดเส้นวัดความยาวที่บันทึกไว้ (Linear Lines)
+      measuredLines.forEach((line, idx) => {
+        ctx.save();
+        ctx.strokeStyle = "#f59e0b";
+        ctx.lineWidth = 6;
+        ctx.beginPath();
+        ctx.moveTo(line.x1, line.y1);
+        ctx.lineTo(line.x2, line.y2);
+        ctx.stroke();
+
+        const midX = (line.x1 + line.x2) / 2;
+        const midY = (line.y1 + line.y2) / 2;
+        ctx.fillStyle = "#f59e0b";
+        ctx.fillRect(midX - 45, midY - 24, 90, 24);
+        ctx.fillStyle = "#000000";
+        ctx.font = "bold 13px sans-serif";
+        ctx.fillText(`📏 ${line.lengthM.toFixed(2)} ม.`, midX - 38, midY - 7);
+        ctx.restore();
+      });
 
       // วาดทุกกรอบที่บันทึกไว้
       selectedBoxes.forEach((box, idx) => {
@@ -1207,22 +1302,24 @@
         ctx.lineWidth = 5;
         ctx.strokeRect(box.x, box.y, box.w, box.h);
 
-        let areaLabel = `🎯 กรอบ #${idx + 1}`;
-        if (box.flatAreaM) {
+        let badgeLabel = `🎯 กรอบ #${idx + 1}`;
+        if (mType === "perimeter" && box.perimeterM) {
+          badgeLabel = `🔄 #${idx + 1}: เส้นรอบรูป = ${box.perimeterM.toFixed(2)} ม. (กว้าง ${box.widthM.toFixed(1)} × ยาว ${box.heightM.toFixed(1)} ม.)`;
+        } else if (box.flatAreaM) {
           if (isRoof) {
-            areaLabel = `🎯 #${idx + 1}: ราบ ${box.flatAreaM.toFixed(1)} ตร.ม. ➔ ลาดเอียง (${box.slopeDeg || currentSlopeDeg}°) = ${box.slopeAreaM.toFixed(1)} ตร.ม.`;
+            badgeLabel = `🎯 #${idx + 1}: ราบ ${box.flatAreaM.toFixed(1)} ➔ ลาดเอียง (${box.slopeDeg || currentSlopeDeg}°) = ${box.slopeAreaM.toFixed(1)} ตร.ม.`;
           } else {
-            areaLabel = `🎯 #${idx + 1}: ${box.flatAreaM.toFixed(2)} ตร.ม.`;
+            badgeLabel = `🎯 #${idx + 1}: ${box.flatAreaM.toFixed(2)} ตร.ม.`;
           }
         }
 
         ctx.fillStyle = isRoof ? "#ef4444" : "#10b981";
         const badgeY = box.y > 32 ? box.y - 32 : box.y;
-        const textWidth = ctx.measureText(areaLabel).width + 24;
+        const textWidth = ctx.measureText(badgeLabel).width + 24;
         ctx.fillRect(box.x, badgeY, Math.max(190, textWidth), 30);
         ctx.fillStyle = "#ffffff";
         ctx.font = "bold 14px sans-serif";
-        ctx.fillText(areaLabel, box.x + 8, badgeY + 20);
+        ctx.fillText(badgeLabel, box.x + 8, badgeY + 20);
       });
 
       // วาดกรอบที่กำลังคลิกลากอยู่แบบ Real-time
@@ -1235,13 +1332,19 @@
         if (pixelsPerMeter) {
           const wM = currentDragBox.w / pixelsPerMeter;
           const hM = currentDragBox.h / pixelsPerMeter;
-          const flatM = wM * hM;
           ctx.fillStyle = "#0284c7";
           
-          let dragLabel = `📐 ราบ ${flatM.toFixed(2)} ตร.ม.`;
-          if (isRoof) {
-            const slopeM = flatM * slopeMultiplier;
-            dragLabel = `📐 ราบ ${flatM.toFixed(1)} ➔ ลาดเอียง (${currentSlopeDeg}°) = ${slopeM.toFixed(1)} ตร.ม.`;
+          let dragLabel = "";
+          if (mType === "perimeter") {
+            const peri = 2 * (wM + hM);
+            dragLabel = `🔄 เส้นรอบรูป: ${peri.toFixed(2)} ม. (2×(${wM.toFixed(1)}+${hM.toFixed(1)}))`;
+          } else {
+            const flatM = wM * hM;
+            dragLabel = `📐 ราบ ${flatM.toFixed(2)} ตร.ม.`;
+            if (isRoof) {
+              const slopeM = flatM * slopeMultiplier;
+              dragLabel = `📐 ราบ ${flatM.toFixed(1)} ➔ ลาดเอียง (${currentSlopeDeg}°) = ${slopeM.toFixed(1)} ตร.ม.`;
+            }
           }
           
           ctx.fillRect(currentDragBox.x, currentDragBox.y - 26, Math.max(220, ctx.measureText(dragLabel).width + 20), 24);
@@ -1324,7 +1427,7 @@
         const currentX = coords.x;
         const currentY = coords.y;
 
-        if (currentToolMode === "calibrate") {
+        if (currentToolMode === "calibrate" || currentToolMode === "line") {
           currentDragLine = { x1: startX, y1: startY, x2: currentX, y2: currentY };
         } else if (currentToolMode === "area") {
           const x = Math.min(startX, currentX);
@@ -1369,9 +1472,30 @@
           }
           currentDragLine = null;
           redrawCanvas();
+        } else if (currentToolMode === "line" && currentDragLine) {
+          if (pixelsPerMeter) {
+            const dx = currentDragLine.x2 - currentDragLine.x1;
+            const dy = currentDragLine.y2 - currentDragLine.y1;
+            const pixelDist = Math.sqrt(dx * dx + dy * dy);
+            if (pixelDist > 10) {
+              const lineM = pixelDist / pixelsPerMeter;
+              measuredLines.push({
+                x1: currentDragLine.x1,
+                y1: currentDragLine.y1,
+                x2: currentDragLine.x2,
+                y2: currentDragLine.y2,
+                lengthM: lineM
+              });
+              updateBoxCounter();
+            }
+          } else {
+            alert("กรุณากดปุ่ม '1. ตั้งสเกล' ก่อนวัดความยาว");
+          }
+          currentDragLine = null;
+          redrawCanvas();
         } else if (currentToolMode === "area" && currentDragBox) {
           if (currentDragBox.w > 10 && currentDragBox.h > 10) {
-            let widthM = 0, heightM = 0, flatAreaM = 0, slopeAreaM = 0;
+            let widthM = 0, heightM = 0, flatAreaM = 0, slopeAreaM = 0, perimeterM = 0;
             const isRoof = document.getElementById("drawCategorySelect").value === "งานหลังคา";
             const currentSlopeDeg = parseFloat(document.getElementById("modalSlopeDeg").value) || 0;
             const slopeMultiplier = getSlopeMultiplier(currentSlopeDeg);
@@ -1381,6 +1505,7 @@
               heightM = currentDragBox.h / pixelsPerMeter;
               flatAreaM = widthM * heightM;
               slopeAreaM = isRoof ? (flatAreaM * slopeMultiplier) : flatAreaM;
+              perimeterM = 2 * (widthM + heightM);
             }
 
             selectedBoxes.push({
@@ -1389,6 +1514,7 @@
               heightM: heightM,
               flatAreaM: flatAreaM,
               slopeAreaM: slopeAreaM,
+              perimeterM: perimeterM,
               slopeDeg: currentSlopeDeg
             });
             updateBoxCounter();
@@ -1400,27 +1526,34 @@
     }
 
     function undoLastBox() {
-      if (selectedBoxes.length > 0) {
+      if (measuredLines.length > 0) {
+        measuredLines.pop();
+      } else if (selectedBoxes.length > 0) {
         selectedBoxes.pop();
-        updateBoxCounter();
-        redrawCanvas();
       }
+      updateBoxCounter();
+      redrawCanvas();
     }
 
     function clearAllDrawBoxes() {
       selectedBoxes = [];
+      measuredLines = [];
       currentDragBox = null;
+      currentDragLine = null;
       updateBoxCounter();
       redrawCanvas();
-      document.getElementById("drawStatus").innerText = "ล้างกรอบเรียบร้อยแล้ว ลากกรอบใหม่เพื่อวัดพื้นที่";
+      document.getElementById("drawStatus").innerText = "ล้างข้อมูลเรียบร้อยแล้ว ลากกรอบหรือเส้นใหม่เพื่อวัด";
     }
 
     /* ==========================================================
        บันทึกและอัปเดตทับแถวเดิม (SAVE & APPLY IN-PLACE)
        ========================================================== */
     async function saveAndApplyInPlaceMeasurement() {
-      if (selectedBoxes.length === 0) {
-        alert("กรุณาตีกรอบพื้นที่อย่างน้อย 1 กรอบบนแบบแปลน");
+      const mType = document.getElementById("measureTypeSelect").value;
+      const isLineMode = measuredLines.length > 0;
+      
+      if (selectedBoxes.length === 0 && !isLineMode) {
+        alert("กรุณาตีกรอบหรือลากเส้นวัดอย่างน้อย 1 รายการบนแบบแปลน");
         return;
       }
       const apiKey = document.getElementById("apiKey").value.trim();
@@ -1430,64 +1563,81 @@
       }
 
       const isRoof = document.getElementById("drawCategorySelect").value === "งานหลังคา";
-      const totalFlatArea = selectedBoxes.reduce((sum, b) => sum + (b.flatAreaM || 0), 0);
-      const totalSlopeArea = selectedBoxes.reduce((sum, b) => sum + (b.slopeAreaM || b.flatAreaM || 0), 0);
-      const chosenArea = isRoof ? totalSlopeArea : totalFlatArea;
-
       const chosenProduct = document.getElementById("drawProductSelect").value;
       const category = document.getElementById("drawCategorySelect").value;
       const pageNum = parseInt(document.getElementById("drawPageSelect").value);
       const slopeDeg = document.getElementById("modalSlopeDeg").value;
 
-      const statusElem = document.getElementById("drawStatus");
-      statusElem.innerText = `กำลังคำนวณยอดสั่งซื้อสินค้า "${chosenProduct}" จากพื้นที่ ${chosenArea.toFixed(2)} ตร.ม. ...`;
-
-      // แจกแจงใน Audit Trail
-      let breakdownLines = [];
-      selectedBoxes.forEach((b, i) => {
-        if (b.flatAreaM > 0) {
-          if (isRoof) {
-            breakdownLines.push(`กรอบ #${i + 1} (ราบ ${b.flatAreaM.toFixed(2)} ม.² ÷ cos(${b.slopeDeg || slopeDeg}°) = ลาดเอียง ${b.slopeAreaM.toFixed(2)} ม.²)`);
-          } else {
-            breakdownLines.push(`กรอบ #${i + 1} (${b.flatAreaM.toFixed(2)} ม.²)`);
-          }
-        }
-      });
-
+      let chosenValue = 0;
+      let chosenUnit = "ตร.ม.";
       let auditSummary = "";
-      if (isRoof) {
-        auditSummary = `[คำนวณ Slope ${slopeDeg}°]: ${breakdownLines.join(" + ")} = รวมพื้นที่ลาดเอียงสุทธิ ${totalSlopeArea.toFixed(2)} ตร.ม.`;
-      } else {
-        auditSummary = `${breakdownLines.join(" + ")} = รวมสุทธิ ${totalFlatArea.toFixed(2)} ตร.ม.`;
+
+      // 1. กรณีวัดด้วยเส้นตรงทีละด้าน (Linear Lines)
+      if (isLineMode) {
+        chosenValue = measuredLines.reduce((sum, l) => sum + (l.lengthM || 0), 0);
+        chosenUnit = "ม.";
+        let parts = measuredLines.map((l, i) => `เส้น #${i+1} (${l.lengthM.toFixed(2)} ม.)`);
+        auditSummary = `[วัดความยาวแนวเส้น]: ${parts.join(" + ")} = รวมความยาวสุทธิ ${chosenValue.toFixed(2)} เมตร`;
+      } 
+      // 2. กรณีวัดด้วยเส้นรอบรูปของกรอบ (Perimeter)
+      else if (mType === "perimeter") {
+        chosenValue = selectedBoxes.reduce((sum, b) => sum + (b.perimeterM || 0), 0);
+        chosenUnit = "ม.";
+        let parts = selectedBoxes.map((b, i) => `กรอบ #${i+1} [2×(${b.widthM.toFixed(2)}+${b.heightM.toFixed(2)}) = ${b.perimeterM.toFixed(2)} ม.]`);
+        auditSummary = `[คิดเส้นรอบรูปอาคาร]: ${parts.join(" + ")} = รวมความยาวแนวชายคา ${chosenValue.toFixed(2)} เมตร`;
+      } 
+      // 3. กรณีวัดพื้นที่ (Area)
+      else {
+        chosenValue = isRoof 
+          ? selectedBoxes.reduce((sum, b) => sum + (b.slopeAreaM || 0), 0)
+          : selectedBoxes.reduce((sum, b) => sum + (b.flatAreaM || 0), 0);
+        chosenUnit = "ตร.ม.";
+        let parts = selectedBoxes.map((b, i) => {
+          return isRoof 
+            ? `กรอบ #${i+1} (ราบ ${b.flatAreaM.toFixed(2)} ม.² ÷ cos(${b.slopeDeg || slopeDeg}°) = ลาดเอียง ${b.slopeAreaM.toFixed(2)} ม.²)`
+            : `กรอบ #${i+1} (${b.flatAreaM.toFixed(2)} ม.²)`;
+        });
+        auditSummary = isRoof 
+          ? `[คำนวณ Slope ${slopeDeg}°]: ${parts.join(" + ")} = รวมพื้นที่ลาดเอียงสุทธิ ${chosenValue.toFixed(2)} ตร.ม.`
+          : `${parts.join(" + ")} = รวมสุทธิ ${chosenValue.toFixed(2)} ตร.ม.`;
       }
 
-      const primaryBox = selectedBoxes[0];
-      const mainYmin = Math.round((primaryBox.y / currentDrawPageImg.height) * 1000);
-      const mainXmin = Math.round((primaryBox.x / currentDrawPageImg.width) * 1000);
-      const mainYmax = Math.round(((primaryBox.y + primaryBox.h) / currentDrawPageImg.height) * 1000);
-      const mainXmax = Math.round(((primaryBox.x + primaryBox.w) / currentDrawPageImg.width) * 1000);
+      const statusElem = document.getElementById("drawStatus");
+      statusElem.innerText = `กำลังคำนวณยอดสั่งซื้อสินค้า "${chosenProduct}" จากปริมาณ ${chosenValue.toFixed(2)} ${chosenUnit} ...`;
+
+      // หาพิกัดอ้างอิง
+      let mainBox = [100, 100, 500, 500];
+      if (selectedBoxes.length > 0 && currentDrawPageImg) {
+        const primaryBox = selectedBoxes[0];
+        mainBox = [
+          Math.round((primaryBox.y / currentDrawPageImg.height) * 1000),
+          Math.round((primaryBox.x / currentDrawPageImg.width) * 1000),
+          Math.round(((primaryBox.y + primaryBox.h) / currentDrawPageImg.height) * 1000),
+          Math.round(((primaryBox.x + primaryBox.w) / currentDrawPageImg.width) * 1000)
+        ];
+      }
 
       const promptText = `
 คุณเป็น Quantity Surveyor (QS) ประจำเครือ SCG
-ผู้ใช้ได้ตั้งสเกลและวัดพื้นที่จากแบบแปลนก่อสร้างจริง พร้อมเลือกสินค้า SCG ดังนี้:
+ผู้ใช้ได้วัดปริมาณงานจากแบบแปลนก่อสร้างจริง ได้ผลลัพธ์ดังนี้:
 - หมวดงาน: "${category}"
-- สินค้า SCG ที่ผู้ใช้เลือก: "${chosenProduct}"
-- ปริมาณพื้นที่สุทธิที่ต้องใช้สั่งซื้อจริง: ${chosenArea.toFixed(2)} ตร.ม. ${isRoof ? "(คำนวณความชัน Slope " + slopeDeg + "° เรียบร้อยแล้ว)" : ""}
+- สินค้า SCG: "${chosenProduct}"
+- ปริมาณสุทธิ: ${chosenValue.toFixed(2)} ${chosenUnit} (หน่วย: ${chosenUnit})
+- รายละเอียดการวัด: ${auditSummary}
 
 หน้าที่ของคุณ:
-1. คำนวณจำนวนสั่งซื้อจริง (order_estimate) สำหรับสินค้า "${chosenProduct}" จากพื้นที่ ${chosenArea.toFixed(2)} ตร.ม. พร้อมคิดเปอร์เซ็นต์เผื่อเศษ (Wastage 5-10%) ตามมาตรฐาน SCG:
-   - CPAC: 11 แผ่น/ตร.ม. เผื่อ 5%
-   - ลอนคู่: 2.2 แผ่น/ตร.ม. เผื่อ 5%
-   - Metal Sheet: คำนวณตาม ตร.ม. เผื่อ 5%
-   - ฉนวน STAY COOL: ม้วนละ 2.40 ตร.ม. เผื่อ 5%
-   - สมาร์ทบอร์ด: แผ่นละ 2.88 ตร.ม. เผื่อ 5%
-   - ไม้ฝา: 2.22 แผ่น/ตร.ม. เผื่อ 5%
-   - อิฐมวลเบา Q-CON: 8.33 ก้อน/ตร.ม. เผื่อ 5%
-2. สรุปหมายเหตุสูตรคำนวณ (calculation_note)
+1. คำนวณจำนวนสั่งซื้อจริง (order_estimate) ให้เหมาะสมกับหน่วยของสินค้า:
+   - หากสินค้าเป็นไม้เชิงชาย SCG (เช่น Smartwood 2 in 1): ความยาว 3.00 ม./ท่อน ➔ สูตร: ceil((ความยาวเมตร / 3.0) * 1.05) ท่อน (เผื่อเศษ 5%)
+   - หากสินค้าเป็นไม้บัว / ไม้ระแนง: ความยาว 3.00 ม./ท่อน ➔ สูตร: ceil((ความยาวเมตร / 3.0) * 1.05) ท่อน
+   - หากสินค้าเป็นครอบสันหลังคา CPAC / ลอนคู่: 3.3 แผ่น/เมตร ➔ สูตร: ceil((ความยาวเมตร * 3.3) * 1.05) แผ่น
+   - หากเป็นกระเบื้องหลังคา CPAC (ตร.ม.): 11 แผ่น/ตร.ม. เผื่อ 5%
+   - หากเป็น Metal Sheet (ตร.ม.): คิดตาม ตร.ม. เผื่อ 5%
+   - หากเป็นฉนวน STAY COOL (ตร.ม.): ม้วนละ 2.40 ตร.ม. เผื่อ 5%
+2. สรุปสูตรคำนวณสั้นๆ (calculation_note)
 
-ส่งคำตอบเป็น JSON Object ตัวเดียว:
+ส่งผลลัพธ์เป็น JSON Object ตัวเดียว:
 {
-  "order_estimate": "จำนวนและหน่วยสั่งซื้อจริง",
+  "order_estimate": "จำนวนและหน่วยสั่งซื้อจริง เช่น 14 ท่อน",
   "calculation_note": "สูตรคำนวณและสัดส่วนเผื่อเศษ"
 }
 `;
@@ -1508,11 +1658,10 @@
         const result = JSON.parse(rawContent);
 
         if (editingItemId) {
-          // อัปเดตทับแถวเดิม
           const item = lastRawBOQItems.find(it => it._id === editingItemId);
           if (item) {
             item.category = category;
-            item.net_quantity = `${chosenArea.toFixed(2)} ตร.ม.`;
+            item.net_quantity = `${chosenValue.toFixed(2)} ${chosenUnit}`;
             item.scg_product = chosenProduct;
             item.order_estimate = result.order_estimate;
             item.calculation_note = result.calculation_note;
@@ -1521,19 +1670,18 @@
             item.is_manual_modified = true;
             item.source_location = {
               page_number: pageNum,
-              box_2d: [mainYmin, mainXmin, mainYmax, mainXmax],
-              location_description: `ปรับขนาดและเลือกสินค้า "${chosenProduct}" บนหน้า ${pageNum}${isRoof ? ' (Slope ' + slopeDeg + '°)' : ''}`
+              box_2d: mainBox,
+              location_description: `วัดขนาดและเลือกสินค้า "${chosenProduct}" บนหน้า ${pageNum}`
             };
           }
           statusElem.innerText = `✅ อัปเดตรายการ "${item ? item.item_name : ''}" ทับแถวเดิมสำเร็จ!`;
         } else {
-          // สร้างรายการใหม่
           const newItem = {
             _id: "item_" + Date.now() + "_" + Math.floor(Math.random() * 10000),
             category: category,
-            code_ref: `Calibrated (${selectedBoxes.length} กรอบ)`,
-            item_name: `พื้นที่จากการวัดในแบบ (${category})`,
-            net_quantity: `${chosenArea.toFixed(2)} ตร.ม.`,
+            code_ref: `Calibrated (${chosenUnit})`,
+            item_name: `วัดปริมาณในแบบ (${category})`,
+            net_quantity: `${chosenValue.toFixed(2)} ${chosenUnit}`,
             scg_product: chosenProduct,
             order_estimate: result.order_estimate,
             confidence_score: 99,
@@ -1542,8 +1690,8 @@
             is_manual_modified: true,
             source_location: {
               page_number: pageNum,
-              box_2d: [mainYmin, mainXmin, mainYmax, mainXmax],
-              location_description: `พื้นที่วัดด้วย Scale Calibration บนหน้า ${pageNum}`
+              box_2d: mainBox,
+              location_description: `วัดในแบบบนหน้า ${pageNum}`
             }
           };
           lastRawBOQItems.push(newItem);
@@ -1609,19 +1757,19 @@
 วิเคราะห์แบบแปลนที่แนบมานี้ ถอดปริมาณงาน และคำนวณปริมาณสินค้า SCG ตามเงื่อนไขด้านล่าง:
 
 [เงื่อนไขวัสดุทดแทนและความชันหลังคา]:
-1. สเปกหลังคา: "${roofChoice}" โดยมีความชันหลังคา (Roof Slope) อยู่ที่ ${slopeDeg} องศา (สำคัญมาก: หากวัดพื้นที่หลังคาจากแปลน Top View ต้องนำพื้นที่ราบมาหารด้วย cos(${slopeDeg}°) เพื่อคิดพื้นที่ลาดเอียงจริงก่อนคำนวณสินค้ากระเบื้องหรือเมทัลชีท)
+1. สเปกหลังคา: "${roofChoice}" โดยมีความชันหลังคา (Roof Slope) อยู่ที่ ${slopeDeg} องศา (สำคัญ: แปลน Top View ต้องนำพื้นที่ราบมาหารด้วย cos(${slopeDeg}°) ก่อนคิดสินค้ากระเบื้อง)
 2. สเปกผนัง: "${wallChoice}"
 3. สเปกพื้น: "${floorChoice}"
 4. สเปกฝ้าเพดาน: "${ceilingChoice}"
 5. สเปกฉนวนกันความร้อน: "${insulationChoice}"
-6. สเปกไม้สังเคราะห์ตกแต่ง: "${woodChoice}"
+6. สเปกไม้สังเคราะห์ตกแต่ง: "${woodChoice}" (หากมีงานไม้เชิงชาย ให้คิดความยาวเส้นรอบรูปแนวชายคาเป็นเมตร และคำนวณท่อนละ 3.0 ม. เผื่อ 5%)
 
 [การคำนวณสินค้า SCG]:
+- ไม้เชิงชาย SCG Smartwood: แนวชายคารวม (เมตร) / 3.0 ม. เผื่อ 5%
 - ฉนวน STAY COOL: ม้วนละ 2.40 ตร.ม. เผื่อ 5%
 - แผ่นสมาร์ทบอร์ด: แผ่นละ 2.88 ตร.ม. เผื่อ 5%
 - กระเบื้อง CPAC: 11 แผ่น/ตร.ม. เผื่อ 5%
 - ไม้ฝา: ~2.22 แผ่น/ตร.ม. เผื่อ 5%
-- ไม้เชิงชาย: แนวชายคา / 3.0 ม. เผื่อ 5%
 
 ส่งคำตอบกลับมาเป็น JSON Array เท่านั้น:
 [
@@ -1629,12 +1777,12 @@
     "category": "หมวดงาน",
     "code_ref": "รหัสสัญลักษณ์บนแบบ หรือ -",
     "item_name": "ชื่อรายการงานตามแบบแปลน",
-    "net_quantity": "ปริมาณสุทธิ",
+    "net_quantity": "ปริมาณสุทธิ (ระบุ ตร.ม. หรือ ม.)",
     "scg_product": "ชื่อสินค้า SCG ที่แนะนำ/ทดแทน",
     "order_estimate": "จำนวนและหน่วยสั่งซื้อจริง",
     "confidence_score": 95,
     "calculation_note": "สูตรคำนวณ หน้ากว้างใช้งาน หรือ % เผื่อเศษที่ใช้",
-    "verification_method": "แสดงแจกแจงแยกส่วนมิติและผลบวกสุทธิอย่างละเอียด (ระบุการปรับ Slope ถ้าเป็นหลังคา)",
+    "verification_method": "แสดงแจกแจงแยกส่วนมิติและผลบวกสุทธิอย่างละเอียด",
     "source_location": {
       "page_number": 1,
       "box_2d": [100, 100, 500, 500],
@@ -1702,7 +1850,7 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
 - ฉนวน: "${document.getElementById("insulationOption").value}"
 - ไม้สังเคราะห์: "${document.getElementById("woodOption").value}"
 
-กรุณาแปลงสินค้า SCG (scg_product) และคำนวณจำนวนสั่งซื้อใหม่ (order_estimate) ให้สอดคล้องกับสเปกใหม่ โดยยังคงรักษาข้อมูลปริมาณสุทธิเดิมไว้
+กรุณาแปลงสินค้า SCG (scg_product) และคำนวณจำนวนสั่งซื้อใหม่ (order_estimate) ให้สอดคล้องกับสเปกใหม่ โดยยังคงรักษาข้อมูลปริมาณสุทธิเดิมไว้ (คำนึงถึงหน่วย เมตร vs ตร.ม. ให้ถูกต้อง)
 ส่งผลลัพธ์กลับมาเป็น JSON Array เท่านั้น
 `;
         const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key=${apiKey}`;
@@ -1747,13 +1895,13 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
       items.forEach((item) => {
         let badgeClass = "badge badge-other";
         const cat = item.category || "";
-        if (cat.includes("ผนัง")) badgeClass = "badge badge-wall";
+        if (cat.includes("ไม้")) badgeClass = "badge badge-wood";
+        else if (cat.includes("ผนัง")) badgeClass = "badge badge-wall";
         else if (cat.includes("พื้น")) badgeClass = "badge badge-floor";
         else if (cat.includes("หลังคา")) badgeClass = "badge badge-roof";
         else if (cat.includes("ฝ้า") || cat.includes("เพดาน")) badgeClass = "badge badge-ceiling";
-        else if (cat.includes("ฉนวน") || cat.includes("กันความร้อน") || cat.includes("สะท้อนความร้อน")) badgeClass = "badge badge-insulation";
-        else if (cat.includes("ไม้") || cat.includes("ตกแต่ง") || cat.includes("เชิงชาย") || cat.includes("ระแนง")) badgeClass = "badge badge-wood";
-        else if (cat.includes("สุขาภิบาล") || cat.includes("ระบบ") || cat.includes("ท่อ")) badgeClass = "badge badge-mep";
+        else if (cat.includes("ฉนวน") || cat.includes("กันความร้อน")) badgeClass = "badge badge-insulation";
+        else if (cat.includes("สุขาภิบาล") || cat.includes("ระบบ")) badgeClass = "badge badge-mep";
 
         const conf = typeof item.confidence_score === "number" ? item.confidence_score : 95;
         let confClass = "conf-high";
@@ -1831,7 +1979,13 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
           const product = (item.scg_product || "").toLowerCase();
           let newEstimate = "";
 
-          if (product.includes("stay cool") || product.includes("สเตย์คูล")) {
+          if (product.includes("เชิงชาย") || product.includes("บัว")) {
+            const pcs = Math.ceil((rawNum / 3.0) * 1.05);
+            newEstimate = `${pcs} ท่อน (3.0 ม./ท่อน)`;
+          } else if (product.includes("ครอบ")) {
+            const pcs = Math.ceil(rawNum * 3.3 * 1.05);
+            newEstimate = `${pcs} แผ่น`;
+          } else if (product.includes("stay cool") || product.includes("สเตย์คูล")) {
             const rolls = Math.ceil((rawNum / 2.40) * 1.05);
             newEstimate = `${rolls} ม้วน`;
           } else if (product.includes("สมาร์ทบอร์ด") || product.includes("smartboard") || product.includes("ยิปซัม")) {
@@ -1840,18 +1994,12 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
           } else if (product.includes("ไม้ฝา") || product.includes("siding")) {
             const planks = Math.ceil(rawNum * 2.22 * 1.05);
             newEstimate = `${planks} แผ่น`;
-          } else if (product.includes("ไม้เชิงชาย") || product.includes("eaves")) {
-            const pcs = Math.ceil((rawNum / 3.0) * 1.05);
-            newEstimate = `${pcs} ท่อน`;
           } else if (product.includes("cpac") || product.includes("ลอนคู่")) {
             const tiles = Math.ceil(rawNum * 11 * 1.05);
             newEstimate = `${tiles} แผ่น`;
           } else if (product.includes("metal sheet") || product.includes("เมทัลชีท")) {
             const sqmAmt = (rawNum * 1.05).toFixed(1);
             newEstimate = `${sqmAmt} ตร.ม.`;
-          } else if (product.includes("สะท้อนความร้อน") || product.includes("radiant")) {
-            const rolls = Math.ceil((rawNum * 1.10) / 60);
-            newEstimate = `${rolls} ม้วน (60 ตร.ม./ม้วน)`;
           }
 
           if (newEstimate) {
@@ -1893,7 +2041,7 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.setAttribute("href", url);
-      link.setAttribute("download", `SCG_BOQ_Updated_${new Date().toISOString().slice(0,10)}.csv`);
+      link.setAttribute("download", `SCG_BOQ_Linear_${new Date().toISOString().slice(0,10)}.csv`);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
