@@ -166,6 +166,34 @@
     .badge-wood { background: #fae8ff; color: #86198f; }
     .badge-mep { background: #dcfce7; color: #166534; }
     .badge-other { background: #f1f5f9; color: #475569; }
+    
+    /* สไตล์สำหรับ Confidence Score */
+    .confidence-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 8px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .conf-high {
+      background: #dcfce7;
+      color: #15803d;
+      border: 1px solid #bbf7d0;
+    }
+    .conf-med {
+      background: #fef9c3;
+      color: #854d0e;
+      border: 1px solid #fef08a;
+    }
+    .conf-low {
+      background: #fee2e2;
+      color: #b91c1c;
+      border: 1px solid #fecaca;
+    }
+
     .status-text {
       font-size: 14px;
       color: #64748b;
@@ -355,6 +383,7 @@
             <th>ปริมาณสุทธิ</th>
             <th>สินค้า SCG ที่แนะนำ/ทดแทน</th>
             <th>ประมาณการสั่งซื้อจริง</th>
+            <th>ความมั่นใจ</th>
             <th>หมายเหตุและวิธีคำนวณ</th>
             <th>🔍 วิธีตรวจสอบที่มาปริมาณ (Audit Trail)</th>
             <th>ตำแหน่งในแบบ</th>
@@ -496,7 +525,7 @@
           parts.push(specPart);
         }
 
-        statusDiv.innerText = "Gemini กำลังถอดแบบทุกหน้า ตรวจจับพื้นที่แรเงา (Hatch) และคำนวณสินค้า SCG...";
+        statusDiv.innerText = "Gemini กำลังถอดแบบ วิเคราะห์แยกส่วนพื้นที่ และประเมินค่าความมั่นใจ...";
 
         const promptText = `
 คุณเป็นผู้เชี่ยวชาญการถอดแบบและประมาณราคา (Quantity Surveyor) ประจำเครือ SCG
@@ -523,25 +552,26 @@
 - ไม้ฝา SCG Smartwood: กว้าง 15 ซม. ใช้ ~2.22 แผ่น/ตร.ม., กว้าง 20 ซม. ใช้ ~1.67 แผ่น/ตร.ม. เผื่อเศษ 5%
 - ไม้เชิงชาย SCG Smartwood: ความยาวรอบแนวชายคาหลังคา (เมตร) / 3.0 ม. เผื่อเศษ 5%
 
-[กฎเหล็กการอ่านพื้นที่แรเงา (Hatch Pattern & Shading Recognition Rule)]:
-- **ต้องอ่านเฉพาะพื้นที่ที่มีลวดลายแรเงา (Hatch/Shading) ที่แสดงถึงวัสดุมุงหลังคาจริงเท่านั้น** เช่น ลวดลายเส้นลอนขนานของแผ่น Metal Sheet หรือลวดลายกระเบื้อง
-- **ห้ามเหมาคำนวณพื้นที่ว่างเปล่าสีขาว หรือพื้นที่สัญลักษณ์อื่นเด็ดขาด**:
-  - พื้นที่ด้านบนที่เป็นแผง Grille ระแนงเหล็ก หรือพื้นสแลบคอนกรีตดาดฟ้า ห้ามนำมารวมในพื้นที่หลังคา Metal Sheet
-  - ช่องเปิดตรงกลาง (Skylight/Void) ที่ไม่มีลวดลายแรเงาหลังคา จะต้องถูกหักลบออกเสมอ
-- การกำหนดพิกัด Bounding Box (box_2d): ต้องตีกรอบครอบคลุมเฉพาะพื้นที่ที่มีการแรเงาวัสดุมุงหลังคาจริงเท่านั้น
-
 [กฎเหล็กการคำนวณพื้นที่รูปทรงไม่สม่ำเสมอ / ตัว L (Segmented Area Decomposition Rule)]:
-- กรณีหลังคาเป็นรูปตัว L หรือมีหลายส่วน: **ห้ามนำความกว้างสูงสุดมาคูณความยาวสูงสุดเด็ดขาด**
-- **ต้องแยกคำนวณเป็นส่วนย่อย (Segments) ตามพื้นที่แรเงาจริง**:
-  1. ส่วนแนวตั้ง (Vertical Wing): คำนวณเฉพาะช่วงที่มีแรเงาหลังคา (เช่น ช่วงตัดใต้ Grille ลงมาถึงด้านล่าง) หักช่องเปิด Skylight
-  2. ส่วนแนวนอน (Horizontal Wing): คำนวณช่วงปีกยื่นด้านล่างที่มีแรเงาหลังคา
-  3. นำพื้นที่แรเงาของแต่ละส่วนมารวมกันเป็นพื้นที่สุทธิ (Net Area) ก่อนคิด Slope factor
-- ในช่อง "verification_method": ต้องระบุชัดเจนว่าคำนวณเฉพาะพื้นที่แรเงา พร้อมแจกแจงมิติตามกริตไลน์ เช่น "คำนวณเฉพาะพื้นที่แรเงาลายลอน Metal Sheet แยก 2 ส่วน: ส่วนที่ 1 แนวตั้ง กริต 1-2 (หัก Grille ด้านบนและหักช่องแสงออก = ... ตร.ม.) + ส่วนที่ 2 แนวนอน กริต 2-4 (... ตร.ม.) รวมสุทธิ = ... ตร.ม."
+- กรณีพื้นที่อาคาร/หลังคา/พื้น ไม่ใช่สี่เหลี่ยมผืนผ้าเดี่ยว เช่น เป็นรูปตัว L, ตัว U หรือมีช่องเปิด (Void/Skylight)
+- **ห้ามนำความกว้างสูงสุดมาคูณความยาวสูงสุดเด็ดขาด**
+- **ต้องแยกคำนวณเป็นส่วนย่อย (Segments) เสมอ**:
+  1. ส่วนหลัก/ปีกที่ 1 = กว้าง x ยาว
+  2. ส่วนปีกยื่นที่ 2 = กว้าง x ยาว
+  3. หักลบช่องเปิด/ช่องแสง (Void) = ลบ (กว้าง x ยาว ของช่องเปิด)
+  4. นำมารวมกันเป็นพื้นที่สุทธิ (Net Area) ก่อนคิด Slope factor (ถ้าเป็นหลังคา)
+- ในช่อง "verification_method": ต้องแสดงการแยกส่วนคำนวณอย่างชัดเจน พร้อมระบุมิติตามแนว Grid Line
+
+[การประเมินค่าความมั่นใจ (Confidence Score)]:
+- ประเมินค่าความมั่นใจเป็นตัวเลขเปอร์เซ็นต์ (0 - 100) สำหรับแต่ละรายการ:
+  - 90-100%: มั่นใจสูงมาก มีระยะ Dimension, สัญลักษณ์ หรือตาราง Schedule ระบุตัวเลขชัดเจน
+  - 75-89%: มั่นใจปานกลาง-สูง ตัวเลขชัดเกือบหมด มีบางระยะที่ต้องคำนวณผลรวมจากระยะย่อย
+  - ต่ำกว่า 75%: แบบไม่ชัดเจน หรือต้องประมาณการสเกล
 
 [คำสั่งพิเศษ: Multi-Page Visual Grounding]:
 สำหรับแต่ละรายการที่ถอดได้:
 1. ระบุเลขหน้าในเอกสาร (page_number เริ่มต้นที่ 1) ที่พบข้อมูล
-2. ระบุพิกัด Bounding Box บนหน้าเอกสารนั้น (box_2d) เป็นพิกัด Normalized [ymin, xmin, ymax, xmax] ในช่วง 0 ถึง 1000 ที่ครอบคลุมขอบเขตพื้นที่แรเงาจริง
+2. ระบุพิกัด Bounding Box บนหน้าเอกสารนั้น (box_2d) เป็นพิกัด Normalized [ymin, xmin, ymax, xmax] ในช่วง 0 ถึง 1000 ที่ครอบคลุมขอบเขตพื้นที่ที่คำนวณ
 3. ระบุคำอธิบายตำแหน่ง เช่น "แปลนหลังคา หน้า 3" หรือ "แปลนฝ้าเพดาน ชั้น 1"
 
 ส่งคำตอบกลับมาเป็น JSON Array เท่านั้น:
@@ -550,11 +580,12 @@
     "category": "หมวดงาน (งานหลังคา, งานผนัง, งานพื้น, งานฝ้าเพดาน, งานฉนวนกันความร้อน, งานไม้ตกแต่ง, งานสุขาภิบาล)",
     "code_ref": "รหัสสัญลักษณ์บนแบบ หรือ -",
     "item_name": "ชื่อรายการงานตามแบบแปลน",
-    "net_quantity": "ปริมาณสุทธิ เช่น 85.50 ตร.ม., 45 ม.",
+    "net_quantity": "ปริมาณสุทธิ เช่น 115.92 ตร.ม., 45 ม.",
     "scg_product": "ชื่อสินค้า SCG ที่แนะนำ/ทดแทน",
-    "order_estimate": "จำนวนและหน่วยสั่งซื้อจริง เช่น 38 ม้วน, 45 แผ่น, 18 ท่อน",
+    "order_estimate": "จำนวนและหน่วยสั่งซื้อจริง เช่น 53 ม้วน, 45 แผ่น, 18 ท่อน",
+    "confidence_score": 95,
     "calculation_note": "สูตรคำนวณ หน้ากว้างใช้งาน หรือ % เผื่อเศษที่ใช้",
-    "verification_method": "ระบุว่าวัดเฉพาะพื้นที่แรเงา พร้อมแจกแจงแยกส่วนมิติ กริตไลน์ ช่องเปิด และผลบวกสุทธิ",
+    "verification_method": "แสดงแจกแจงแยกส่วนมิติ กริตไลน์ ช่องเปิด และผลบวกสุทธิอย่างละเอียด",
     "source_location": {
       "page_number": 1,
       "box_2d": [ymin, xmin, ymax, xmax],
@@ -615,7 +646,7 @@
       try {
         const promptText = `
 คุณเป็น Quantity Surveyor ประจำ SCG
-นี่คือรายการปริมาณงานเดิมที่ถอดได้จากแบบ (ซึ่งคำนวณเฉพาะพื้นที่แรเงา Hatch จริง และแยกส่วนพื้นที่รูปตัว L ไว้แล้ว):
+นี่คือรายการปริมาณงานเดิมที่ถอดได้จากแบบ:
 ${JSON.stringify(lastRawBOQItems, null, 2)}
 
 ผู้ใช้ต้องการเปลี่ยนสเปกวัสดุใหม่ดังนี้:
@@ -632,7 +663,7 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
 )
 - สเปกไม้ตกแต่ง: "${woodChoice}" (ถ้าเป็น smartwood_eaves ใช้ ไม้เชิงชาย SCG Smartwood 2 in 1, ถ้าเป็น smartwood_lath ใช้ ไม้ระแนง SCG Smartwood 3")
 
-กรุณาแปลงสินค้า SCG (scg_product), คำนวณจำนวนสั่งซื้อใหม่ (order_estimate) และอัปเดตวิธีคำนวณ (calculation_note) ให้สอดคล้องกับสเปกใหม่ โดยยังคงรักษาข้อมูลปริมาณสุทธิ (net_quantity), วิธีตรวจสอบที่มาการแยกส่วนพื้นที่แรเงาเดิม (verification_method) และพิกัดตำแหน่งรวมถึง page_number เดิม (source_location) ไว้ครบถ้วน
+กรุณาแปลงสินค้า SCG (scg_product), คำนวณจำนวนสั่งซื้อใหม่ (order_estimate) และอัปเดตวิธีคำนวณ (calculation_note) ให้สอดคล้องกับสเปกใหม่ โดยยังคงรักษาข้อมูลปริมาณสุทธิ (net_quantity), ค่าความมั่นใจ (confidence_score), วิธีตรวจสอบที่มาการแยกส่วนพื้นที่เดิม (verification_method) และพิกัดตำแหน่งรวมถึง page_number เดิม (source_location) ไว้ครบถ้วน
 ส่งผลลัพธ์กลับมาเป็น JSON Array เท่านั้น:
 [
   {
@@ -642,8 +673,9 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
     "net_quantity": "ปริมาณสุทธิเดิม",
     "scg_product": "ชื่อสินค้า SCG ตามสเปกใหม่",
     "order_estimate": "จำนวนและหน่วยสั่งซื้อใหม่",
+    "confidence_score": 95,
     "calculation_note": "สูตรคำนวณของสินค้าใหม่",
-    "verification_method": "วิธีตรวจสอบที่มาปริมาณเดิม (การแยกส่วนพื้นที่แรเงาเดิม)",
+    "verification_method": "วิธีตรวจสอบที่มาปริมาณเดิม",
     "source_location": {
       "page_number": 1,
       "box_2d": [ymin, xmin, ymax, xmax],
@@ -697,6 +729,18 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
         else if (cat.includes("ไม้") || cat.includes("ตกแต่ง") || cat.includes("เชิงชาย") || cat.includes("ระแนง")) badgeClass = "badge badge-wood";
         else if (cat.includes("สุขาภิบาล") || cat.includes("ระบบ") || cat.includes("ท่อ")) badgeClass = "badge badge-mep";
 
+        // ประเมินสีของ Confidence Score
+        const conf = typeof item.confidence_score === "number" ? item.confidence_score : 90;
+        let confClass = "conf-high";
+        let confIcon = "🟢";
+        if (conf < 75) {
+          confClass = "conf-low";
+          confIcon = "🔴";
+        } else if (conf < 88) {
+          confClass = "conf-med";
+          confIcon = "🟡";
+        }
+
         const loc = item.source_location;
         const pageLabel = loc && loc.page_number ? `หน้า ${loc.page_number}` : "";
 
@@ -708,6 +752,11 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
           <td><b>${item.net_quantity || "-"}</b></td>
           <td style="color: #b91c1c; font-weight: 600;">${item.scg_product || "-"}</td>
           <td><b>${item.order_estimate || "-"}</b></td>
+          <td style="text-align: center;">
+            <span class="confidence-badge ${confClass}">
+              ${confIcon} ${conf}%
+            </span>
+          </td>
           <td style="color: #64748b;">${item.calculation_note || "-"}</td>
           <td><div class="audit-text">${item.verification_method || "คำนวณตามพื้นที่/ความยาวที่ปรากฏในแบบ"}</div></td>
           <td style="text-align: center;">
@@ -732,7 +781,8 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
       if (!pageResult) return;
       const baseImg = pageResult.image;
 
-      document.getElementById("modalTitle").innerText = `🔍 ตำแหน่งอ้างอิง (หน้า ${pageResult.page}/${pageResult.total}): ${item.item_name} (${item.net_quantity})`;
+      const confText = item.confidence_score ? ` [ความมั่นใจ: ${item.confidence_score}%]` : "";
+      document.getElementById("modalTitle").innerText = `🔍 ตำแหน่งอ้างอิง (หน้า ${pageResult.page}/${pageResult.total}): ${item.item_name} (${item.net_quantity})${confText}`;
       
       const verificationInfo = item.verification_method ? `<br><b>🔍 วิธีตรวจสอบที่มาปริมาณ:</b> ${item.verification_method}` : "";
       document.getElementById("modalDesc").innerHTML = `<b>คำอธิบายตำแหน่ง:</b> ${loc.location_description || "ไม่มีคำอธิบายเพิ่มเติม"}${verificationInfo}`;
@@ -764,11 +814,11 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
         ctx.fillRect(xmin, ymin, w, h);
 
         ctx.fillStyle = "#dc2626";
-        ctx.fillRect(xmin, ymin > 30 ? ymin - 30 : ymin, 200, 30);
+        ctx.fillRect(xmin, ymin > 30 ? ymin - 30 : ymin, 240, 30);
 
         ctx.fillStyle = "#ffffff";
         ctx.font = "bold 15px sans-serif";
-        ctx.fillText(`📍 หน้า ${pageResult.page}: พื้นที่คำนวณ`, xmin + 8, (ymin > 30 ? ymin - 30 : ymin) + 21);
+        ctx.fillText(`📍 หน้า ${pageResult.page}: พื้นที่คำนวณ (${item.confidence_score || 90}%)`, xmin + 8, (ymin > 30 ? ymin - 30 : ymin) + 21);
       }
       document.getElementById("viewerModal").style.display = "flex";
     }
@@ -786,12 +836,13 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
 
     function exportCSV() {
       if (!window.currentBOQData || window.currentBOQData.length === 0) return;
-      let csvContent = "\uFEFFหมวดงาน,รหัสอ้างอิง,รายการงาน,ปริมาณสุทธิ,สินค้า SCG แนะนำ,ประมาณการสั่งซื้อจริง,หมายเหตุการคำนวณ,วิธีตรวจสอบที่มาปริมาณ,หน้าที่พบ,คำอธิบายตำแหน่ง\n";
+      let csvContent = "\uFEFFหมวดงาน,รหัสอ้างอิง,รายการงาน,ปริมาณสุทธิ,สินค้า SCG แนะนำ,ประมาณการสั่งซื้อจริง,ความมั่นใจ (%),หมายเหตุการคำนวณ,วิธีตรวจสอบที่มาปริมาณ,หน้าที่พบ,คำอธิบายตำแหน่ง\n";
       window.currentBOQData.forEach(row => {
         const page = (row.source_location && row.source_location.page_number) ? row.source_location.page_number : "-";
         const desc = (row.source_location && row.source_location.location_description) ? row.source_location.location_description : "-";
         const audit = row.verification_method ? row.verification_method.replace(/"/g, '""') : "-";
-        csvContent += `"${row.category}","${row.code_ref}","${row.item_name}","${row.net_quantity}","${row.scg_product}","${row.order_estimate}","${row.calculation_note}","${audit}","${page}","${desc}"\n`;
+        const conf = row.confidence_score || "-";
+        csvContent += `"${row.category}","${row.code_ref}","${row.item_name}","${row.net_quantity}","${row.scg_product}","${row.order_estimate}","${conf}","${row.calculation_note}","${audit}","${page}","${desc}"\n`;
       });
       const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
       const url = URL.createObjectURL(blob);
