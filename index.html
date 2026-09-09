@@ -137,6 +137,20 @@
     .btn-view:hover {
       background: #0369a1;
     }
+    .btn-delete {
+      background: #ef4444;
+      color: white;
+      padding: 6px 10px;
+      font-size: 12px;
+      border-radius: 6px;
+      border: none;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background 0.15s;
+    }
+    .btn-delete:hover {
+      background: #dc2626;
+    }
     .table-container {
       overflow-x: auto;
       margin-top: 12px;
@@ -440,7 +454,7 @@
   <div class="card" id="resultCard" style="display: none;">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
       <h3 style="margin: 0;">รายการประเมินปริมาณงานและสินค้า SCG</h3>
-      <span style="font-size: 12px; color: #64748b;">💡 สามารถคลิกแก้ไขตัวเลขในช่อง <b>"ปริมาณสุทธิ"</b> ได้โดยตรง</span>
+      <span style="font-size: 12px; color: #64748b;">💡 สามารถคลิกแก้ไขตัวเลขในช่อง <b>"ปริมาณสุทธิ"</b> หรือกด <b>"ลบ"</b> รายการที่ผิดพลาดได้</span>
     </div>
     <div class="table-container">
       <table id="boqTable">
@@ -456,6 +470,7 @@
             <th>หมายเหตุและวิธีคำนวณ</th>
             <th>🔍 วิธีตรวจสอบที่มาปริมาณ (Audit Trail)</th>
             <th>ตำแหน่งในแบบ</th>
+            <th style="text-align: center;">จัดการ</th>
           </tr>
         </thead>
         <tbody id="boqBody"></tbody>
@@ -656,23 +671,17 @@
       canvas.height = currentDrawPageImg.height;
       ctx.drawImage(currentDrawPageImg, 0, 0);
 
-      // ถ้ารูปมีกรอบที่เลือกไว้แล้ว ให้ทำฉากหลังมืดโปร่งใส
       if (selectedBoxes.length > 0 || currentDragBox) {
         ctx.fillStyle = "rgba(0, 0, 0, 0.4)";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
       }
 
-      // วาดทุกกรอบที่บันทึกไว้ใน Array
       selectedBoxes.forEach((box, idx) => {
-        // เจาะภาพสว่างตรงตำแหน่งกรอบ
         ctx.drawImage(currentDrawPageImg, box.x, box.y, box.w, box.h, box.x, box.y, box.w, box.h);
-
-        // วาดเส้นขอบสีเขียวสด
         ctx.strokeStyle = "#10b981";
         ctx.lineWidth = 6;
         ctx.strokeRect(box.x, box.y, box.w, box.h);
 
-        // ป้ายหัวข้อกำกับลำดับกรอบ #1, #2, #3
         const badgeText = `🎯 กรอบ #${idx + 1}`;
         ctx.fillStyle = "#10b981";
         const badgeY = box.y > 30 ? box.y - 30 : box.y;
@@ -682,7 +691,6 @@
         ctx.fillText(badgeText, box.x + 8, badgeY + 21);
       });
 
-      // วาดกรอบที่กำลังคลิกลากอยู่แบบ Real-time
       if (currentDragBox) {
         ctx.drawImage(currentDrawPageImg, currentDragBox.x, currentDragBox.y, currentDragBox.w, currentDragBox.h, currentDragBox.x, currentDragBox.y, currentDragBox.w, currentDragBox.h);
         ctx.strokeStyle = "#38bdf8";
@@ -748,7 +756,6 @@
       document.getElementById("drawStatus").innerText = "";
     }
 
-    // ฟังก์ชันส่งทุกกรอบ (Multi-Box) ให้ AI คำนวณแยกส่วนแล้วรวมยอด
     async function analyzeMultipleBoxes() {
       if (selectedBoxes.length === 0) {
         alert("กรุณาคลิกลากตีกรอบสี่เหลี่ยมบนแบบอย่างน้อย 1 กรอบก่อนกดคำนวณ");
@@ -766,11 +773,8 @@
       const category = document.getElementById("drawCategorySelect").value;
       const pageNum = parseInt(document.getElementById("drawPageSelect").value);
 
-      // สร้างภาพ Crop ของแต่ละกรอบ และคำนวณ Normalized Box
       const parts = [];
-      const boxesSummary = [];
-
-      selectedBoxes.forEach((box, i) => {
+      selectedBoxes.forEach((box) => {
         const cropCanvas = document.createElement("canvas");
         cropCanvas.width = box.w;
         cropCanvas.height = box.h;
@@ -781,15 +785,8 @@
         parts.push({
           inlineData: { data: b64, mimeType: "image/jpeg" }
         });
-
-        const ymin = Math.round((box.y / currentDrawPageImg.height) * 1000);
-        const xmin = Math.round((box.x / currentDrawPageImg.width) * 1000);
-        const ymax = Math.round(((box.y + box.h) / currentDrawPageImg.height) * 1000);
-        const xmax = Math.round(((box.x + box.w) / currentDrawPageImg.width) * 1000);
-        boxesSummary.push({ segment_index: i + 1, box_2d: [ymin, xmin, ymax, xmax] });
       });
 
-      // กรอบที่ 1 เป็นกรอบหลักสำหรับ Bounding Box รวม
       const primaryBox = selectedBoxes[0];
       const mainYmin = Math.round((primaryBox.y / currentDrawPageImg.height) * 1000);
       const mainXmin = Math.round((primaryBox.x / currentDrawPageImg.width) * 1000);
@@ -1086,6 +1083,7 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
         const manualBadge = item.is_manual_modified ? `<span class="manual-badge">✏️ ปรับแก้/ตีกรอบเอง</span>` : "";
 
         const row = document.createElement("tr");
+        row.id = `boq-row-${index}`;
         row.innerHTML = `
           <td><span class="${badgeClass}">${item.category || "-"}</span></td>
           <td>${item.code_ref || "-"}</td>
@@ -1110,10 +1108,33 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
               ? `<button class="btn-view" onclick="showLocation(${index})">🔍 ดู ${pageLabel}</button>`
               : `<span style="color: #94a3b8; font-size: 11px;">ไม่มีพิกัด</span>`}
           </td>
+          <td style="text-align: center;">
+            <button class="btn-delete" title="ลบรายการนี้ออก" onclick="deleteBOQItem(${index})">🗑️ ลบ</button>
+          </td>
         `;
         tbody.appendChild(row);
       });
-      document.getElementById("resultCard").style.display = "block";
+      document.getElementById("resultCard").style.display = items.length > 0 ? "block" : "none";
+    }
+
+    // ฟังก์ชันลบรายการออกจากตารางและชุดข้อมูล
+    function deleteBOQItem(index) {
+      if (!window.currentBOQData || !window.currentBOQData[index]) return;
+      const targetItem = window.currentBOQData[index];
+      const itemName = targetItem.item_name || "รายการนี้";
+      
+      if (confirm(`คุณต้องการลบ "${itemName}" ออกจากตาราง BOQ ใช่หรือไม่?`)) {
+        // ลบออกจากชุดข้อมูลที่กำลังแสดงผล
+        window.currentBOQData.splice(index, 1);
+        
+        // ลบออกจาก lastRawBOQItems ที่ใช้คำนวณสเปกใหม่
+        if (lastRawBOQItems && lastRawBOQItems.length > index) {
+          lastRawBOQItems.splice(index, 1);
+        }
+        
+        // เรนเดอร์ตารางใหม่ทันที
+        renderBOQTable(window.currentBOQData);
+      }
     }
 
     function updateNetQuantity(index, newValue) {
