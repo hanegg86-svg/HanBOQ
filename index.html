@@ -1014,6 +1014,7 @@
 
         if (parsed && parsed.length > 0) {
           const newItem = parsed[0];
+          newItem._id = "item_" + Date.now() + "_" + Math.floor(Math.random() * 10000);
           newItem.is_manual_modified = true;
           lastRawBOQItems.push(newItem);
           renderBOQTable(lastRawBOQItems);
@@ -1126,9 +1127,15 @@
         const data = await response.json();
         const rawContent = data.candidates[0].content.parts[0].text;
         const boqItems = JSON.parse(rawContent);
+
+        // กำหนด Unique ID ให้แต่ละรายการ
+        boqItems.forEach((item, idx) => {
+          item._id = "item_" + Date.now() + "_" + idx;
+        });
+
         lastRawBOQItems = boqItems;
         recalcBtn.disabled = false;
-        renderBOQTable(boqItems);
+        renderBOQTable(lastRawBOQItems);
         statusDiv.innerText = "ประมวลผลและประมาณการสำเร็จ!";
       } catch (err) {
         statusDiv.innerText = "เกิดข้อผิดพลาดในการประมวลผล กรุณาลองใหม่อีกครั้ง";
@@ -1181,8 +1188,14 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
         const data = await response.json();
         const rawContent = data.candidates[0].content.parts[0].text;
         const updatedItems = JSON.parse(rawContent);
+
+        // คืนค่า _id เดิมกลับมาเพื่อความต่อเนื่อง
+        updatedItems.forEach((item, idx) => {
+          item._id = (lastRawBOQItems[idx] && lastRawBOQItems[idx]._id) ? lastRawBOQItems[idx]._id : "item_" + Date.now() + "_" + idx;
+        });
+
         lastRawBOQItems = updatedItems;
-        renderBOQTable(updatedItems);
+        renderBOQTable(lastRawBOQItems);
         statusDiv.innerText = "คำนวณและอัปเดตสเปกสินค้าใหม่สำเร็จ!";
       } catch (err) {
         statusDiv.innerText = "เกิดข้อผิดพลาดในการคำนวณใหม่ กรุณาลองอีกครั้ง";
@@ -1194,9 +1207,13 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
     function renderBOQTable(items) {
       const tbody = document.getElementById("boqBody");
       tbody.innerHTML = "";
-      window.currentBOQData = items;
 
-      items.forEach((item, index) => {
+      if (!items || items.length === 0) {
+        document.getElementById("resultCard").style.display = "none";
+        return;
+      }
+
+      items.forEach((item) => {
         let badgeClass = "badge badge-other";
         const cat = item.category || "";
         if (cat.includes("ผนัง")) badgeClass = "badge badge-wall";
@@ -1224,19 +1241,19 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
         const manualBadge = item.is_manual_modified ? `<span class="manual-badge">📐 สเกล/ตีกรอบ</span>` : "";
 
         const row = document.createElement("tr");
-        row.id = `boq-row-${index}`;
+        row.id = `boq-row-${item._id}`;
         row.innerHTML = `
           <td><span class="${badgeClass}">${item.category || "-"}</span></td>
           <td>${item.code_ref || "-"}</td>
           <td>${item.item_name || "-"}</td>
           <td>
             <div class="edit-qty-wrapper">
-              <input type="text" class="input-qty ${isModified}" id="qty-input-${index}" value="${item.net_quantity || ""}" onchange="updateNetQuantity(${index}, this.value)">
+              <input type="text" class="input-qty ${isModified}" id="qty-input-${item._id}" value="${item.net_quantity || ""}" onchange="updateNetQuantity('${item._id}', this.value)">
               ${manualBadge}
             </div>
           </td>
           <td style="color: #b91c1c; font-weight: 600;">${item.scg_product || "-"}</td>
-          <td><b id="order-estimate-${index}">${item.order_estimate || "-"}</b></td>
+          <td><b id="order-estimate-${item._id}">${item.order_estimate || "-"}</b></td>
           <td style="text-align: center;">
             <span class="confidence-badge ${confClass}">
               ${confIcon} ${conf}%
@@ -1246,35 +1263,36 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
           <td><div class="audit-text">${item.verification_method || "คำนวณตามพื้นที่/ความยาวที่ปรากฏในแบบ"}</div></td>
           <td style="text-align: center;">
             ${loc && loc.box_2d
-              ? `<button class="btn-view" onclick="showLocation(${index})">🔍 ดู ${pageLabel}</button>`
+              ? `<button class="btn-view" onclick="showLocation('${item._id}')">🔍 ดู ${pageLabel}</button>`
               : `<span style="color: #94a3b8; font-size: 11px;">ไม่มีพิกัด</span>`}
           </td>
           <td style="text-align: center;">
-            <button class="btn-delete" title="ลบรายการนี้ออก" onclick="deleteBOQItem(${index})">🗑️ ลบ</button>
+            <button class="btn-delete" title="ลบรายการนี้ออก" onclick="deleteBOQItem('${item._id}')">🗑️ ลบ</button>
           </td>
         `;
         tbody.appendChild(row);
       });
-      document.getElementById("resultCard").style.display = items.length > 0 ? "block" : "none";
+      document.getElementById("resultCard").style.display = "block";
     }
 
-    function deleteBOQItem(index) {
-      if (!window.currentBOQData || !window.currentBOQData[index]) return;
-      const targetItem = window.currentBOQData[index];
-      const itemName = targetItem.item_name || "รายการนี้";
-      
+    // ฟังก์ชันลบรายการที่แก้บั๊กลบทั้งหมดแล้ว
+    function deleteBOQItem(id) {
+      if (!lastRawBOQItems || lastRawBOQItems.length === 0) return;
+      const targetItem = lastRawBOQItems.find(item => item._id === id);
+      const itemName = targetItem ? (targetItem.item_name || "รายการนี้") : "รายการนี้";
+
       if (confirm(`คุณต้องการลบ "${itemName}" ออกจากตาราง BOQ ใช่หรือไม่?`)) {
-        window.currentBOQData.splice(index, 1);
-        if (lastRawBOQItems && lastRawBOQItems.length > index) {
-          lastRawBOQItems.splice(index, 1);
-        }
-        renderBOQTable(window.currentBOQData);
+        // ใช้ .filter เพื่อคัดเฉพาะ ID นี้ออกอย่างสมบูรณ์
+        lastRawBOQItems = lastRawBOQItems.filter(item => item._id !== id);
+        renderBOQTable(lastRawBOQItems);
       }
     }
 
-    function updateNetQuantity(index, newValue) {
-      if (!window.currentBOQData || !window.currentBOQData[index]) return;
-      const item = window.currentBOQData[index];
+    function updateNetQuantity(id, newValue) {
+      if (!lastRawBOQItems) return;
+      const item = lastRawBOQItems.find(it => it._id === id);
+      if (!item) return;
+
       const trimmed = newValue.trim();
       item.net_quantity = trimmed;
       item.is_manual_modified = true;
@@ -1311,26 +1329,21 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
 
           if (newEstimate) {
             item.order_estimate = newEstimate;
-            const estElem = document.getElementById(`order-estimate-${index}`);
+            const estElem = document.getElementById(`order-estimate-${id}`);
             if (estElem) estElem.innerText = newEstimate;
           }
         }
       }
 
-      if (lastRawBOQItems && lastRawBOQItems[index]) {
-        lastRawBOQItems[index].net_quantity = item.net_quantity;
-        lastRawBOQItems[index].order_estimate = item.order_estimate;
-        lastRawBOQItems[index].is_manual_modified = true;
-      }
-
-      const inputElem = document.getElementById(`qty-input-${index}`);
+      const inputElem = document.getElementById(`qty-input-${id}`);
       if (inputElem) {
         inputElem.classList.add("modified");
       }
     }
 
-    async function showLocation(index) {
-      const item = window.currentBOQData[index];
+    async function showLocation(id) {
+      if (!lastRawBOQItems) return;
+      const item = lastRawBOQItems.find(it => it._id === id);
       if (!item || !item.source_location) return;
       const loc = item.source_location;
       const targetPage = loc.page_number || 1;
@@ -1393,9 +1406,9 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
     };
 
     function exportCSV() {
-      if (!window.currentBOQData || window.currentBOQData.length === 0) return;
+      if (!lastRawBOQItems || lastRawBOQItems.length === 0) return;
       let csvContent = "\uFEFFหมวดงาน,รหัสอ้างอิง,รายการงาน,ปริมาณสุทธิ,สถานะการแก้ไข,สินค้า SCG แนะนำ,ประมาณการสั่งซื้อจริง,ความมั่นใจ (%),หมายเหตุการคำนวณ,วิธีตรวจสอบที่มาปริมาณ,หน้าที่พบ,คำอธิบายตำแหน่ง\n";
-      window.currentBOQData.forEach(row => {
+      lastRawBOQItems.forEach(row => {
         const page = (row.source_location && row.source_location.page_number) ? row.source_location.page_number : "-";
         const desc = (row.source_location && row.source_location.location_description) ? row.source_location.location_description : "-";
         const audit = row.verification_method ? row.verification_method.replace(/"/g, '""') : "-";
