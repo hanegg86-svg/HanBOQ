@@ -12,14 +12,12 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="SCG BOQ">
   
-  <!-- ลิงก์ไฟล์ manifest.json สำหรับติดตั้งแอปบนหน้าจอมือถือ -->
+  <!-- ลิงก์ไฟล์ manifest.json สำหรับติดตั้งแอปบนหน้าจอมือถือและ PC -->
   <link rel="manifest" href="manifest.json">
   
-  <!-- ไอคอนแอปสำหรับ Browser ทั่วไป และ Android (ใช้ไฟล์ icon.png) -->
+  <!-- ไอคอนแอป (ใช้ไฟล์ icon.png) -->
   <link rel="icon" type="image/png" sizes="192x192" href="icon.png">
   <link rel="icon" type="image/png" sizes="512x512" href="icon.png">
-
-  <!-- ไอคอนแอปสำหรับ iPhone / iPad (iOS Home Screen ใช้ไฟล์ icon.png) -->
   <link rel="apple-touch-icon" href="icon.png">
 
   <!-- PDF.js CDN สำหรับเรนเดอร์แบบแปลน PDF หลายหน้า -->
@@ -232,15 +230,15 @@
     .conf-med { background: #fef9c3; color: #854d0e; border: 1px solid #fef08a; }
     .conf-low { background: #fee2e2; color: #b91c1c; border: 1px solid #fecaca; }
 
-    .bundle-text {
-      font-size: 11px;
-      color: #047857;
-      background: #ecfdf5;
-      padding: 4px 6px;
+    .cross-check-tag {
+      display: inline-block;
+      font-size: 10px;
+      background: #dbeafe;
+      color: #1e40af;
+      padding: 1px 5px;
       border-radius: 4px;
-      border-left: 3px solid #10b981;
-      margin-top: 4px;
-      line-height: 1.3;
+      margin-top: 3px;
+      font-weight: 600;
     }
 
     .edit-qty-wrapper {
@@ -428,6 +426,19 @@
     .btn-mode-line { background: #d97706; color: white; }
     .btn-mode-pan { background: #475569; color: white; }
 
+    .snap-indicator-pill {
+      background: #ecfdf5;
+      color: #047857;
+      padding: 5px 10px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 700;
+      border: 1px solid #a7f3d0;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
     .scale-info-badge {
       background: #e0e7ff;
       color: #3730a3;
@@ -510,7 +521,7 @@
   
   <!-- เลือกวัสดุและอัปโหลดเอกสาร -->
   <div class="card">
-    <label>เลือกสเปกหรือวัสดุทดแทน (ระบบรองรับรูปหลายเหลี่ยม Polygon, Multi-Slope และ Accessories Bundle ครบวงจร):</label>
+    <label>เลือกสเปกหรือวัสดุทดแทน (ระบบรองรับ OSNAP, Ortho Lock และ Cross-Check แปลน ↔ รูปตัด ↔ รูปด้าน):</label>
     <div class="grid-options">
       <!-- 1. คอนกรีตและแผ่นพื้นโครงสร้าง CPAC -->
       <div>
@@ -620,13 +631,18 @@
       </div>
     </div>
 
-    <label for="planFile">1. แบบแปลน (Drawing - รองรับ PDF หลายหน้า, PNG, JPG):</label>
+    <label for="planFile">1. แบบแปลนพื้น (Floor Plan - PDF/รูปภาพ):</label>
     <input type="file" id="planFile" accept="image/*,application/pdf" onchange="onFileSelected()">
-    <label for="specFile">2. รายการประกอบแบบ/สเปก (ถ้ามี) - รองรับ PDF, PNG, JPG:</label>
+    
+    <label for="sectionFile" style="color: #0369a1;">📐 2. แบบรูปตัด / รูปด้าน (Section & Elevation - สำหรับตรวจสอบความสูงผนัง & Slope 3D):</label>
+    <input type="file" id="sectionFile" accept="image/*,application/pdf">
+
+    <label for="specFile">3. รายการประกอบแบบ/สเปก (ถ้ามี):</label>
     <input type="file" id="specFile" accept="image/*,application/pdf">
+    
     <div class="btn-group">
-      <button id="processBtn" onclick="processDocuments()">เริ่มวิเคราะห์จากแบบใหม่ (อัตโนมัติทั้งแผ่น)</button>
-      <button id="drawBtn" class="btn-draw" onclick="openManualDrawModal(null)" disabled>🎯 สร้างรายการใหม่ด้วย Calibration & Geometry Tool</button>
+      <button id="processBtn" onclick="processDocuments()">เริ่มวิเคราะห์และ Cross-Check 3D (อัตโนมัติทั้งแผ่น)</button>
+      <button id="drawBtn" class="btn-draw" onclick="openManualDrawModal(null)" disabled>🎯 สร้างรายการใหม่ด้วย Precision Geometry Tool</button>
       <button id="recalcBtn" class="btn-recalc" onclick="recalculateWithNewSpecs()" disabled>🔄 คำนวณใหม่ตามสเปกที่เลือก</button>
     </div>
     <div id="status" class="status-text"></div>
@@ -636,7 +652,7 @@
   <div class="card" id="resultCard" style="display: none;">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
       <h3 style="margin: 0;">รายการประเมินปริมาณงานและสินค้า SCG & คอนกรีต CPAC</h3>
-      <span style="font-size: 12px; color: #64748b;">💡 กดปุ่ม <b>"🔍 ดู/แก้ไขในแบบ"</b> เพื่อใช้ Polygon วาดรูปทรงอิสระ หรือคำนวณแพ็กเกจ Dry Tech/Wire Mesh</span>
+      <span style="font-size: 12px; color: #64748b;">💡 กดปุ่ม <b>"🔍 ดู/แก้ไขในแบบ"</b> (รองรับ Magnetic Snap และกด Shift ค้างเพื่อล็อกฉาก 90°/45°)</span>
     </div>
     <div class="table-container">
       <table id="boqTable">
@@ -650,7 +666,7 @@
             <th>ประมาณการสั่งซื้อจริง (พร้อมแพ็กเกจระบบ)</th>
             <th>ความมั่นใจ</th>
             <th>หมายเหตุและวิธีคำนวณ</th>
-            <th>🔍 วิธีตรวจสอบที่มาปริมาณ (Audit Trail)</th>
+            <th>🔍 การ Cross-Check & ที่มาปริมาณ</th>
             <th style="text-align: center;">ตำแหน่ง & แก้ไขในแบบ</th>
             <th style="text-align: center;">จัดการ</th>
           </tr>
@@ -661,11 +677,11 @@
     <button style="margin-top: 16px; background: #16a34a; width: 100%;" onclick="exportCSV()">Export เป็น Excel (CSV)</button>
   </div>
 
-  <!-- In-Place Drawing & Calibration Modal พร้อม Polygon Tool -->
+  <!-- In-Place Drawing & Calibration Modal พร้อม Snapping & Ortho Lock -->
   <div id="drawModal" class="modal">
     <div class="modal-content">
       <div class="modal-header">
-        <div class="modal-title" id="drawModalHeaderTitle">📐 ตรวจสอบตำแหน่ง & แก้ไขพื้นที่ในแบบแปลน (Polygon & Multi-Zone Support)</div>
+        <div class="modal-title" id="drawModalHeaderTitle">📐 ตรวจสอบตำแหน่ง & แก้ไขพื้นที่ในแบบแปลน (Magnetic Snap & Ortho Lock)</div>
         <span class="close-btn" onclick="closeModal('drawModal')">&times;</span>
       </div>
       
@@ -680,6 +696,8 @@
         <button type="button" id="btnModePoly" class="tool-mode-btn btn-mode-poly" onclick="switchToolMode('polygon')">🔷 3. หลายเหลี่ยม (Polygon)</button>
         <button type="button" id="btnModeLine" class="tool-mode-btn btn-mode-line" onclick="switchToolMode('line')">📐 4. เส้นวัดความยาว (ม.)</button>
         <button type="button" id="btnModePan" class="tool-mode-btn btn-mode-pan" onclick="switchToolMode('pan')">✋ มือเลื่อนแบบ (Pan)</button>
+
+        <span class="snap-indicator-pill" title="ระบบดูดติดมุมอัตโนมัติ และกดปุ่ม Shift ค้างเพื่อล็อกฉาก 90°">🧲 แม่เหล็กดูดมุม & Shift=ล็อกฉาก</span>
 
         <!-- ชนิดการวัด -->
         <div class="measure-type-pill">
@@ -759,9 +777,9 @@
     let singleImageInstance = null;
     let lastRawBOQItems = [];
     
-    let editingItemId = null; // null = สร้างใหม่, string = กำลังแก้ไขแถวนั้นโดยตรง
+    let editingItemId = null;
 
-    // มาตรฐานความชันขั้นต่ำ (Minimum Slope Degrees)
+    // มาตรฐานความชันขั้นต่ำ
     const SCG_ROOF_MIN_SLOPE = {
       "metal_lumax": 0.3,
       "metal_snaplock": 3,
@@ -786,7 +804,7 @@
       return 15;
     }
 
-    // แคตตาล็อกสินค้า SCG และ CPAC พร้อมระบบแพ็กเกจ
+    // แคตตาล็อกสินค้า SCG และ CPAC
     const SCG_PRODUCT_CATALOG = {
       "งานหลังคา": [
         "SCG Roof Metal Sheet ลอน LumaX (รับความชันต่ำสุด 0.3 องศา)",
@@ -855,7 +873,7 @@
 
     // ตัวแปร Geometry & Measurement
     let currentDrawPageImg = null;
-    let currentToolMode = "area"; // 'calibrate', 'area', 'polygon', 'line', 'pan'
+    let currentToolMode = "area";
     let pixelsPerMeter = null;
     let calibrationLine = null;
     let isDrawing = false;
@@ -867,8 +885,12 @@
     let currentPolygonPoints = [];
     let currentMousePos = { x: 0, y: 0 };
 
+    // Snapping & Ortho Variables
+    let activeSnappedPoint = null;
+    const SNAP_RADIUS = 15; // รัศมีแม่เหล็กดูดมุม 15px
+
     // เก็บรายการวัดแบบ Multi-Zone
-    let measuredShapes = []; // Array of { type: 'rect'|'polygon', ... }
+    let measuredShapes = [];
     let measuredLines = [];
 
     // ตัวแปร Viewport Zoom & Pan
@@ -879,6 +901,7 @@
     let panStartX = 0;
     let panStartY = 0;
     let isSpacePressed = false;
+    let isShiftPressed = false;
 
     document.addEventListener("DOMContentLoaded", () => {
       const savedKey = localStorage.getItem("GEMINI_API_KEY");
@@ -1194,6 +1217,63 @@
     }
 
     /* ==========================================================
+       MAGNETIC OBJECT SNAP (OSNAP) & ORTHO LOCK ALGORITHMS
+       ========================================================== */
+    function findMagneticSnapPoint(targetPos) {
+      let closestPt = null;
+      let minDist = SNAP_RADIUS / zoomScale;
+
+      const checkPoint = (pt) => {
+        if (!pt) return;
+        const dist = Math.sqrt(Math.pow(targetPos.x - pt.x, 2) + Math.pow(targetPos.y - pt.y, 2));
+        if (dist < minDist) {
+          minDist = dist;
+          closestPt = { x: pt.x, y: pt.y };
+        }
+      };
+
+      // 1. ตรวจสอบจุดใน Polygon ที่กำลังวาด
+      currentPolygonPoints.forEach(checkPoint);
+
+      // 2. ตรวจสอบจุดใน Shapes ที่วาดเสร็จแล้วทั้งหมด
+      measuredShapes.forEach(shape => {
+        if (shape.type === 'rect') {
+          checkPoint({ x: shape.x, y: shape.y });
+          checkPoint({ x: shape.x + shape.w, y: shape.y });
+          checkPoint({ x: shape.x + shape.w, y: shape.y + shape.h });
+          checkPoint({ x: shape.x, y: shape.y + shape.h });
+        } else if (shape.type === 'polygon' && shape.points) {
+          shape.points.forEach(checkPoint);
+        }
+      });
+
+      // 3. ตรวจสอบปลายเส้นวัดความยาว
+      measuredLines.forEach(l => {
+        checkPoint({ x: l.x1, y: l.y1 });
+        checkPoint({ x: l.x2, y: l.y2 });
+      });
+
+      return closestPt;
+    }
+
+    // ฟังก์ชันคำนวณ Ortho Lock (0, 45, 90 องศา) เมื่อกด Shift ค้าง
+    function applyOrthoLock(baseX, baseY, targetX, targetY) {
+      const dx = targetX - baseX;
+      const dy = targetY - baseY;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist < 2) return { x: targetX, y: targetY };
+
+      let angle = Math.atan2(dy, dx);
+      // Snap to closest 45 degrees (PI / 4)
+      const snapAngle = Math.round(angle / (Math.PI / 4)) * (Math.PI / 4);
+
+      return {
+        x: baseX + dist * Math.cos(snapAngle),
+        y: baseY + dist * Math.sin(snapAngle)
+      };
+    }
+
+    /* ==========================================================
        คำนวณพื้นที่และเส้นรอบรูป POLYGON (SHOELACE FORMULA)
        ========================================================== */
     function calculatePolygonMetrics(points, ppm) {
@@ -1207,10 +1287,8 @@
         const p1 = points[i];
         const p2 = points[(i + 1) % n];
 
-        // Shoelace Formula
         areaSum += (p1.x * p2.y) - (p2.x * p1.y);
 
-        // Perimeter
         const dx = (p2.x - p1.x) / ppm;
         const dy = (p2.y - p1.y) / ppm;
         periSum += Math.sqrt(dx * dx + dy * dy);
@@ -1279,7 +1357,7 @@
       }
 
       document.getElementById("drawModal").style.display = "flex";
-      document.getElementById("drawStatus").innerText = `กำลังโหลดตำแหน่งเดิมของ "${targetItem.item_name}"... ใช้ได้ทั้งสี่เหลี่ยม หรือคลิก '3. หลายเหลี่ยม (Polygon)' เพื่อวาดหักมุม`;
+      document.getElementById("drawStatus").innerText = `กำลังโหลดตำแหน่งเดิมของ "${targetItem.item_name}"... แม่เหล็กดูดมุมทำงานอัตโนมัติ (กด Shift ค้างเพื่อล็อกฉาก)`;
 
       await loadDrawCanvasPage(targetPage);
 
@@ -1324,7 +1402,7 @@
 
     function openManualDrawModal() {
       editingItemId = null;
-      document.getElementById("drawModalHeaderTitle").innerText = "📐 สร้างรายการใหม่ด้วย Calibration & Geometry Tool";
+      document.getElementById("drawModalHeaderTitle").innerText = "📐 สร้างรายการใหม่ด้วย Precision Geometry Tool (OSNAP & Ortho)";
       const select = document.getElementById("drawPageSelect");
       select.innerHTML = "";
       const totalPages = pdfDocumentInstance ? pdfDocumentInstance.numPages : 1;
@@ -1386,19 +1464,19 @@
       } else if (mode === "calibrate") {
         viewport.style.cursor = "default";
         canvas.style.cursor = "crosshair";
-        statusElem.innerText = "📏 โหมดตั้งสเกล: คลิกลากเส้นตรงทับผนังหรือเส้นบอกระยะที่มีตัวเลขระบุ 1 เส้น";
+        statusElem.innerText = "📏 โหมดตั้งสเกล: คลิกลากเส้นตรงทับผนังหรือเส้นบอกระยะ 1 เส้น (กด Shift ค้างเพื่อล็อกแนวตรง)";
       } else if (mode === "polygon") {
         viewport.style.cursor = "default";
         canvas.style.cursor = "crosshair";
-        statusElem.innerText = "🔷 โหมด Polygon: คลิกตามมุมเสา/มุมหลังคาเพื่อวางจุด (ดับเบิลคลิก หรือคลิกจุดแรกเพื่อปิดรูปคำนวณพื้นที่)";
+        statusElem.innerText = "🔷 โหมด Polygon: คลิกวางจุดมุมเสา (มีแม่เหล็กดูดมุม OSNAP | ดับเบิลคลิกเพื่อปิดรูป)";
       } else if (mode === "line") {
         viewport.style.cursor = "default";
         canvas.style.cursor = "crosshair";
-        statusElem.innerText = "📐 โหมดลากเส้นวัดความยาว: คลิกลากเส้นตรงตามแนวชายคาหรือแนวสันหลังคา (เมตร)";
+        statusElem.innerText = "📐 โหมดลากเส้นวัดความยาว: คลิกลากเส้นตรง (กด Shift ค้างเพื่อล็อกฉาก 90°/45°)";
       } else {
         viewport.style.cursor = "default";
         canvas.style.cursor = "crosshair";
-        statusElem.innerText = "🎯 โหมดสี่เหลี่ยม: คลิกลากคลุมพื้นที่ห้อง/หลังคา/แผ่นพื้น";
+        statusElem.innerText = "🎯 โหมดสี่เหลี่ยม: คลิกลากคลุมพื้นที่ (กด Shift ค้างเพื่อสร้างสี่เหลี่ยมจัตุรัส)";
       }
       redrawCanvas();
     }
@@ -1517,7 +1595,7 @@
         ctx.restore();
       });
 
-      // วาดชิ้นงานทั้งหมดที่บันทึกไว้ (ทั้งสี่เหลี่ยม และ Polygon)
+      // วาดชิ้นงานทั้งหมดที่บันทึกไว้
       measuredShapes.forEach((shape, idx) => {
         ctx.save();
         if (shape.type === 'polygon' && shape.points) {
@@ -1534,7 +1612,6 @@
           ctx.lineWidth = 4;
           ctx.stroke();
 
-          // จุด Vertices
           shape.points.forEach(pt => {
             ctx.fillStyle = "#ffffff";
             ctx.beginPath();
@@ -1545,7 +1622,6 @@
             ctx.stroke();
           });
 
-          // ป้ายกำกับ Polygon
           const firstPt = shape.points[0];
           let polyLabel = `🔷 #${idx + 1} (Polygon)`;
           if (mType === "perimeter") {
@@ -1590,7 +1666,7 @@
         ctx.restore();
       });
 
-      // วาด Polygon ที่กำลังคลิกต่อจุดอยู่ (Active Polygon in Progress)
+      // วาด Polygon ที่กำลังคลิกต่อจุดอยู่
       if (currentPolygonPoints.length > 0) {
         ctx.save();
         ctx.strokeStyle = "#38bdf8";
@@ -1600,7 +1676,15 @@
           if (i === 0) ctx.moveTo(pt.x, pt.y);
           else ctx.lineTo(pt.x, pt.y);
         });
-        ctx.lineTo(currentMousePos.x, currentMousePos.y);
+
+        // จุดปลายเส้น (ดูด Snap หรือล็อกฉาก Ortho)
+        let endPt = activeSnappedPoint || currentMousePos;
+        if (isShiftPressed && currentPolygonPoints.length > 0 && !activeSnappedPoint) {
+          const lastPt = currentPolygonPoints[currentPolygonPoints.length - 1];
+          endPt = applyOrthoLock(lastPt.x, lastPt.y, currentMousePos.x, currentMousePos.y);
+        }
+
+        ctx.lineTo(endPt.x, endPt.y);
         ctx.stroke();
 
         currentPolygonPoints.forEach((pt, idx) => {
@@ -1614,12 +1698,12 @@
         if (currentPolygonPoints.length >= 3) {
           ctx.fillStyle = "#facc15";
           ctx.font = "bold 12px sans-serif";
-          ctx.fillText("⭕ คลิกที่นี่เพื่อปิดรูป", firstPt.x + 12, firstPt.y);
+          ctx.fillText("⭕ ดับเบิลคลิก หรือคลิกที่นี่เพื่อปิดรูป", firstPt.x + 12, firstPt.y);
         }
         ctx.restore();
       }
 
-      // วาดสี่เหลี่ยมที่กำลังคลิกลากอยู่แบบ Real-time
+      // วาดสี่เหลี่ยมที่กำลังคลิกลากอยู่
       if (currentDragBox) {
         ctx.drawImage(currentDrawPageImg, currentDragBox.x, currentDragBox.y, currentDragBox.w, currentDragBox.h, currentDragBox.x, currentDragBox.y, currentDragBox.w, currentDragBox.h);
         ctx.strokeStyle = "#38bdf8";
@@ -1650,6 +1734,26 @@
           ctx.fillText(dragLabel, currentDragBox.x + 6, currentDragBox.y - 8);
         }
       }
+
+      // วาด Snap Target Highlight (วงแหวนสีเขียวมะนาว แสดงการดูดมุม OSNAP)
+      if (activeSnappedPoint) {
+        ctx.save();
+        ctx.strokeStyle = "#10b981";
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(activeSnappedPoint.x, activeSnappedPoint.y, 10, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.fillStyle = "rgba(16, 185, 129, 0.4)";
+        ctx.beginPath();
+        ctx.arc(activeSnappedPoint.x, activeSnappedPoint.y, 6, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = "#10b981";
+        ctx.font = "bold 11px sans-serif";
+        ctx.fillText("🧲 SNAP", activeSnappedPoint.x + 14, activeSnappedPoint.y + 4);
+        ctx.restore();
+      }
     }
 
     function setupDrawEvents() {
@@ -1679,21 +1783,25 @@
           viewport.style.cursor = "grab";
           canvas.style.cursor = "grab";
         }
+        if (e.key === "Shift") {
+          isShiftPressed = true;
+          redrawCanvas();
+        }
         if (e.key === "Escape" && currentToolMode === "polygon") {
           currentPolygonPoints = [];
           redrawCanvas();
         }
       });
+
       window.addEventListener("keyup", (e) => {
         if (e.code === "Space") {
           isSpacePressed = false;
-          if (currentToolMode === "pan") {
-            viewport.style.cursor = "grab";
-            canvas.style.cursor = "grab";
-          } else {
-            viewport.style.cursor = "default";
-            canvas.style.cursor = "crosshair";
-          }
+          viewport.style.cursor = (currentToolMode === "pan") ? "grab" : "default";
+          canvas.style.cursor = (currentToolMode === "pan") ? "grab" : "crosshair";
+        }
+        if (e.key === "Shift") {
+          isShiftPressed = false;
+          redrawCanvas();
         }
       });
 
@@ -1708,7 +1816,8 @@
         }
 
         if (e.button === 0) {
-          const coords = getCanvasCoords(e);
+          const rawCoords = getCanvasCoords(e);
+          const coords = activeSnappedPoint || rawCoords;
 
           if (currentToolMode === "polygon") {
             handlePolygonClick(coords);
@@ -1728,8 +1837,8 @@
       };
 
       window.addEventListener("mousemove", (e) => {
-        const coords = getCanvasCoords(e);
-        currentMousePos = coords;
+        const rawCoords = getCanvasCoords(e);
+        currentMousePos = rawCoords;
 
         if (isPanning) {
           panOffsetX = e.clientX - panStartX;
@@ -1738,20 +1847,46 @@
           return;
         }
 
+        // ตรวจหาจุด Magnetic Snap
+        activeSnappedPoint = findMagneticSnapPoint(rawCoords);
+
         if (currentToolMode === "polygon" && currentPolygonPoints.length > 0) {
           redrawCanvas();
           return;
         }
 
-        if (!isDrawing) return;
+        if (!isDrawing) {
+          if (activeSnappedPoint) redrawCanvas();
+          return;
+        }
+
+        let effectiveX = activeSnappedPoint ? activeSnappedPoint.x : rawCoords.x;
+        let effectiveY = activeSnappedPoint ? activeSnappedPoint.y : rawCoords.y;
+
+        // Ortho Lock (Shift Key)
+        if (isShiftPressed && !activeSnappedPoint) {
+          const locked = applyOrthoLock(startX, startY, effectiveX, effectiveY);
+          effectiveX = locked.x;
+          effectiveY = locked.y;
+        }
 
         if (currentToolMode === "calibrate" || currentToolMode === "line") {
-          currentDragLine = { x1: startX, y1: startY, x2: coords.x, y2: coords.y };
+          currentDragLine = { x1: startX, y1: startY, x2: effectiveX, y2: effectiveY };
         } else if (currentToolMode === "area") {
-          const x = Math.min(startX, coords.x);
-          const y = Math.min(startY, coords.y);
-          const w = Math.abs(coords.x - startX);
-          const h = Math.abs(coords.y - startY);
+          let x = Math.min(startX, effectiveX);
+          let y = Math.min(startY, effectiveY);
+          let w = Math.abs(effectiveX - startX);
+          let h = Math.abs(effectiveY - startY);
+
+          // ถ้ากด Shift ในโหมด Area ให้เป็นสี่เหลี่ยมจัตุรัส
+          if (isShiftPressed && !activeSnappedPoint) {
+            const side = Math.max(w, h);
+            w = side;
+            h = side;
+            x = (effectiveX < startX) ? startX - side : startX;
+            y = (effectiveY < startY) ? startY - side : startY;
+          }
+
           currentDragBox = { x, y, w, h };
         }
         redrawCanvas();
@@ -1848,6 +1983,7 @@
         return;
       }
 
+      // ตรวจสอบการคลิกบรรจบจุดแรกเพื่อปิดรูป
       if (currentPolygonPoints.length >= 3) {
         const firstPt = currentPolygonPoints[0];
         const dist = Math.sqrt(Math.pow(coords.x - firstPt.x, 2) + Math.pow(coords.y - firstPt.y, 2));
@@ -1857,7 +1993,13 @@
         }
       }
 
-      currentPolygonPoints.push(coords);
+      let finalCoord = coords;
+      if (isShiftPressed && currentPolygonPoints.length > 0 && !activeSnappedPoint) {
+        const lastPt = currentPolygonPoints[currentPolygonPoints.length - 1];
+        finalCoord = applyOrthoLock(lastPt.x, lastPt.y, coords.x, coords.y);
+      }
+
+      currentPolygonPoints.push(finalCoord);
       redrawCanvas();
     }
 
@@ -1905,6 +2047,7 @@
       currentPolygonPoints = [];
       currentDragBox = null;
       currentDragLine = null;
+      activeSnappedPoint = null;
       updateBoxCounter();
       redrawCanvas();
       document.getElementById("drawStatus").innerText = "ล้างข้อมูลเรียบร้อยแล้ว ลากกรอบหรือคลิก Polygon ใหม่เพื่อวัด";
@@ -2083,12 +2226,14 @@
     }
 
     /* ==========================================================
-       ระบบประมวลผลอัตโนมัติทั้งแผ่น (GEMINI AI PROCESS)
+       ระบบประมวลผลอัตโนมัติ CROSS-CHECK 3D (แปลน ↔ รูปตัด ↔ รูปด้าน)
        ========================================================== */
     async function processDocuments() {
       const apiKey = document.getElementById("apiKey").value.trim();
       const planFile = document.getElementById("planFile").files[0];
+      const sectionFile = document.getElementById("sectionFile").files[0];
       const specFile = document.getElementById("specFile").files[0];
+
       const concreteChoice = document.getElementById("concreteOption").value;
       const roofChoice = document.getElementById("roofOption").value;
       const ceilingInsChoice = document.getElementById("ceilingInsulationOption").value;
@@ -2098,6 +2243,7 @@
       const ceilingChoice = document.getElementById("ceilingOption").value;
       const woodChoice = document.getElementById("woodOption").value;
       const slopeDeg = document.getElementById("roofSlopeDeg").value;
+
       const statusDiv = document.getElementById("status");
       const btn = document.getElementById("processBtn");
       const recalcBtn = document.getElementById("recalcBtn");
@@ -2107,13 +2253,13 @@
         return;
       }
       if (!planFile) {
-        alert("กรุณาเลือกไฟล์แบบแปลน (Drawing)");
+        alert("กรุณาเลือกไฟล์แบบแปลนพื้น (Floor Plan)");
         return;
       }
 
       btn.disabled = true;
       recalcBtn.disabled = true;
-      statusDiv.innerText = "กำลังประมวลผลไฟล์และเตรียมระบบอ่านแบบ...";
+      statusDiv.innerText = "กำลังประมวลผลไฟล์และเตรียมระบบ Cross-Check 3D...";
 
       try {
         await loadPlanDocument(planFile);
@@ -2122,27 +2268,33 @@
         const parts = [];
         const planPart = await fileToGenerativePart(planFile);
         parts.push(planPart);
+
+        if (sectionFile) {
+          statusDiv.innerText = "กำลังอ่านแบบรูปตัด/รูปด้าน (Section & Elevation) เพื่อดึงความสูงและ Slope จริง...";
+          const secPart = await fileToGenerativePart(sectionFile);
+          parts.push(secPart);
+        }
+
         if (specFile) {
           const specPart = await fileToGenerativePart(specFile);
           parts.push(specPart);
         }
 
-        statusDiv.innerText = "Gemini กำลังถอดแบบ วิเคราะห์แยกส่วนพื้นที่ และประเมินค่าความมั่นใจ...";
+        statusDiv.innerText = "Gemini กำลัง Cross-Check ความสูงคาน/ผนัง และองศาหลังคาเพื่อถอดแบบขั้นสูง...";
 
         const promptText = `
-คุณเป็นผู้เชี่ยวชาญการถอดแบบและประมาณราคา (Quantity Surveyor) ประจำเครือ SCG และ CPAC
-วิเคราะห์แบบแปลนที่แนบมานี้ ถอดปริมาณงาน และคำนวณปริมาณสินค้า SCG & คอนกรีต CPAC พร้อมระบบแพ็กเกจอุปกรณ์ติดตั้งครบชุด:
+คุณเป็น Quantity Surveyor (QS) ระดับสูงประจำเครือ SCG และ CPAC
+หน้าที่ของคุณคือการวิเคราะห์แบบแปลนก่อสร้าง พร้อมทำ [Cross-Check ตรวจสอบความสอดคล้อง 3 มิติ (Plan ↔ Section ↔ Elevation)]:
 
-[เงื่อนไขวัสดุทดแทนและความชันหลังคา]:
-1. สเปกงานคอนกรีต/โครงสร้าง CPAC: "${concreteChoice}" (หากพบงานพื้นโครงสร้าง ให้แปลงเป็น CPAC Hollow Core พร้อมคิด Topping หนา 5 ซม. และตะแกรง Wire Mesh 4 มม. @ 20 ซม.)
-2. สเปกหลังคา: "${roofChoice}" โดยมีความชันหลังคา (Roof Slope) อยู่ที่ ${slopeDeg} องศา (สำคัญ: แปลน Top View ต้องนำพื้นที่ราบมาหารด้วย cos(${slopeDeg}°) ก่อนคิดสินค้ากระเบื้อง/LumaX)
-3. สเปกฉนวนปูเหนือฝ้า: "${ceilingInsChoice}" ➔ SCG STAY COOL หนา 75 หรือ 150 มม. ให้คำนวณจากพื้นที่ราบฝ้าเพดาน (ม้วนละ 2.40 ตร.ม. เผื่อ 5%)
-4. สเปกฉนวนใต้หลังคา: "${roofInsChoice}" ➔ SCG FSO หรือ Radiant Barrier ให้คำนวณจากพื้นที่ลาดเอียงหลังคา (Slope Area)
-5. หากพบแนวสันหลังคา/ตะเข้สัน: ให้คิดระบบครอบแห้ง SCG Dry Tech System (ม้วนละ 3 ม.) พ่วงกับกระเบื้องครอบ
-6. สเปกผนัง: "${wallChoice}"
-7. สเปกพื้นสถาปัตย์: "${floorChoice}"
-8. สเปกฝ้าเพดาน: "${ceilingChoice}"
-9. สเปกไม้สังเคราะห์ตกแต่ง: "${woodChoice}"
+[แนวทาง Cross-Check 3D เพื่อความแม่นยำสูงสุด]:
+1. หากมีไฟล์รูปตัด (Section): ให้ตรวจสอบระดับความสูงพื้นถึงใต้ท้องคาน (Clear Height) หรือความสูงพื้นถึงฝ้าจริง ห้ามเดา 2.8 หรือ 3.0 เมตร และนำความสูงจริงนี้มาคูณกับความยาวผนังที่ถอดได้จาก Floor Plan เพื่อคำนวณพื้นที่ผนังก่ออิฐ Q-CON หรือแผ่นสมาร์ทบอร์ด
+2. หากมีไฟล์รูปด้าน (Elevation): ให้ตรวจสอบองศาความชันหลังคาจริง หากในรูปด้านระบุ Slope ต่างจากค่าเริ่มต้น (${slopeDeg}°) ให้อิงตามรูปด้านจริงและบันทึกในหมายเหตุ
+3. งานคอนกรีต/โครงสร้าง CPAC: "${concreteChoice}" (หากพบงานพื้นโครงสร้าง ให้แปลงเป็น CPAC Hollow Core + Topping หนา 5 ซม. + ตะแกรง Wire Mesh 4 มม. @ 20 ซม.)
+4. งานหลังคา: สเปก "${roofChoice}" (Top View ต้องนำพื้นที่ราบมาหารด้วย cos(องศาหลังคา) ก่อนคิดสินค้า)
+5. ฉนวนปูเหนือฝ้า: "${ceilingInsChoice}" (SCG STAY COOL อิงพื้นที่ราบฝ้าเพดาน ม้วนละ 2.40 ตร.ม. เผื่อ 5%)
+6. ฉนวนใต้หลังคา: "${roofInsChoice}" (SCG FSO อิงพื้นที่ลาดเอียงหลังคา)
+7. หากพบแนวสันหลังคา/ตะเข้สัน: ให้คิดระบบครอบแห้ง SCG Dry Tech System (ม้วนละ 3 ม.) พ่วงกับกระเบื้องครอบ
+8. สเปกผนัง: "${wallChoice}", พื้น: "${floorChoice}", ฝ้า: "${ceilingChoice}", ไม้สังเคราะห์: "${woodChoice}"
 
 ส่งคำตอบกลับมาเป็น JSON Array เท่านั้น:
 [
@@ -2153,9 +2305,9 @@
     "net_quantity": "ปริมาณสุทธิ (ระบุ ตร.ม., ม., หรือ คิว)",
     "scg_product": "ชื่อสินค้า SCG หรือ CPAC ที่แนะนำ/ทดแทน",
     "order_estimate": "จำนวนสั่งซื้อจริง พร้อมรายการอุปกรณ์ระบบครบชุด (เช่น Topping + Wire Mesh หรือ Dry Tech)",
-    "confidence_score": 95,
-    "calculation_note": "สูตรคำนวณ หน้ากว้างใช้งาน หรือ % เผื่อเศษที่ใช้",
-    "verification_method": "แสดงแจกแจงแยกส่วนมิติและผลบวกสุทธิอย่างละเอียด",
+    "confidence_score": 98,
+    "calculation_note": "สูตรคำนวณ ความสูงที่ Cross-check ได้จากรูปตัด หรือ % เผื่อเศษ",
+    "verification_method": "สรุปผลการ Cross-check แปลนพื้นกับรูปตัด/รูปด้าน และที่มาตัวเลขอย่างละเอียด",
     "source_location": {
       "page_number": 1,
       "box_2d": [100, 100, 500, 500],
@@ -2188,7 +2340,7 @@
         lastRawBOQItems = boqItems;
         recalcBtn.disabled = false;
         renderBOQTable(lastRawBOQItems);
-        statusDiv.innerText = "ประมวลผลและประมาณการสำเร็จ!";
+        statusDiv.innerText = "ประมวลผลและ Cross-Check 3D สำเร็จเรียบร้อย!";
       } catch (err) {
         statusDiv.innerText = "เกิดข้อผิดพลาดในการประมวลผล กรุณาลองใหม่อีกครั้ง";
       } finally {
@@ -2212,7 +2364,7 @@
       try {
         const promptText = `
 คุณเป็น Quantity Surveyor ประจำ SCG และ CPAC
-นี่คือรายการปริมาณงานเดิม:
+นี่คือรายการปริมาณงานเดิมที่ผ่านการ Cross-Check แล้ว:
 ${JSON.stringify(lastRawBOQItems, null, 2)}
 
 ผู้ใช้ต้องการเปลี่ยนสเปกวัสดุใหม่ดังนี้:
@@ -2297,6 +2449,11 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
         const isModified = item.is_manual_modified ? "modified" : "";
         const manualBadge = item.is_manual_modified ? `<span class="manual-badge">📐 สเกล/แก้ไขแล้ว</span>` : "";
 
+        const hasCrossCheck = (item.verification_method || "").toLowerCase().includes("section") || 
+                              (item.verification_method || "").includes("รูปตัด") || 
+                              (item.verification_method || "").includes("ความสูง");
+        const crossCheckBadge = hasCrossCheck ? `<div class="cross-check-tag">🔍 Cross-Checked 3D</div>` : "";
+
         const row = document.createElement("tr");
         row.id = `boq-row-${item._id}`;
         row.innerHTML = `
@@ -2319,7 +2476,10 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
             </span>
           </td>
           <td style="color: #64748b;">${item.calculation_note || "-"}</td>
-          <td><div class="audit-text">${item.verification_method || "คำนวณตามพื้นที่/ความยาวที่ปรากฏในแบบ"}</div></td>
+          <td>
+            <div class="audit-text">${item.verification_method || "คำนวณตามพื้นที่/ความยาวที่ปรากฏในแบบ"}</div>
+            ${crossCheckBadge}
+          </td>
           <td style="text-align: center;">
             <button class="btn-view" onclick="openInPlaceEditor('${item._id}')">🔍 ดู/แก้ไขในแบบ ${pageLabel}</button>
           </td>
