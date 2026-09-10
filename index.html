@@ -541,11 +541,12 @@
         </select>
       </div>
 
-      <!-- 2. หลังคา + ช่องใส่ Slope พร้อม Auto Default ขั้นต่ำ -->
+      <!-- 2. หลังคา + ช่องใส่ Slope พร้อม Auto Default ขั้นต่ำ (เพิ่ม LumaX 0.3°) -->
       <div>
         <label for="roofOption">2. หมวดงานหลังคา:</label>
         <select id="roofOption" onchange="autoAdjustDefaultSlope()">
           <option value="auto">คำนวณตามแบบระบุ (Default)</option>
+          <option value="metal_lumax">SCG Roof Metal Sheet ลอน LumaX (ขั้นต่ำ 0.3° สไตล์โมเดิร์น)</option>
           <option value="scg_prestige">หลังคาคอนกรีตแผ่นเรียบ SCG Prestige (ขั้นต่ำ 25°)</option>
           <option value="scg_neustile">หลังคาคอนกรีตแผ่นเรียบ SCG Neustile (ขั้นต่ำ 22°)</option>
           <option value="cpac">หลังคาคอนกรีต SCG CPAC ลอนมาตรฐาน (ขั้นต่ำ 17°)</option>
@@ -558,16 +559,38 @@
           📐 ความชันหลังคา (Slope Angle):
         </label>
         <div class="slope-input-group">
-          <input type="number" id="roofSlopeDeg" value="25" min="0" max="75" step="0.5" title="องศาความชันหลังคา">
+          <input type="number" id="roofSlopeDeg" value="0.3" min="0" max="75" step="0.1" title="องศาความชันหลังคา">
           <span style="font-size: 14px; font-weight: bold; color: #475569;">องศา (°)</span>
-          <span style="font-size: 12px; color: #64748b;" id="slopeFactorLabel">(ขั้นต่ำ: 25° | ตัวคูณ: 1.103)</span>
+          <span style="font-size: 12px; color: #64748b;" id="slopeFactorLabel">(ขั้นต่ำ: 0.3° | ตัวคูณ: 1.000)</span>
           <div id="slopeWarning" class="slope-warning-badge">⚠️ องศาต่ำกว่าเกณฑ์มาตรฐาน SCG เสี่ยงน้ำไหลย้อนซึมเข้าใต้หลังคา</div>
         </div>
       </div>
 
-      <!-- 3. ผนัง -->
+      <!-- 3. ฉนวนปูเหนือฝ้าเพดาน (SCG STAY COOL) -->
       <div>
-        <label for="wallOption">3. หมวดงานผนัง:</label>
+        <label for="ceilingInsulationOption" style="color: #c2410c;">🏠 3. ฉนวนปูเหนือฝ้าเพดาน (STAY COOL):</label>
+        <select id="ceilingInsulationOption">
+          <option value="auto">คำนวณตามแบบระบุ (Default)</option>
+          <option value="staycool_75">ฉนวนเหนือฝ้า SCG STAY COOL หนา 75 มม. (3") หุ้มฟอยล์รอบด้าน</option>
+          <option value="staycool_150">ฉนวนเหนือฝ้า SCG STAY COOL หนา 150 มม. (6") กันร้อนสูงสุด</option>
+          <option value="none">ไม่ติดตั้งฉนวนเหนือฝ้า</option>
+        </select>
+      </div>
+
+      <!-- 4. ฉนวนใต้หลังคา (SCG FSO) & แผ่นสะท้อนความร้อน -->
+      <div>
+        <label for="roofInsulationOption" style="color: #b91c1c;">🛡️ 4. ฉนวนใต้หลังคา (SCG FSO) & สะท้อนความร้อน:</label>
+        <select id="roofInsulationOption">
+          <option value="auto">คำนวณตามแบบระบุ (Default)</option>
+          <option value="scg_fso">ฉนวนใยแก้วใต้หลังคา SCG FSO (ติดฟอยล์โรงงาน บุใต้ Metal Sheet/แป)</option>
+          <option value="radiant_barrier">แผ่นสะท้อนความร้อน SCG Radiant Barrier ใต้แปหลังคา</option>
+          <option value="none">ไม่ติดตั้งฉนวนใต้หลังคา</option>
+        </select>
+      </div>
+
+      <!-- 5. ผนัง -->
+      <div>
+        <label for="wallOption">5. หมวดงานผนัง:</label>
         <select id="wallOption">
           <option value="auto">คำนวณตามแบบระบุ (Default)</option>
           <option value="qcon">ก่ออิฐมวลเบา Q-CON + ปูนฉาบเสือมอร์ตาร์</option>
@@ -577,9 +600,9 @@
         </select>
       </div>
 
-      <!-- 4. พื้นสถาปัตย์ -->
+      <!-- 6. พื้นสถาปัตย์ -->
       <div>
-        <label for="floorOption">4. หมวดงานพื้นสถาปัตย์/ตกแต่ง:</label>
+        <label for="floorOption">6. หมวดงานพื้นสถาปัตย์/ตกแต่ง:</label>
         <select id="floorOption">
           <option value="auto">คำนวณตามแบบระบุ (Default)</option>
           <option value="cotto_tile">กระเบื้อง COTTO + ปูนกาวเสือ</option>
@@ -588,9 +611,9 @@
         </select>
       </div>
 
-      <!-- 5. ฝ้าเพดาน -->
+      <!-- 7. ฝ้าเพดาน -->
       <div>
-        <label for="ceilingOption">5. หมวดงานฝ้าเพดาน:</label>
+        <label for="ceilingOption">7. หมวดงานฝ้าเพดาน:</label>
         <select id="ceilingOption">
           <option value="auto">คำนวณตามแบบระบุ (Default)</option>
           <option value="smartboard_ceiling">ฝ้าสมาร์ทบอร์ด SCG ขอบเรียบ หนา 3.5-4 มม. + โครงฝ้า</option>
@@ -599,22 +622,9 @@
         </select>
       </div>
 
-      <!-- 6. ฉนวนกันความร้อน -->
+      <!-- 8. ไม้สังเคราะห์ตกแต่ง Smartwood -->
       <div>
-        <label for="insulationOption">6. หมวดฉนวนกันความร้อน:</label>
-        <select id="insulationOption">
-          <option value="auto">คำนวณตามแบบระบุ (Default)</option>
-          <option value="staycool_75">ฉนวนเหนือฝ้า SCG STAY COOL หนา 75 มม. (3") หุ้มฟอยล์รอบด้าน</option>
-          <option value="staycool_150">ฉนวนเหนือฝ้า SCG STAY COOL หนา 150 มม. (6") กันร้อนสูงสุด</option>
-          <option value="radiant_barrier">แผ่นสะท้อนความร้อน SCG ใต้แปหลังคา (Radiant Barrier)</option>
-          <option value="roof_batt">ฉนวนใยแก้วบุใต้ Metal Sheet (กันร้อน+ซับเสียงฝน)</option>
-          <option value="none">ไม่ติดตั้งฉนวน</option>
-        </select>
-      </div>
-
-      <!-- 7. ไม้สังเคราะห์ตกแต่ง Smartwood -->
-      <div>
-        <label for="woodOption">7. หมวดไม้ตกแต่ง Smartwood:</label>
+        <label for="woodOption">8. หมวดไม้ตกแต่ง Smartwood:</label>
         <select id="woodOption">
           <option value="auto">คำนวณตามแบบระบุ (Default)</option>
           <option value="smartwood_eaves">ไม้เชิงชาย SCG Smartwood 2 in 1 (ตามแนวชายคา)</option>
@@ -640,7 +650,7 @@
   <div class="card" id="resultCard" style="display: none;">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
       <h3 style="margin: 0;">รายการประเมินปริมาณงานและสินค้า SCG & คอนกรีต CPAC</h3>
-      <span style="font-size: 12px; color: #64748b;">💡 กดปุ่ม <b>"🔍 ดู/แก้ไขในแบบ"</b> เพื่อตั้งสเกล วัดพื้นที่/เส้นรอบรูป หรือสลับเป็น Prestige/Neustile/Hollow Core ได้ทันที</span>
+      <span style="font-size: 12px; color: #64748b;">💡 กดปุ่ม <b>"🔍 ดู/แก้ไขในแบบ"</b> เพื่อตั้งสเกล วัดพื้นที่/เส้นรอบรูป หรือสลับเป็น LumaX/Prestige/Hollow Core/STAY COOL ได้ทันที</span>
     </div>
     <div class="table-container">
       <table id="boqTable">
@@ -698,6 +708,8 @@
         <label style="margin: 0;">หมวดงาน:</label>
         <select id="drawCategorySelect" onchange="onCategoryChangedInDrawModal()">
           <option value="งานหลังคา">งานหลังคา</option>
+          <option value="งานฉนวนใต้หลังคา (SCG FSO)">งานฉนวนใต้หลังคา (SCG FSO)</option>
+          <option value="งานฉนวนปูเหนือฝ้า (STAY COOL)">งานฉนวนปูเหนือฝ้า (STAY COOL)</option>
           <option value="งานโครงสร้างและคอนกรีต CPAC">งานโครงสร้างและคอนกรีต CPAC</option>
           <option value="งานฝ้าเพดาน">งานฝ้าเพดาน</option>
           <option value="งานผนัง">งานผนัง</option>
@@ -711,12 +723,12 @@
           <select id="drawProductSelect" onchange="onProductSelectChanged()"></select>
         </div>
 
-        <!-- กล่องระบุ Slope บน Modal เมื่อเป็นงานหลังคา -->
+        <!-- กล่องระบุ Slope บน Modal เมื่อเป็นงานหลังคา หรือฉนวนใต้หลังคา -->
         <div id="modalSlopeContainer" class="slope-pill">
           <span>📐 Slope:</span>
-          <input type="number" id="modalSlopeDeg" value="25" min="0" max="75" step="0.5" style="width: 55px; padding: 2px 4px; font-weight: bold;" onchange="onModalSlopeChanged()">
+          <input type="number" id="modalSlopeDeg" value="0.3" min="0" max="75" step="0.1" style="width: 55px; padding: 2px 4px; font-weight: bold;" onchange="onModalSlopeChanged()">
           <span>องศา</span>
-          <span id="modalSlopeMinLabel" style="font-size: 11px; opacity: 0.85;">(ขั้นต่ำ: 25°)</span>
+          <span id="modalSlopeMinLabel" style="font-size: 11px; opacity: 0.85;">(ขั้นต่ำ: 0.3°)</span>
         </div>
 
         <span class="box-counter" id="boxCounterLabel">เลือกแล้ว 0 กรอบ (0.00 ตร.ม.)</span>
@@ -752,43 +764,53 @@
     
     let editingItemId = null; // null = สร้างใหม่, string = กำลังแก้ไขแถวนั้นโดยตรง
 
-    // มาตรฐานความชันขั้นต่ำ (Minimum Slope Degrees) ตามมาตรฐาน SCG
+    // มาตรฐานความชันขั้นต่ำ (Minimum Slope Degrees) ตามมาตรฐาน SCG (เพิ่ม LumaX 0.3 องศา)
     const SCG_ROOF_MIN_SLOPE = {
-      "scg_prestige": 25,     // SCG Prestige แผ่นเรียบ ขั้นต่ำ 25 องศา
-      "scg_neustile": 22,     // SCG Neustile แผ่นเรียบ ขั้นต่ำ 22 องศา
+      "metal_lumax": 0.3,     // SCG Metal Sheet ลอน LumaX ขั้นต่ำ 0.3 องศา
+      "metal_snaplock": 3,    // Metal Sheet ลอน Snap Lock ขั้นต่ำ 3 องศา
+      "metal_760": 5,         // Metal Sheet ลอน 760 ขั้นต่ำ 5 องศา
+      "roman": 15,            // ลอนคู่ SCG ขั้นต่ำ 15 องศา
       "cpac": 17,             // CPAC ลอนมาตรฐาน ขั้นต่ำ 17 องศา
       "excella": 17,          // SCG Excella เซรามิก ขั้นต่ำ 17 องศา
-      "roman": 15,            // ลอนคู่ SCG ขั้นต่ำ 15 องศา
-      "metal_760": 5,         // Metal Sheet ลอน 760 ขั้นต่ำ 5 องศา
-      "metal_snaplock": 3,    // Metal Sheet ลอน Snap Lock ขั้นต่ำ 3 องศา
-      "auto": 25
+      "scg_neustile": 22,     // SCG Neustile แผ่นเรียบ ขั้นต่ำ 22 องศา
+      "scg_prestige": 25,     // SCG Prestige แผ่นเรียบ ขั้นต่ำ 25 องศา
+      "auto": 0.3
     };
 
     // ฟังก์ชันดึงค่า Slope ขั้นต่ำจากชื่อสินค้า
     function getMinSlopeFromProductName(productName) {
       const p = (productName || "").toLowerCase();
-      if (p.includes("prestige") || p.includes("เพรสทีจ")) return 25;
-      if (p.includes("neustile") || p.includes("นิวสไตล์")) return 22;
-      if (p.includes("cpac") || p.includes("ซีแพค") || p.includes("excella") || p.includes("เอ็กซ์เซลล่า")) return 17;
-      if (p.includes("ลอนคู่") || p.includes("roman")) return 15;
+      if (p.includes("lumax") || p.includes("ลูแมกซ์")) return 0.3;
       if (p.includes("snap lock") || p.includes("snaplock")) return 3;
-      if (p.includes("metal sheet") || p.includes("เมทัลชีท") || p.includes("760")) return 5;
+      if (p.includes("760") || p.includes("noise shield")) return 5;
+      if (p.includes("ลอนคู่") || p.includes("roman")) return 15;
+      if (p.includes("cpac") || p.includes("ซีแพค") || p.includes("excella") || p.includes("เอ็กซ์เซลล่า")) return 17;
+      if (p.includes("neustile") || p.includes("นิวสไตล์")) return 22;
+      if (p.includes("prestige") || p.includes("เพรสทีจ")) return 25;
       return 15;
     }
 
-    // รายการสินค้า SCG และ CPAC แยกตามหมวดหมู่
+    // รายการสินค้า SCG และ CPAC แยกตามหมวดหมู่อย่างถูกต้อง
     const SCG_PRODUCT_CATALOG = {
       "งานหลังคา": [
-        "หลังคาคอนกรีตแผ่นเรียบ SCG Prestige (สไตล์โมเดิร์นคลาสสิก)",
-        "หลังคาคอนกรีตแผ่นเรียบ SCG Neustile (นิวสไตล์ ดีไซน์เรียบหรู)",
-        "หลังคาคอนกรีต SCG CPAC ลอนมาตรฐาน",
-        "SCG Metal Sheet ลอน Snap Lock (ซ่อนสกรู)",
-        "SCG Metal Sheet ลอน 760 Noise Shield (กันเสียงฝน)",
-        "กระเบื้องหลังคาลอนคู่ SCG",
+        "SCG Roof Metal Sheet ลอน LumaX (รับความชันต่ำสุด 0.3 องศา)",
+        "SCG Roof Metal Sheet ลอน Snap Lock (ซ่อนสกรู ขั้นต่ำ 3 องศา)",
+        "SCG Roof Metal Sheet ลอน 760 Noise Shield (กันเสียงฝน)",
+        "หลังคาคอนกรีตแผ่นเรียบ SCG Prestige (ขั้นต่ำ 25 องศา)",
+        "หลังคาคอนกรีตแผ่นเรียบ SCG Neustile (นิวสไตล์ ขั้นต่ำ 22 องศา)",
+        "หลังคาคอนกรีต SCG CPAC ลอนมาตรฐาน (ขั้นต่ำ 17 องศา)",
+        "กระเบื้องหลังคาลอนคู่ SCG (ขั้นต่ำ 15 องศา)",
         "หลังคาเซรามิก SCG Excella",
         "ไม้เชิงชาย SCG Smartwood 2 in 1 (ตามแนวชายคา)",
-        "ครอบสันหลังคา SCG Prestige / Neustile / CPAC",
-        "แผ่นสะท้อนความร้อน SCG ใต้แปหลังคา"
+        "ครอบสันหลังคา SCG Prestige / Neustile / CPAC / LumaX"
+      ],
+      "งานฉนวนใต้หลังคา (SCG FSO)": [
+        "ฉนวนใยแก้วใต้หลังคา SCG FSO (Factory-laminated Foil บุใต้ Metal Sheet/แป)",
+        "แผ่นสะท้อนความร้อน SCG Radiant Barrier ใต้แปหลังคา (ม้วน 60 ตร.ม.)"
+      ],
+      "งานฉนวนปูเหนือฝ้า (STAY COOL)": [
+        "ฉนวนปูเหนือฝ้า SCG STAY COOL หนา 75 มม. (3 นิ้ว หุ้มฟอยล์รอบด้าน)",
+        "ฉนวนปูเหนือฝ้า SCG STAY COOL หนา 150 มม. (6 นิ้ว กันร้อนสูงสุด)"
       ],
       "งานโครงสร้างและคอนกรีต CPAC": [
         "แผ่นพื้นสำเร็จรูป CPAC Hollow Core หนา 10 ซม. (แผ่นพื้นกลวงอัดแรง)",
@@ -827,11 +849,6 @@
         "ฝ้าชายคา สมาร์ทบอร์ด SCG รุ่นมีรูระบายอากาศ (ลดร้อน)",
         "แผ่นยิปซัม SCG ตราช้าง ขอบลาด หนา 9 มม. + โครงพลัสไลน์",
         "ไม้ระแนงฝ้า SCG Smartwood"
-      ],
-      "งานฉนวน": [
-        "ฉนวนเหนือฝ้า SCG STAY COOL หนา 75 มม. (3 นิ้ว)",
-        "ฉนวนเหนือฝ้า SCG STAY COOL หนา 150 มม. (6 นิ้ว)",
-        "แผ่นสะท้อนความร้อน SCG Radiant Barrier (ม้วน 60 ตร.ม.)"
       ]
     };
 
@@ -888,7 +905,7 @@
       
       const updateLabel = () => {
         const roofChoice = document.getElementById("roofOption").value;
-        const minDeg = SCG_ROOF_MIN_SLOPE[roofChoice] || 15;
+        const minDeg = SCG_ROOF_MIN_SLOPE[roofChoice] !== undefined ? SCG_ROOF_MIN_SLOPE[roofChoice] : 0.3;
         const currentDeg = parseFloat(input.value) || 0;
         const mult = getSlopeMultiplier(currentDeg);
         
@@ -909,7 +926,7 @@
     // ฟังก์ชันตั้งค่าความชัน Slope ขั้นต่ำอัตโนมัติตามประเภทหลังคา
     function autoAdjustDefaultSlope() {
       const roofChoice = document.getElementById("roofOption").value;
-      const minDeg = SCG_ROOF_MIN_SLOPE[roofChoice] || 25;
+      const minDeg = SCG_ROOF_MIN_SLOPE[roofChoice] !== undefined ? SCG_ROOF_MIN_SLOPE[roofChoice] : 0.3;
       
       const slopeInput = document.getElementById("roofSlopeDeg");
       const modalSlopeInput = document.getElementById("modalSlopeDeg");
@@ -931,13 +948,14 @@
       select.innerHTML = "";
       
       let key = "งานหลังคา";
-      if (category.includes("หลังคา")) key = "งานหลังคา";
+      if (category.includes("หลังคา") && !category.includes("ฉนวน")) key = "งานหลังคา";
+      else if (category.includes("ฉนวนใต้หลังคา") || category.includes("FSO")) key = "งานฉนวนใต้หลังคา (SCG FSO)";
+      else if (category.includes("ฉนวนปูเหนือฝ้า") || category.includes("STAY COOL")) key = "งานฉนวนปูเหนือฝ้า (STAY COOL)";
       else if (category.includes("โครงสร้าง") || category.includes("คอนกรีต") || category.includes("CPAC") || category.includes("Hollow") || category.includes("Post")) key = "งานโครงสร้างและคอนกรีต CPAC";
       else if (category.includes("ไม้")) key = "งานไม้สังเคราะห์/ตกแต่ง";
       else if (category.includes("ผนัง")) key = "งานผนัง";
       else if (category.includes("พื้น")) key = "งานพื้น";
       else if (category.includes("ฝ้า") || category.includes("เพดาน")) key = "งานฝ้าเพดาน";
-      else if (category.includes("ฉนวน") || category.includes("กันความร้อน")) key = "งานฉนวน";
 
       const products = SCG_PRODUCT_CATALOG[key] || SCG_PRODUCT_CATALOG["งานหลังคา"];
       let matched = false;
@@ -974,9 +992,10 @@
         measureSelect.value = "perimeter";
       }
 
-      // หากเป็นงานหลังคา ให้ปรับ Auto Slope ขั้นต่ำตามสินค้าตัวนั้น
-      const isRoof = document.getElementById("drawCategorySelect").value === "งานหลังคา";
-      if (isRoof) {
+      // หากเป็นงานหลังคา หรือฉนวนใต้หลังคา ให้ปรับ Auto Slope ขั้นต่ำตามสินค้าตัวนั้น
+      const cat = document.getElementById("drawCategorySelect").value;
+      const isRoofOrUnderRoof = (cat === "งานหลังคา" || cat === "งานฉนวนใต้หลังคา (SCG FSO)");
+      if (isRoofOrUnderRoof) {
         const minSlope = getMinSlopeFromProductName(prod);
         const modalSlopeInput = document.getElementById("modalSlopeDeg");
         const modalMinLabel = document.getElementById("modalSlopeMinLabel");
@@ -1007,7 +1026,8 @@
     function onCategoryChangedInDrawModal() {
       const cat = document.getElementById("drawCategorySelect").value;
       const slopeContainer = document.getElementById("modalSlopeContainer");
-      slopeContainer.style.display = (cat === "งานหลังคา") ? "inline-flex" : "none";
+      const isRoofOrUnderRoof = (cat === "งานหลังคา" || cat === "งานฉนวนใต้หลังคา (SCG FSO)");
+      slopeContainer.style.display = isRoofOrUnderRoof ? "inline-flex" : "none";
       populateProductDropdown(cat, null);
     }
 
@@ -1030,8 +1050,9 @@
         warning.style.display = "none";
       }
       
-      const isRoof = document.getElementById("drawCategorySelect").value === "งานหลังคา";
-      if (isRoof) {
+      const cat = document.getElementById("drawCategorySelect").value;
+      const isRoofOrUnderRoof = (cat === "งานหลังคา" || cat === "งานฉนวนใต้หลังคา (SCG FSO)");
+      if (isRoofOrUnderRoof) {
         selectedBoxes.forEach(box => {
           box.slopeDeg = modalSlope;
           box.slopeAreaM = box.flatAreaM * mult;
@@ -1193,7 +1214,11 @@
 
       const catSelect = document.getElementById("drawCategorySelect");
       const cat = targetItem.category || "";
-      if (cat.includes("หลังคา")) {
+      if (cat.includes("ฉนวนใต้หลังคา") || cat.includes("FSO")) {
+        catSelect.value = "งานฉนวนใต้หลังคา (SCG FSO)";
+      } else if (cat.includes("ฉนวนปูเหนือฝ้า") || cat.includes("STAY COOL")) {
+        catSelect.value = "งานฉนวนปูเหนือฝ้า (STAY COOL)";
+      } else if (cat.includes("หลังคา")) {
         catSelect.value = "งานหลังคา";
       } else if (cat.includes("โครงสร้าง") || cat.includes("คอนกรีต") || cat.includes("CPAC") || cat.includes("Hollow") || cat.includes("Post")) {
         catSelect.value = "งานโครงสร้างและคอนกรีต CPAC";
@@ -1209,8 +1234,8 @@
       
       populateProductDropdown(catSelect.value, targetItem.scg_product);
       
-      const isRoof = catSelect.value === "งานหลังคา";
-      document.getElementById("modalSlopeContainer").style.display = isRoof ? "inline-flex" : "none";
+      const isRoofOrUnderRoof = (catSelect.value === "งานหลังคา" || catSelect.value === "งานฉนวนใต้หลังคา (SCG FSO)");
+      document.getElementById("modalSlopeContainer").style.display = isRoofOrUnderRoof ? "inline-flex" : "none";
       const slopeMatch = (targetItem.verification_method || "").match(/Slope\s*([\d.]+)/i);
       if (slopeMatch) {
         document.getElementById("modalSlopeDeg").value = slopeMatch[1];
@@ -1248,7 +1273,7 @@
           h: h,
           widthM: 0,
           heightM: 0,
-          flatAreaM: isRoof ? (origVal / slopeMultiplier) : origVal,
+          flatAreaM: isRoofOrUnderRoof ? (origVal / slopeMultiplier) : origVal,
           slopeAreaM: origVal,
           perimeterM: origVal,
           slopeDeg: currentSlopeDeg
@@ -1353,7 +1378,8 @@
     }
 
     function updateBoxCounter() {
-      const isRoof = document.getElementById("drawCategorySelect").value === "งานหลังคา";
+      const cat = document.getElementById("drawCategorySelect").value;
+      const isRoofOrUnderRoof = (cat === "งานหลังคา" || cat === "งานฉนวนใต้หลังคา (SCG FSO)");
       const mType = document.getElementById("measureTypeSelect").value;
       const label = document.getElementById("boxCounterLabel");
 
@@ -1369,7 +1395,7 @@
       } else {
         const totalFlat = selectedBoxes.reduce((sum, b) => sum + (b.flatAreaM || 0), 0);
         const totalSlope = selectedBoxes.reduce((sum, b) => sum + (b.slopeAreaM || b.flatAreaM || 0), 0);
-        if (isRoof) {
+        if (isRoofOrUnderRoof) {
           label.innerText = `เลือกแล้ว ${selectedBoxes.length} กรอบ (ราบ: ${totalFlat.toFixed(2)} ตร.ม. | ลาดเอียง: ${totalSlope.toFixed(2)} ตร.ม.)`;
         } else {
           label.innerText = `เลือกแล้ว ${selectedBoxes.length} กรอบ (${totalFlat.toFixed(2)} ตร.ม.)`;
@@ -1385,7 +1411,8 @@
       canvas.height = currentDrawPageImg.height;
       ctx.drawImage(currentDrawPageImg, 0, 0);
 
-      const isRoof = document.getElementById("drawCategorySelect").value === "งานหลังคา";
+      const cat = document.getElementById("drawCategorySelect").value;
+      const isRoofOrUnderRoof = (cat === "งานหลังคา" || cat === "งานฉนวนใต้หลังคา (SCG FSO)");
       const mType = document.getElementById("measureTypeSelect").value;
       const currentSlopeDeg = parseFloat(document.getElementById("modalSlopeDeg").value) || 0;
       const slopeMultiplier = getSlopeMultiplier(currentSlopeDeg);
@@ -1453,7 +1480,7 @@
       selectedBoxes.forEach((box, idx) => {
         ctx.drawImage(currentDrawPageImg, box.x, box.y, box.w, box.h, box.x, box.y, box.w, box.h);
 
-        ctx.strokeStyle = isRoof ? "#ef4444" : "#10b981";
+        ctx.strokeStyle = isRoofOrUnderRoof ? "#ef4444" : "#10b981";
         ctx.lineWidth = 5;
         ctx.strokeRect(box.x, box.y, box.w, box.h);
 
@@ -1461,14 +1488,14 @@
         if (mType === "perimeter" && box.perimeterM) {
           badgeLabel = `🔄 #${idx + 1}: เส้นรอบรูป = ${box.perimeterM.toFixed(2)} ม. (กว้าง ${box.widthM.toFixed(1)} × ยาว ${box.heightM.toFixed(1)} ม.)`;
         } else if (box.flatAreaM) {
-          if (isRoof) {
-            badgeLabel = `🎯 #${idx + 1}: ราบ ${box.flatAreaM.toFixed(1)} ➔ ลาดเอียง (${box.slopeDeg || currentSlopeDeg}°) = ${box.slopeAreaM.toFixed(1)} ตร.ม.`;
+          if (isRoofOrUnderRoof) {
+            badgeLabel = `🎯 #${idx + 1}: ราบ ${box.flatAreaM.toFixed(1)} ➔ ลาดเอียง (${box.slopeDeg !== undefined ? box.slopeDeg : currentSlopeDeg}°) = ${box.slopeAreaM.toFixed(1)} ตร.ม.`;
           } else {
             badgeLabel = `🎯 #${idx + 1}: ${box.flatAreaM.toFixed(2)} ตร.ม.`;
           }
         }
 
-        ctx.fillStyle = isRoof ? "#ef4444" : "#10b981";
+        ctx.fillStyle = isRoofOrUnderRoof ? "#ef4444" : "#10b981";
         const badgeY = box.y > 32 ? box.y - 32 : box.y;
         const textWidth = ctx.measureText(badgeLabel).width + 24;
         ctx.fillRect(box.x, badgeY, Math.max(190, textWidth), 30);
@@ -1496,7 +1523,7 @@
           } else {
             const flatM = wM * hM;
             dragLabel = `📐 ราบ ${flatM.toFixed(2)} ตร.ม.`;
-            if (isRoof) {
+            if (isRoofOrUnderRoof) {
               const slopeM = flatM * slopeMultiplier;
               dragLabel = `📐 ราบ ${flatM.toFixed(1)} ➔ ลาดเอียง (${currentSlopeDeg}°) = ${slopeM.toFixed(1)} ตร.ม.`;
             }
@@ -1651,7 +1678,8 @@
         } else if (currentToolMode === "area" && currentDragBox) {
           if (currentDragBox.w > 10 && currentDragBox.h > 10) {
             let widthM = 0, heightM = 0, flatAreaM = 0, slopeAreaM = 0, perimeterM = 0;
-            const isRoof = document.getElementById("drawCategorySelect").value === "งานหลังคา";
+            const cat = document.getElementById("drawCategorySelect").value;
+            const isRoofOrUnderRoof = (cat === "งานหลังคา" || cat === "งานฉนวนใต้หลังคา (SCG FSO)");
             const currentSlopeDeg = parseFloat(document.getElementById("modalSlopeDeg").value) || 0;
             const slopeMultiplier = getSlopeMultiplier(currentSlopeDeg);
 
@@ -1659,7 +1687,7 @@
               widthM = currentDragBox.w / pixelsPerMeter;
               heightM = currentDragBox.h / pixelsPerMeter;
               flatAreaM = widthM * heightM;
-              slopeAreaM = isRoof ? (flatAreaM * slopeMultiplier) : flatAreaM;
+              slopeAreaM = isRoofOrUnderRoof ? (flatAreaM * slopeMultiplier) : flatAreaM;
               perimeterM = 2 * (widthM + heightM);
             }
 
@@ -1717,9 +1745,9 @@
         return;
       }
 
-      const isRoof = document.getElementById("drawCategorySelect").value === "งานหลังคา";
-      const chosenProduct = document.getElementById("drawProductSelect").value;
       const category = document.getElementById("drawCategorySelect").value;
+      const isRoofOrUnderRoof = (category === "งานหลังคา" || category === "งานฉนวนใต้หลังคา (SCG FSO)");
+      const chosenProduct = document.getElementById("drawProductSelect").value;
       const pageNum = parseInt(document.getElementById("drawPageSelect").value);
       const slopeDeg = document.getElementById("modalSlopeDeg").value;
 
@@ -1738,16 +1766,16 @@
         let parts = selectedBoxes.map((b, i) => `กรอบ #${i+1} [2×(${b.widthM.toFixed(2)}+${b.heightM.toFixed(2)}) = ${b.perimeterM.toFixed(2)} ม.]`);
         auditSummary = `[คิดเส้นรอบรูปอาคาร]: ${parts.join(" + ")} = รวมความยาวแนวชายคา ${chosenValue.toFixed(2)} เมตร`;
       } else {
-        chosenValue = isRoof 
+        chosenValue = isRoofOrUnderRoof 
           ? selectedBoxes.reduce((sum, b) => sum + (b.slopeAreaM || 0), 0)
           : selectedBoxes.reduce((sum, b) => sum + (b.flatAreaM || 0), 0);
         chosenUnit = "ตร.ม.";
         let parts = selectedBoxes.map((b, i) => {
-          return isRoof 
-            ? `กรอบ #${i+1} (ราบ ${b.flatAreaM.toFixed(2)} ม.² ÷ cos(${b.slopeDeg || slopeDeg}°) = ลาดเอียง ${b.slopeAreaM.toFixed(2)} ม.²)`
+          return isRoofOrUnderRoof 
+            ? `กรอบ #${i+1} (ราบ ${b.flatAreaM.toFixed(2)} ม.² ÷ cos(${b.slopeDeg !== undefined ? b.slopeDeg : slopeDeg}°) = ลาดเอียง ${b.slopeAreaM.toFixed(2)} ม.²)`
             : `กรอบ #${i+1} (${b.flatAreaM.toFixed(2)} ม.²)`;
         });
-        auditSummary = isRoof 
+        auditSummary = isRoofOrUnderRoof 
           ? `[คำนวณ Slope ${slopeDeg}°]: ${parts.join(" + ")} = รวมพื้นที่ลาดเอียงสุทธิ ${chosenValue.toFixed(2)} ตร.ม.`
           : `${parts.join(" + ")} = รวมสุทธิ ${chosenValue.toFixed(2)} ตร.ม.`;
       }
@@ -1776,11 +1804,13 @@
 
 หน้าที่ของคุณ:
 1. คำนวณจำนวนสั่งซื้อจริง (order_estimate) ให้เหมาะสมกับหน่วยของสินค้า:
-   - กระเบื้อง SCG Prestige / Neustile: อัตราใช้งาน ~11 แผ่น/ตร.ม. ➔ สูตร: ceil(พื้นที่ ตร.ม. * 11 * 1.05) แผ่น (เผื่อเศษ 5%)
+   - หลังคา SCG LumaX / Metal Sheet: คิดตามพื้นที่ ตร.ม. เผื่อเศษ 5%
+   - กระเบื้อง SCG Prestige / Neustile: อัตราใช้งาน ~11 แผ่น/ตร.ม. ➔ สูตร: ceil(พื้นที่ ตร.ม. * 11 * 1.05) แผ่น
    - กระเบื้อง CPAC: 11 แผ่น/ตร.ม. เผื่อ 5%
-   - Metal Sheet: คำนวณตาม ตร.ม. เผื่อ 5%
+   - ฉนวนปูเหนือฝ้า SCG STAY COOL: คิดตามพื้นที่ราบฝ้าเพดาน (ม้วนละ 2.40 ตร.ม. เผื่อ 5%)
+   - ฉนวนใต้หลังคา SCG FSO: คิดตามพื้นที่ลาดเอียงหลังคา ตร.ม. เผื่อ 5%
    - แผ่นพื้น CPAC Hollow Core: คิดตามพื้นที่ ตร.ม. เผื่อระยะพาดคานหัวท้าย 5% + คอนกรีต Topping หนา 5 ซม. (คิว = ตร.ม. * 0.05 * 1.05)
-   - ระบบพื้น Post-tension: คิดตามพื้นที่ ตร.ม. พร้อมคิดลวดสลิง PC Strand 0.5" (~3.5-4.5 กก./ตร.ม.) และคอนกรีตกำลังอัดสูง CPAC ตามความหนาพื้น
+   - ระบบพื้น Post-tension: คิดตามพื้นที่ ตร.ม. พร้อมคิดลวดสลิง PC Strand 0.5" (~3.5-4.5 กก./ตร.ม.) และคอนกรีตกำลังอัดสูง CPAC
    - คอนกรีตผสมเสร็จ CPAC (คิว / ลบ.ม.): หากผู้ใช้วัดเป็น ตร.ม. ให้คิดความหนาพื้นเฉลี่ย 10-15 ซม. เผื่อ 5% หรือถ้าเป็น คิว ให้คิดเผื่อ 5%
    - ไม้เชิงชาย SCG Smartwood 2 in 1: ความยาว 3.00 ม./ท่อน ➔ สูตร: ceil((ความยาวเมตร / 3.0) * 1.05) ท่อน
 2. สรุปสูตรคำนวณและสัดส่วนเผื่อเศษใน calculation_note
@@ -1866,10 +1896,11 @@
       const specFile = document.getElementById("specFile").files[0];
       const concreteChoice = document.getElementById("concreteOption").value;
       const roofChoice = document.getElementById("roofOption").value;
+      const ceilingInsChoice = document.getElementById("ceilingInsulationOption").value;
+      const roofInsChoice = document.getElementById("roofInsulationOption").value;
       const wallChoice = document.getElementById("wallOption").value;
       const floorChoice = document.getElementById("floorOption").value;
       const ceilingChoice = document.getElementById("ceilingOption").value;
-      const insulationChoice = document.getElementById("insulationOption").value;
       const woodChoice = document.getElementById("woodOption").value;
       const slopeDeg = document.getElementById("roofSlopeDeg").value;
       const statusDiv = document.getElementById("status");
@@ -1909,27 +1940,29 @@
 
 [เงื่อนไขวัสดุทดแทนและความชันหลังคา]:
 1. สเปกงานคอนกรีต/โครงสร้าง CPAC: "${concreteChoice}" (หากพบงานพื้นโครงสร้าง ให้พิจารณาแปลงเป็น CPAC Hollow Core หรือ Post-tension หรือคอนกรีตผสมเสร็จ CPAC)
-2. สเปกหลังคา: "${roofChoice}" โดยมีความชันหลังคา (Roof Slope) อยู่ที่ ${slopeDeg} องศา (สำคัญ: แปลน Top View ต้องนำพื้นที่ราบมาหารด้วย cos(${slopeDeg}°) ก่อนคิดสินค้ากระเบื้อง)
-3. สเปกผนัง: "${wallChoice}"
-4. สเปกพื้นสถาปัตย์: "${floorChoice}"
-5. สเปกฝ้าเพดาน: "${ceilingChoice}"
-6. สเปกฉนวนกันความร้อน: "${insulationChoice}"
-7. สเปกไม้สังเคราะห์ตกแต่ง: "${woodChoice}" (หากมีงานไม้เชิงชาย ให้คิดความยาวเส้นรอบรูปแนวชายคาเป็นเมตร และคำนวณท่อนละ 3.0 ม. เผื่อ 5%)
+2. สเปกหลังคา: "${roofChoice}" โดยมีความชันหลังคา (Roof Slope) อยู่ที่ ${slopeDeg} องศา (สำคัญ: แปลน Top View ต้องนำพื้นที่ราบมาหารด้วย cos(${slopeDeg}°) ก่อนคิดสินค้ากระเบื้อง/LumaX)
+3. สเปกฉนวนปูเหนือฝ้า: "${ceilingInsChoice}" ➔ SCG STAY COOL หนา 75 หรือ 150 มม. ให้คำนวณจากพื้นที่ราบฝ้าเพดาน (ม้วนละ 2.40 ตร.ม. เผื่อ 5%)
+4. สเปกฉนวนใต้หลังคา: "${roofInsChoice}" ➔ SCG FSO หรือ Radiant Barrier ให้คำนวณจากพื้นที่ลาดเอียงหลังคา (Slope Area)
+5. สเปกผนัง: "${wallChoice}"
+6. สเปกพื้นสถาปัตย์: "${floorChoice}"
+7. สเปกฝ้าเพดาน: "${ceilingChoice}"
+8. สเปกไม้สังเคราะห์ตกแต่ง: "${woodChoice}" (หากมีงานไม้เชิงชาย ให้คิดความยาวเส้นรอบรูปแนวชายคาเป็นเมตร และคำนวณท่อนละ 3.0 ม. เผื่อ 5%)
 
 [การคำนวณสินค้า SCG และ CPAC]:
+- หลังคา LumaX / Metal Sheet: คำนวณเป็น ตร.ม. ตามพื้นที่ลาดเอียงหลังคา เผื่อ 5%
 - กระเบื้อง SCG Prestige / Neustile: 11 แผ่น/ตร.ม. เผื่อ 5%
 - กระเบื้อง CPAC: 11 แผ่น/ตร.ม. เผื่อ 5%
+- ฉนวนเหนือฝ้า STAY COOL: ม้วนละ 2.40 ตร.ม. เผื่อ 5% (อิงพื้นที่ราบฝ้าเพดาน)
+- ฉนวนใต้หลังคา SCG FSO: คำนวณเป็น ตร.ม. เผื่อ 5% (อิงพื้นที่ลาดเอียงหลังคา)
 - CPAC Hollow Core: คำนวณเป็น ตร.ม. พร้อม Topping หนา 5 ซม. (คิว = ตร.ม. * 0.05 * 1.05)
 - ระบบพื้น Post-tension: คำนวณเป็น ตร.ม. พร้อมลวดสลิง PC Strand (~4 กก./ตร.ม.) และคอนกรีต CPAC 350-400 ksc Cube
 - คอนกรีตผสมเสร็จ CPAC: คำนวณเป็น คิว (ลบ.ม.) เผื่อ 5%
 - ไม้เชิงชาย SCG Smartwood: แนวชายคารวม (เมตร) / 3.0 ม. เผื่อ 5%
-- ฉนวน STAY COOL: ม้วนละ 2.40 ตร.ม. เผื่อ 5%
-- แผ่นสมาร์ทบอร์ด: แผ่นละ 2.88 ตร.ม. เผื่อ 5%
 
 ส่งคำตอบกลับมาเป็น JSON Array เท่านั้น:
 [
   {
-    "category": "หมวดงาน (เช่น งานหลังคา, งานโครงสร้างและคอนกรีต CPAC, งานผนัง)",
+    "category": "หมวดงาน (เช่น งานหลังคา, งานฉนวนปูเหนือฝ้า (STAY COOL), งานฉนวนใต้หลังคา (SCG FSO), งานโครงสร้างและคอนกรีต CPAC)",
     "code_ref": "รหัสสัญลักษณ์บนแบบ หรือ -",
     "item_name": "ชื่อรายการงานตามแบบแปลน",
     "net_quantity": "ปริมาณสุทธิ (ระบุ ตร.ม., ม., หรือ คิว)",
@@ -1999,14 +2032,15 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
 
 ผู้ใช้ต้องการเปลี่ยนสเปกวัสดุใหม่ดังนี้:
 - หลังคา: "${document.getElementById("roofOption").value}" (ความชัน ${slopeDeg} องศา)
+- ฉนวนปูเหนือฝ้า: "${document.getElementById("ceilingInsulationOption").value}" (SCG STAY COOL อิงพื้นที่ราบฝ้าเพดาน)
+- ฉนวนใต้หลังคา: "${document.getElementById("roofInsulationOption").value}" (SCG FSO อิงพื้นที่ลาดเอียงหลังคา)
 - คอนกรีตและโครงสร้าง CPAC: "${document.getElementById("concreteOption").value}"
 - ผนัง: "${document.getElementById("wallOption").value}"
 - พื้น: "${document.getElementById("floorOption").value}"
 - ฝ้า: "${document.getElementById("ceilingOption").value}"
-- ฉนวน: "${document.getElementById("insulationOption").value}"
 - ไม้สังเคราะห์: "${document.getElementById("woodOption").value}"
 
-กรุณาแปลงสินค้า SCG/CPAC (scg_product) และคำนวณจำนวนสั่งซื้อใหม่ (order_estimate) ให้สอดคล้องกับสเปกใหม่ โดยยังคงรักษาข้อมูลปริมาณสุทธิเดิมไว้ (หากเป็น Prestige หรือ Neustile คิด 11 แผ่น/ตร.ม. เผื่อ 5%)
+กรุณาแปลงสินค้า SCG/CPAC (scg_product) และคำนวณจำนวนสั่งซื้อใหม่ (order_estimate) ให้สอดคล้องกับสเปกใหม่ โดยยังคงรักษาข้อมูลปริมาณสุทธิเดิมไว้
 ส่งผลลัพธ์กลับมาเป็น JSON Array เท่านั้น
 `;
         const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key=${apiKey}`;
@@ -2052,12 +2086,13 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
         let badgeClass = "badge badge-other";
         const cat = item.category || "";
         if (cat.includes("หลังคา")) badgeClass = "badge badge-roof";
+        else if (cat.includes("ฉนวนใต้หลังคา") || cat.includes("FSO")) badgeClass = "badge badge-roof";
+        else if (cat.includes("ฉนวนปูเหนือฝ้า") || cat.includes("STAY COOL") || cat.includes("ฉนวน")) badgeClass = "badge badge-insulation";
         else if (cat.includes("โครงสร้าง") || cat.includes("คอนกรีต") || cat.includes("CPAC") || cat.includes("Hollow") || cat.includes("Post")) badgeClass = "badge badge-concrete";
         else if (cat.includes("ไม้")) badgeClass = "badge badge-wood";
         else if (cat.includes("ผนัง")) badgeClass = "badge badge-wall";
         else if (cat.includes("พื้น")) badgeClass = "badge badge-floor";
         else if (cat.includes("ฝ้า") || cat.includes("เพดาน")) badgeClass = "badge badge-ceiling";
-        else if (cat.includes("ฉนวน") || cat.includes("กันความร้อน")) badgeClass = "badge badge-insulation";
         else if (cat.includes("สุขาภิบาล") || cat.includes("ระบบ")) badgeClass = "badge badge-mep";
 
         const conf = typeof item.confidence_score === "number" ? item.confidence_score : 95;
@@ -2158,14 +2193,17 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
             newEstimate = `${pcs} แผ่น`;
           } else if (product.includes("stay cool") || product.includes("สเตย์คูล")) {
             const rolls = Math.ceil((rawNum / 2.40) * 1.05);
-            newEstimate = `${rolls} ม้วน`;
+            newEstimate = `${rolls} ม้วน (ปูเหนือฝ้า)`;
+          } else if (product.includes("fso")) {
+            const sqmAmt = (rawNum * 1.05).toFixed(1);
+            newEstimate = `${sqmAmt} ตร.ม. (ฉนวนใต้หลังคา)`;
           } else if (product.includes("สมาร์ทบอร์ด") || product.includes("smartboard") || product.includes("ยิปซัม")) {
             const sheets = Math.ceil((rawNum / 2.88) * 1.05);
             newEstimate = `${sheets} แผ่น`;
           } else if (product.includes("ไม้ฝา") || product.includes("siding")) {
             const planks = Math.ceil(rawNum * 2.22 * 1.05);
             newEstimate = `${planks} แผ่น`;
-          } else if (product.includes("metal sheet") || product.includes("เมทัลชีท")) {
+          } else if (product.includes("lumax") || product.includes("metal sheet") || product.includes("เมทัลชีท")) {
             const sqmAmt = (rawNum * 1.05).toFixed(1);
             newEstimate = `${sqmAmt} ตร.ม.`;
           }
