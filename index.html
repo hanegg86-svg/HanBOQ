@@ -192,7 +192,7 @@
     th, td {
       border: 1px solid var(--border);
       padding: 8px 10px;
-      vertical-align: middle;
+      vertical-align: top;
     }
     th {
       background: #f1f5f9;
@@ -239,6 +239,38 @@
       border-radius: 4px;
       margin-top: 3px;
       font-weight: 600;
+    }
+
+    /* สไตล์กล่องแยกรายการสินค้าสั่งซื้อจริงเป็นแต่ละบรรทัด */
+    .order-bundle-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      min-width: 250px;
+    }
+    .order-item-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 6px;
+      background: #f8fafc;
+      padding: 6px 8px;
+      border-radius: 6px;
+      border-left: 3px solid #dc2626;
+      border-top: 1px solid #f1f5f9;
+      border-right: 1px solid #f1f5f9;
+      border-bottom: 1px solid #f1f5f9;
+      font-size: 12px;
+      line-height: 1.35;
+    }
+    .order-item-icon {
+      font-size: 13px;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+    .order-item-text {
+      color: #0f172a;
+      font-weight: 600;
+      word-break: break-word;
     }
 
     .edit-qty-wrapper {
@@ -652,7 +684,7 @@
   <div class="card" id="resultCard" style="display: none;">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
       <h3 style="margin: 0;">รายการประเมินปริมาณงานและสินค้า SCG & คอนกรีต CPAC</h3>
-      <span style="font-size: 12px; color: #64748b;">💡 กดปุ่ม <b>"🔍 ดู/แก้ไขในแบบ"</b> (รองรับ Auto-Edge Pan, Magnetic Snap และ Shift=ฉาก 90°/45°)</span>
+      <span style="font-size: 12px; color: #64748b;">💡 รายการสินค้าและอุปกรณ์เสริมถูกจัดแยกบรรทัดให้อ่านง่ายและตรวจเช็กยอดสั่งซื้อได้ทันที</span>
     </div>
     <div class="table-container">
       <table id="boqTable">
@@ -887,14 +919,14 @@
 
     // Snapping & Ortho Variables
     let activeSnappedPoint = null;
-    const SNAP_RADIUS = 15; // รัศมีแม่เหล็กดูดมุม 15px
+    const SNAP_RADIUS = 15;
 
-    // ตัวแปร Auto-Edge Panning (การเลื่อนแบบแปลนอัตโนมัติ)
+    // ตัวแปร Auto-Edge Panning
     let autoPanAnimationId = null;
     let autoPanVelocity = { x: 0, y: 0 };
     let lastClientMousePos = { x: 0, y: 0 };
-    const EDGE_PAN_THRESHOLD = 45; // ขอบเขตเริ่มเลื่อนจอ (45px จากขอบ)
-    const EDGE_PAN_SPEED = 0.35;    // ตัวคูณความเร็วการเลื่อนจอ
+    const EDGE_PAN_THRESHOLD = 45;
+    const EDGE_PAN_SPEED = 0.35;
 
     // เก็บรายการวัดแบบ Multi-Zone
     let measuredShapes = [];
@@ -1355,24 +1387,18 @@
       let vx = 0;
       let vy = 0;
 
-      // ด้านซ้าย
       if (clientX < vRect.left + EDGE_PAN_THRESHOLD) {
         const dist = (vRect.left + EDGE_PAN_THRESHOLD) - clientX;
         vx = Math.min(30, dist * EDGE_PAN_SPEED + 3);
-      }
-      // ด้านขวา
-      else if (clientX > vRect.right - EDGE_PAN_THRESHOLD) {
+      } else if (clientX > vRect.right - EDGE_PAN_THRESHOLD) {
         const dist = clientX - (vRect.right - EDGE_PAN_THRESHOLD);
         vx = -Math.min(30, dist * EDGE_PAN_SPEED + 3);
       }
 
-      // ด้านบน
       if (clientY < vRect.top + EDGE_PAN_THRESHOLD) {
         const dist = (vRect.top + EDGE_PAN_THRESHOLD) - clientY;
         vy = Math.min(30, dist * EDGE_PAN_SPEED + 3);
-      }
-      // ด้านล่าง
-      else if (clientY > vRect.bottom - EDGE_PAN_THRESHOLD) {
+      } else if (clientY > vRect.bottom - EDGE_PAN_THRESHOLD) {
         const dist = clientY - (vRect.bottom - EDGE_PAN_THRESHOLD);
         vy = -Math.min(30, dist * EDGE_PAN_SPEED + 3);
       }
@@ -1410,6 +1436,41 @@
       const pixelArea = Math.abs(areaSum) / 2;
       const flatAreaM = pixelArea / (ppm * ppm);
       return { flatAreaM, perimeterM: periSum };
+    }
+
+    /* ==========================================================
+       ฟังก์ชันจัดรูปแบบรายการสินค้าสั่งซื้อจริงเป็นแต่ละบรรทัด (MULTI-LINE PARSER)
+       ========================================================== */
+    function formatOrderEstimateHTML(text) {
+      if (!text) return "-";
+
+      // แยกข้อความด้วยขึ้นบรรทัดใหม่, ขีดหน้า (- ), จุด (•), หรือเครื่องหมายแบ่ง
+      let items = text.split(/(?:\r?\n|(?<=\s|^)[-•]\s+|\s*\[|\s*\]|\s*\|\s*)/g)
+                      .map(s => s.trim())
+                      .filter(s => s.length > 0 && s !== "-");
+
+      // กรณีที่ข้อความถูกคั่นด้วย " - "
+      if (items.length <= 1 && text.includes(" - ")) {
+        items = text.split(/\s+-\s+/).map(s => s.trim()).filter(s => s.length > 0);
+      }
+
+      if (items.length === 0) return text;
+
+      let html = `<div class="order-bundle-list">`;
+      items.forEach(item => {
+        // ลบเครื่องหมายขีดหรือจุดที่ติดมาด้านหน้า
+        const cleanItem = item.replace(/^[-•*]\s*/, '').trim();
+        if (cleanItem) {
+          html += `
+            <div class="order-item-row">
+              <span class="order-item-icon">📦</span>
+              <span class="order-item-text">${cleanItem}</span>
+            </div>
+          `;
+        }
+      });
+      html += `</div>`;
+      return html;
     }
 
     /* ==========================================================
@@ -2218,20 +2279,16 @@
 - สัดส่วนเผื่อเศษตามทรงหลังคา: เผื่อ ${wasteFactor}
 
 หน้าที่ของคุณ:
-1. คำนวณจำนวนสั่งซื้อจริง (order_estimate) ให้เหมาะสมกับหน่วยของสินค้า พร้อมแตกแพ็กเกจระบบครบวงจร (Complete System Bundle):
-   - หลังคา LumaX / Metal Sheet: คิดตามพื้นที่ ตร.ม. เผื่อเศษ ${wasteFactor}
-   - กระเบื้อง SCG Prestige / Neustile: อัตราใช้งาน ~11 แผ่น/ตร.ม. เผื่อเศษ ${wasteFactor}
-   - กระเบื้อง CPAC: 11 แผ่น/ตร.ม. เผื่อเศษ ${wasteFactor}
-   - สันหลังคา/ตะเข้สัน (SCG Dry Tech): คิดแนวเมตร ➔ กระเบื้องครอบ ~3.3 แผ่น/ม. + แผ่นรองใต้สันหลังคา SCG Dry Tech System (ม้วนละ 3.0 ม.) = ceil(ม./3) ม้วน + ตะปูเกลียว/ขายึด
-   - ฉนวนปูเหนือฝ้า SCG STAY COOL: คิดตามพื้นที่ราบฝ้าเพดาน (ม้วนละ 2.40 ตร.ม. เผื่อ 5%)
-   - ฉนวนใต้หลังคา SCG FSO: คิดตามพื้นที่ลาดเอียงหลังคา ตร.ม. เผื่อ 5%
-   - แผ่นพื้น CPAC Hollow Core + Topping: คิดพื้นที่แผ่นพื้น ตร.ม. เผื่อ 5% + คอนกรีต Topping หนา 5 ซม. (คิว = ตร.ม. * 0.05 * 1.05) + ตะแกรงเหล็ก Wire Mesh Ø 4 มม. @ 20 ซม. (คิด ตร.ม. * 1.10 เผื่อทาบซ้อน 10%)
-   - ไม้เชิงชาย SCG Smartwood 2 in 1: ความยาว 3.00 ม./ท่อน ➔ สูตร: ceil((ความยาวเมตร / 3.0) * 1.05) ท่อน
+1. คำนวณจำนวนสั่งซื้อจริง (order_estimate) ให้เหมาะสมกับหน่วยของสินค้า พร้อมแตกแพ็กเกจระบบครบวงจร (Complete System Bundle)
+   [สำคัญ]: ให้จัดรูปแบบข้อความโดยแยกแต่ละรายการสินค้าและอุปกรณ์เสริมขึ้นบรรทัดใหม่ โดยใส่เครื่องหมายขีดคั่นหน้า (- ) ทุกบรรทัด เช่น:
+   - แผ่นหลังคา ... (จำนวนและหน่วย)
+   - ฉนวนใต้หลังคา SCG FSO ... (จำนวนและหน่วย)
+   - แผ่นรองใต้สันหลังคา SCG Dry Tech ... (จำนวนและหน่วย)
 2. สรุปสูตรคำนวณและสัดส่วนเผื่อเศษใน calculation_note
 
 ส่งผลลัพธ์เป็น JSON Object ตัวเดียว:
 {
-  "order_estimate": "จำนวนและหน่วยสั่งซื้อจริง พร้อมรายการอุปกรณ์ระบบครบชุด",
+  "order_estimate": "- รายการสินค้า 1 ...\\n- รายการอุปกรณ์ 2 ...",
   "calculation_note": "สูตรคำนวณและสัดส่วนเผื่อเศษที่ใช้"
 }
 `;
@@ -2372,6 +2429,10 @@
 7. หากพบแนวสันหลังคา/ตะเข้สัน: ให้คิดระบบครอบแห้ง SCG Dry Tech System (ม้วนละ 3 ม.) พ่วงกับกระเบื้องครอบ
 8. สเปกผนัง: "${wallChoice}", พื้น: "${floorChoice}", ฝ้า: "${ceilingChoice}", ไม้สังเคราะห์: "${woodChoice}"
 
+[ข้อกำหนดสำคัญมากสำหรับการตอบ order_estimate]:
+ให้แตกรายการสินค้าและอุปกรณ์เสริมเป็นแต่ละบรรทัด โดยขึ้นต้นด้วยเครื่องหมายขีด (- ) ทุกบรรทัด ห้ามเขียนติดเป็นก้อนยาวเด็ดขาด เช่น:
+"- แผ่นหลังคา LumaX: 686.92 ตร.ม. (เผื่อ 5%)\n- ฉนวนใยแก้วใต้หลังคา SCG FSO: 686.92 ตร.ม.\n- ฉนวนปูเหนือฝ้า SCG STAY COOL: 287 ม้วน\n- ไม้เชิงชาย SCG Smartwood 2 in 1: 39 ท่อน"
+
 ส่งคำตอบกลับมาเป็น JSON Array เท่านั้น:
 [
   {
@@ -2380,7 +2441,7 @@
     "item_name": "ชื่อรายการงานตามแบบแปลน",
     "net_quantity": "ปริมาณสุทธิ (ระบุ ตร.ม., ม., หรือ คิว)",
     "scg_product": "ชื่อสินค้า SCG หรือ CPAC ที่แนะนำ/ทดแทน",
-    "order_estimate": "จำนวนสั่งซื้อจริง พร้อมรายการอุปกรณ์ระบบครบชุด (เช่น Topping + Wire Mesh หรือ Dry Tech)",
+    "order_estimate": "- สินค้าหลัก 1 ...\\n- อุปกรณ์เสริม 2 ...",
     "confidence_score": 98,
     "calculation_note": "สูตรคำนวณ ความสูงที่ Cross-check ได้จากรูปตัด หรือ % เผื่อเศษ",
     "verification_method": "สรุปผลการ Cross-check แปลนพื้นกับรูปตัด/รูปด้าน และที่มาตัวเลขอย่างละเอียด",
@@ -2453,7 +2514,7 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
 - ฝ้า: "${document.getElementById("ceilingOption").value}"
 - ไม้สังเคราะห์: "${document.getElementById("woodOption").value}"
 
-กรุณาแปลงสินค้า SCG/CPAC (scg_product) และคำนวณจำนวนสั่งซื้อใหม่ (order_estimate) ให้สอดคล้องกับสเปกใหม่ โดยยังคงรักษาข้อมูลปริมาณสุทธิเดิมไว้
+[สำคัญมาก]: ในฟิลด์ order_estimate ให้จัดรูปแบบแยกแต่ละรายการสินค้าขึ้นบรรทัดใหม่ด้วยเครื่องหมายขีด (- ) ทุกบรรทัด ห้ามเขียนติดกัน
 ส่งผลลัพธ์กลับมาเป็น JSON Array เท่านั้น
 `;
         const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key=${apiKey}`;
@@ -2530,6 +2591,9 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
                               (item.verification_method || "").includes("ความสูง");
         const crossCheckBadge = hasCrossCheck ? `<div class="cross-check-tag">🔍 Cross-Checked 3D</div>` : "";
 
+        // จัดรูปแบบการแสดงผลสั่งซื้อจริงแยกเป็นแต่ละบรรทัด
+        const orderEstimateFormatted = formatOrderEstimateHTML(item.order_estimate);
+
         const row = document.createElement("tr");
         row.id = `boq-row-${item._id}`;
         row.innerHTML = `
@@ -2544,7 +2608,7 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
           </td>
           <td style="color: #b91c1c; font-weight: 600;">${item.scg_product || "-"}</td>
           <td>
-            <b id="order-estimate-${item._id}">${item.order_estimate || "-"}</b>
+            <div id="order-estimate-${item._id}">${orderEstimateFormatted}</div>
           </td>
           <td style="text-align: center;">
             <span class="confidence-badge ${confClass}">
@@ -2598,46 +2662,46 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
           if (product.includes("dry tech") || product.includes("สันหลังคา")) {
             const tiles = Math.ceil(rawNum * 3.3 * 1.05);
             const dryRolls = Math.ceil((rawNum / 3.0) * 1.05);
-            newEstimate = `${tiles} แผ่นครอบ + แผ่นรอง Dry Tech ${dryRolls} ม้วน (3ม./ม้วน)`;
+            newEstimate = `- แผ่นครอบสันหลังคา: ${tiles} แผ่น\n- แผ่นรองใต้สันหลังคา SCG Dry Tech: ${dryRolls} ม้วน (3.0 ม./ม้วน)`;
           } else if (product.includes("hollow core") || product.includes("ฮอลโลว์คอร์")) {
             const sqmAmt = (rawNum * 1.05).toFixed(1);
             const toppingCubic = (rawNum * 0.05 * 1.05).toFixed(2);
             const wireMeshSqm = (rawNum * 1.10).toFixed(1);
-            newEstimate = `${sqmAmt} ตร.ม. [Topping 5ซม. = ${toppingCubic} คิว | Wire Mesh = ${wireMeshSqm} ตร.ม.]`;
+            newEstimate = `- แผ่นพื้น CPAC Hollow Core: ${sqmAmt} ตร.ม.\n- คอนกรีต Topping หนา 5 ซม.: ${toppingCubic} ลบ.ม. (คิว)\n- ตะแกรงเหล็ก Wire Mesh: ${wireMeshSqm} ตร.ม. (เผื่อทาบ 10%)`;
           } else if (product.includes("prestige") || product.includes("เพรสทีจ") || product.includes("neustile") || product.includes("นิวสไตล์") || product.includes("cpac") || product.includes("ลอนคู่")) {
             const tiles = Math.ceil(rawNum * 11 * 1.05);
-            newEstimate = `${tiles} แผ่น`;
+            newEstimate = `- กระเบื้องหลังคา: ${tiles} แผ่น (เผื่อเศษ 5%)`;
           } else if (product.includes("post-tension") || product.includes("โพสต์เทนชั่น")) {
             const sqmAmt = (rawNum * 1.05).toFixed(1);
             const strandKg = Math.round(rawNum * 4.0);
-            newEstimate = `${sqmAmt} ตร.ม. (ลวดสลิง PC Strand ~${strandKg} กก.)`;
+            newEstimate = `- พื้น Post-tension: ${sqmAmt} ตร.ม.\n- ลวดสลิง PC Strand: ~${strandKg} กก.`;
           } else if (product.includes("คอนกรีตผสมเสร็จ") || product.includes("ready-mix")) {
             const cubic = (rawNum * 1.05).toFixed(2);
-            newEstimate = `${cubic} คิว (ลบ.ม.)`;
+            newEstimate = `- คอนกรีตผสมเสร็จ CPAC: ${cubic} คิว (ลบ.ม.)`;
           } else if (product.includes("เชิงชาย") || product.includes("บัว")) {
             const pcs = Math.ceil((rawNum / 3.0) * 1.05);
-            newEstimate = `${pcs} ท่อน (3.0 ม./ท่อน)`;
+            newEstimate = `- ไม้เชิงชาย SCG Smartwood: ${pcs} ท่อน (3.0 ม./ท่อน)`;
           } else if (product.includes("stay cool") || product.includes("สเตย์คูล")) {
             const rolls = Math.ceil((rawNum / 2.40) * 1.05);
-            newEstimate = `${rolls} ม้วน (ปูเหนือฝ้า)`;
+            newEstimate = `- ฉนวนปูเหนือฝ้า SCG STAY COOL: ${rolls} ม้วน (ปูเหนือฝ้า 2.40 ตร.ม./ม้วน)`;
           } else if (product.includes("fso")) {
             const sqmAmt = (rawNum * 1.05).toFixed(1);
-            newEstimate = `${sqmAmt} ตร.ม. (ฉนวนใต้หลังคา)`;
+            newEstimate = `- ฉนวนใยแก้วใต้หลังคา SCG FSO: ${sqmAmt} ตร.ม.`;
           } else if (product.includes("สมาร์ทบอร์ด") || product.includes("smartboard") || product.includes("ยิปซัม")) {
             const sheets = Math.ceil((rawNum / 2.88) * 1.05);
-            newEstimate = `${sheets} แผ่น`;
+            newEstimate = `- แผ่นบอร์ด: ${sheets} แผ่น`;
           } else if (product.includes("ไม้ฝา") || product.includes("siding")) {
             const planks = Math.ceil(rawNum * 2.22 * 1.05);
-            newEstimate = `${planks} แผ่น`;
+            newEstimate = `- ไม้ฝาตกแต่ง: ${planks} แผ่น`;
           } else if (product.includes("lumax") || product.includes("metal sheet") || product.includes("เมทัลชีท")) {
             const sqmAmt = (rawNum * 1.05).toFixed(1);
-            newEstimate = `${sqmAmt} ตร.ม.`;
+            newEstimate = `- แผ่นหลังคา Metal Sheet: ${sqmAmt} ตร.ม.`;
           }
 
           if (newEstimate) {
             item.order_estimate = newEstimate;
             const estElem = document.getElementById(`order-estimate-${id}`);
-            if (estElem) estElem.innerText = newEstimate;
+            if (estElem) estElem.innerHTML = formatOrderEstimateHTML(newEstimate);
           }
         }
       }
@@ -2668,7 +2732,8 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
         const audit = row.verification_method ? row.verification_method.replace(/"/g, '""') : "-";
         const conf = row.confidence_score || "-";
         const modifiedStatus = row.is_manual_modified ? "แก้ไขในแบบแล้ว" : "คำนวณอัตโนมัติ";
-        csvContent += `"${row.category}","${row.code_ref}","${row.item_name}","${row.net_quantity}","${modifiedStatus}","${row.scg_product}","${row.order_estimate}","${conf}","${row.calculation_note}","${audit}","${page}","${desc}"\n`;
+        const cleanEstimate = (row.order_estimate || "-").replace(/[\r\n]+/g, " | ");
+        csvContent += `"${row.category}","${row.code_ref}","${row.item_name}","${row.net_quantity}","${modifiedStatus}","${row.scg_product}","${cleanEstimate}","${conf}","${row.calculation_note}","${audit}","${page}","${desc}"\n`;
       });
       const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
       const url = URL.createObjectURL(blob);
