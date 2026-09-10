@@ -103,11 +103,24 @@
       display: flex;
       align-items: center;
       gap: 8px;
+      flex-wrap: wrap;
     }
     .slope-input-group input {
       margin-bottom: 0;
       width: 90px;
       font-weight: bold;
+    }
+    .slope-warning-badge {
+      display: none;
+      font-size: 11px;
+      font-weight: bold;
+      color: #b45309;
+      background: #fffbeb;
+      border: 1px solid #fde68a;
+      padding: 3px 8px;
+      border-radius: 6px;
+      width: 100%;
+      margin-top: 4px;
     }
     .btn-group {
       display: flex;
@@ -511,7 +524,7 @@
   
   <!-- เลือกวัสดุและอัปโหลดเอกสาร -->
   <div class="card">
-    <label>เลือกสเปกหรือวัสดุทดแทนที่ต้องการคำนวณเปรียบเทียบ (รวมหลังคา Prestige / Neustile และคอนกรีต CPAC):</label>
+    <label>เลือกสเปกหรือวัสดุทดแทนที่ต้องการคำนวณเปรียบเทียบ (ระบบตั้งค่าความชัน Slope ขั้นต่ำอัตโนมัติตามมาตรฐาน SCG):</label>
     <div class="grid-options">
       <!-- 1. คอนกรีตและแผ่นพื้นโครงสร้าง CPAC -->
       <div>
@@ -528,26 +541,27 @@
         </select>
       </div>
 
-      <!-- 2. หลังคา (เพิ่ม Prestige และ Neustile) + ช่องใส่ Slope -->
+      <!-- 2. หลังคา + ช่องใส่ Slope พร้อม Auto Default ขั้นต่ำ -->
       <div>
         <label for="roofOption">2. หมวดงานหลังคา:</label>
         <select id="roofOption" onchange="autoAdjustDefaultSlope()">
           <option value="auto">คำนวณตามแบบระบุ (Default)</option>
-          <option value="scg_prestige">หลังคาคอนกรีตแผ่นเรียบ SCG Prestige (สไตล์โมเดิร์นคลาสสิก)</option>
-          <option value="scg_neustile">หลังคาคอนกรีตแผ่นเรียบ SCG Neustile (นิวสไตล์ ดีไซน์เรียบหรู)</option>
-          <option value="metal_snaplock">SCG Metal Sheet ลอน Snap Lock (ซ่อนสกรู)</option>
-          <option value="metal_760">SCG Metal Sheet ลอน 760 Noise Shield (กันเสียงฝน)</option>
-          <option value="cpac">หลังคาคอนกรีต CPAC ลอนมาตรฐาน</option>
-          <option value="roman">กระเบื้องหลังคาลอนคู่ SCG</option>
-          <option value="excella">หลังคาเซรามิก SCG Excella</option>
+          <option value="scg_prestige">หลังคาคอนกรีตแผ่นเรียบ SCG Prestige (ขั้นต่ำ 25°)</option>
+          <option value="scg_neustile">หลังคาคอนกรีตแผ่นเรียบ SCG Neustile (ขั้นต่ำ 22°)</option>
+          <option value="cpac">หลังคาคอนกรีต SCG CPAC ลอนมาตรฐาน (ขั้นต่ำ 17°)</option>
+          <option value="roman">กระเบื้องหลังคาลอนคู่ SCG (ขั้นต่ำ 15°)</option>
+          <option value="metal_snaplock">SCG Metal Sheet ลอน Snap Lock (ขั้นต่ำ 3°)</option>
+          <option value="metal_760">SCG Metal Sheet ลอน 760 Noise Shield (ขั้นต่ำ 5°)</option>
+          <option value="excella">หลังคาเซรามิก SCG Excella (ขั้นต่ำ 17°)</option>
         </select>
         <label for="roofSlopeDeg" style="margin-top: 6px; font-size: 13px; color: #b91c1c;">
           📐 ความชันหลังคา (Slope Angle):
         </label>
         <div class="slope-input-group">
-          <input type="number" id="roofSlopeDeg" value="30" min="0" max="75" step="0.5" title="องศาความชันหลังคา">
+          <input type="number" id="roofSlopeDeg" value="25" min="0" max="75" step="0.5" title="องศาความชันหลังคา">
           <span style="font-size: 14px; font-weight: bold; color: #475569;">องศา (°)</span>
-          <span style="font-size: 12px; color: #64748b;" id="slopeFactorLabel">(ตัวคูณพื้นที่: 1.155)</span>
+          <span style="font-size: 12px; color: #64748b;" id="slopeFactorLabel">(ขั้นต่ำ: 25° | ตัวคูณ: 1.103)</span>
+          <div id="slopeWarning" class="slope-warning-badge">⚠️ องศาต่ำกว่าเกณฑ์มาตรฐาน SCG เสี่ยงน้ำไหลย้อนซึมเข้าใต้หลังคา</div>
         </div>
       </div>
 
@@ -700,8 +714,9 @@
         <!-- กล่องระบุ Slope บน Modal เมื่อเป็นงานหลังคา -->
         <div id="modalSlopeContainer" class="slope-pill">
           <span>📐 Slope:</span>
-          <input type="number" id="modalSlopeDeg" value="30" min="0" max="75" step="0.5" style="width: 55px; padding: 2px 4px; font-weight: bold;" onchange="onModalSlopeChanged()">
+          <input type="number" id="modalSlopeDeg" value="25" min="0" max="75" step="0.5" style="width: 55px; padding: 2px 4px; font-weight: bold;" onchange="onModalSlopeChanged()">
           <span>องศา</span>
+          <span id="modalSlopeMinLabel" style="font-size: 11px; opacity: 0.85;">(ขั้นต่ำ: 25°)</span>
         </div>
 
         <span class="box-counter" id="boxCounterLabel">เลือกแล้ว 0 กรอบ (0.00 ตร.ม.)</span>
@@ -737,7 +752,31 @@
     
     let editingItemId = null; // null = สร้างใหม่, string = กำลังแก้ไขแถวนั้นโดยตรง
 
-    // รายการสินค้า SCG และ CPAC แยกตามหมวดหมู่ (เพิ่ม Prestige และ Neustile)
+    // มาตรฐานความชันขั้นต่ำ (Minimum Slope Degrees) ตามมาตรฐาน SCG
+    const SCG_ROOF_MIN_SLOPE = {
+      "scg_prestige": 25,     // SCG Prestige แผ่นเรียบ ขั้นต่ำ 25 องศา
+      "scg_neustile": 22,     // SCG Neustile แผ่นเรียบ ขั้นต่ำ 22 องศา
+      "cpac": 17,             // CPAC ลอนมาตรฐาน ขั้นต่ำ 17 องศา
+      "excella": 17,          // SCG Excella เซรามิก ขั้นต่ำ 17 องศา
+      "roman": 15,            // ลอนคู่ SCG ขั้นต่ำ 15 องศา
+      "metal_760": 5,         // Metal Sheet ลอน 760 ขั้นต่ำ 5 องศา
+      "metal_snaplock": 3,    // Metal Sheet ลอน Snap Lock ขั้นต่ำ 3 องศา
+      "auto": 25
+    };
+
+    // ฟังก์ชันดึงค่า Slope ขั้นต่ำจากชื่อสินค้า
+    function getMinSlopeFromProductName(productName) {
+      const p = (productName || "").toLowerCase();
+      if (p.includes("prestige") || p.includes("เพรสทีจ")) return 25;
+      if (p.includes("neustile") || p.includes("นิวสไตล์")) return 22;
+      if (p.includes("cpac") || p.includes("ซีแพค") || p.includes("excella") || p.includes("เอ็กซ์เซลล่า")) return 17;
+      if (p.includes("ลอนคู่") || p.includes("roman")) return 15;
+      if (p.includes("snap lock") || p.includes("snaplock")) return 3;
+      if (p.includes("metal sheet") || p.includes("เมทัลชีท") || p.includes("760")) return 5;
+      return 15;
+    }
+
+    // รายการสินค้า SCG และ CPAC แยกตามหมวดหมู่
     const SCG_PRODUCT_CATALOG = {
       "งานหลังคา": [
         "หลังคาคอนกรีตแผ่นเรียบ SCG Prestige (สไตล์โมเดิร์นคลาสสิก)",
@@ -823,6 +862,7 @@
         document.getElementById("apiKey").value = savedKey;
       }
       setupSlopeFactorListener();
+      autoAdjustDefaultSlope();
     });
 
     function saveApiKey() {
@@ -844,38 +884,46 @@
     function setupSlopeFactorListener() {
       const input = document.getElementById("roofSlopeDeg");
       const label = document.getElementById("slopeFactorLabel");
+      const warning = document.getElementById("slopeWarning");
+      
       const updateLabel = () => {
-        const mult = getSlopeMultiplier(input.value);
-        label.innerText = `(ตัวคูณพื้นที่ลาดเอียง: ${mult.toFixed(3)})`;
+        const roofChoice = document.getElementById("roofOption").value;
+        const minDeg = SCG_ROOF_MIN_SLOPE[roofChoice] || 15;
+        const currentDeg = parseFloat(input.value) || 0;
+        const mult = getSlopeMultiplier(currentDeg);
+        
+        label.innerText = `(ขั้นต่ำ: ${minDeg}° | ตัวคูณ: ${mult.toFixed(3)})`;
+
+        // ตรวจสอบความปลอดภัยองศาขั้นต่ำ
+        if (currentDeg < minDeg) {
+          warning.style.display = "block";
+          warning.innerText = `⚠️ องศา ${currentDeg}° ต่ำกว่าเกณฑ์มาตรฐาน SCG (ขั้นต่ำ ${minDeg}°) เสี่ยงน้ำไหลย้อนซึม`;
+        } else {
+          warning.style.display = "none";
+        }
       };
+
       input.addEventListener("input", updateLabel);
-      updateLabel();
     }
 
+    // ฟังก์ชันตั้งค่าความชัน Slope ขั้นต่ำอัตโนมัติตามประเภทหลังคา
     function autoAdjustDefaultSlope() {
       const roofChoice = document.getElementById("roofOption").value;
+      const minDeg = SCG_ROOF_MIN_SLOPE[roofChoice] || 25;
+      
       const slopeInput = document.getElementById("roofSlopeDeg");
       const modalSlopeInput = document.getElementById("modalSlopeDeg");
-      
-      let defaultDeg = 30;
-      if (roofChoice === "scg_prestige") {
-        defaultDeg = 30; // แนะนำ 25-40 องศา
-      } else if (roofChoice === "scg_neustile") {
-        defaultDeg = 25; // แนะนำ 22-40 องศา
-      } else if (roofChoice.includes("metal")) {
-        defaultDeg = 5;
-      } else if (roofChoice === "roman") {
-        defaultDeg = 20;
-      } else if (roofChoice === "cpac" || roofChoice === "excella") {
-        defaultDeg = 30;
-      }
-      
-      slopeInput.value = defaultDeg;
-      if (modalSlopeInput) modalSlopeInput.value = defaultDeg;
-      
+      const modalMinLabel = document.getElementById("modalSlopeMinLabel");
+
+      slopeInput.value = minDeg;
+      if (modalSlopeInput) modalSlopeInput.value = minDeg;
+      if (modalMinLabel) modalMinLabel.innerText = `(ขั้นต่ำ: ${minDeg}°)`;
+
       const label = document.getElementById("slopeFactorLabel");
-      const mult = getSlopeMultiplier(defaultDeg);
-      label.innerText = `(ตัวคูณพื้นที่ลาดเอียง: ${mult.toFixed(3)})`;
+      const warning = document.getElementById("slopeWarning");
+      const mult = getSlopeMultiplier(minDeg);
+      label.innerText = `(ขั้นต่ำ: ${minDeg}° | ตัวคูณ: ${mult.toFixed(3)})`;
+      if (warning) warning.style.display = "none";
     }
 
     function populateProductDropdown(category, currentProduct) {
@@ -916,6 +964,7 @@
       onProductSelectChanged();
     }
 
+    // เมื่อเปลี่ยนสินค้าใน In-Place Editor ให้ปรับ Auto Default Slope และหน่วยอัตโนมัติ
     function onProductSelectChanged() {
       const prod = (document.getElementById("drawProductSelect").value || "").toLowerCase();
       const measureSelect = document.getElementById("measureTypeSelect");
@@ -924,6 +973,29 @@
       if (isLinearProduct) {
         measureSelect.value = "perimeter";
       }
+
+      // หากเป็นงานหลังคา ให้ปรับ Auto Slope ขั้นต่ำตามสินค้าตัวนั้น
+      const isRoof = document.getElementById("drawCategorySelect").value === "งานหลังคา";
+      if (isRoof) {
+        const minSlope = getMinSlopeFromProductName(prod);
+        const modalSlopeInput = document.getElementById("modalSlopeDeg");
+        const modalMinLabel = document.getElementById("modalSlopeMinLabel");
+        
+        modalSlopeInput.value = minSlope;
+        if (modalMinLabel) modalMinLabel.innerText = `(ขั้นต่ำ: ${minSlope}°)`;
+        
+        // อัปเดตในกล่องหลักด้วย
+        document.getElementById("roofSlopeDeg").value = minSlope;
+        const mult = getSlopeMultiplier(minSlope);
+        document.getElementById("slopeFactorLabel").innerText = `(ขั้นต่ำ: ${minSlope}° | ตัวคูณ: ${mult.toFixed(3)})`;
+        document.getElementById("slopeWarning").style.display = "none";
+
+        selectedBoxes.forEach(box => {
+          box.slopeDeg = minSlope;
+          box.slopeAreaM = box.flatAreaM * mult;
+        });
+      }
+
       onMeasureTypeChanged();
     }
 
@@ -940,16 +1012,28 @@
     }
 
     function onModalSlopeChanged() {
-      const modalSlope = document.getElementById("modalSlopeDeg").value;
+      const modalSlope = parseFloat(document.getElementById("modalSlopeDeg").value) || 0;
       document.getElementById("roofSlopeDeg").value = modalSlope;
-      const label = document.getElementById("slopeFactorLabel");
+      
+      const prod = document.getElementById("drawProductSelect").value;
+      const minSlope = getMinSlopeFromProductName(prod);
       const mult = getSlopeMultiplier(modalSlope);
-      label.innerText = `(ตัวคูณพื้นที่ลาดเอียง: ${mult.toFixed(3)})`;
+      
+      const label = document.getElementById("slopeFactorLabel");
+      const warning = document.getElementById("slopeWarning");
+      label.innerText = `(ขั้นต่ำ: ${minSlope}° | ตัวคูณ: ${mult.toFixed(3)})`;
+      
+      if (modalSlope < minSlope) {
+        warning.style.display = "block";
+        warning.innerText = `⚠️ องศา ${modalSlope}° ต่ำกว่าเกณฑ์มาตรฐาน SCG (ขั้นต่ำ ${minSlope}°)`;
+      } else {
+        warning.style.display = "none";
+      }
       
       const isRoof = document.getElementById("drawCategorySelect").value === "งานหลังคา";
       if (isRoof) {
         selectedBoxes.forEach(box => {
-          box.slopeDeg = parseFloat(modalSlope) || 0;
+          box.slopeDeg = modalSlope;
           box.slopeAreaM = box.flatAreaM * mult;
         });
         updateBoxCounter();
