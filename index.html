@@ -521,7 +521,7 @@
   
   <!-- เลือกวัสดุและอัปโหลดเอกสาร -->
   <div class="card">
-    <label>เลือกสเปกหรือวัสดุทดแทน (ระบบรองรับ OSNAP, Ortho Lock และ Cross-Check แปลน ↔ รูปตัด ↔ รูปด้าน):</label>
+    <label>เลือกสเปกหรือวัสดุทดแทน (ระบบรองรับ Auto-Edge Panning, OSNAP, Ortho Lock และ Cross-Check 3D):</label>
     <div class="grid-options">
       <!-- 1. คอนกรีตและแผ่นพื้นโครงสร้าง CPAC -->
       <div>
@@ -652,7 +652,7 @@
   <div class="card" id="resultCard" style="display: none;">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
       <h3 style="margin: 0;">รายการประเมินปริมาณงานและสินค้า SCG & คอนกรีต CPAC</h3>
-      <span style="font-size: 12px; color: #64748b;">💡 กดปุ่ม <b>"🔍 ดู/แก้ไขในแบบ"</b> (รองรับ Magnetic Snap และกด Shift ค้างเพื่อล็อกฉาก 90°/45°)</span>
+      <span style="font-size: 12px; color: #64748b;">💡 กดปุ่ม <b>"🔍 ดู/แก้ไขในแบบ"</b> (รองรับ Auto-Edge Pan, Magnetic Snap และ Shift=ฉาก 90°/45°)</span>
     </div>
     <div class="table-container">
       <table id="boqTable">
@@ -677,11 +677,11 @@
     <button style="margin-top: 16px; background: #16a34a; width: 100%;" onclick="exportCSV()">Export เป็น Excel (CSV)</button>
   </div>
 
-  <!-- In-Place Drawing & Calibration Modal พร้อม Snapping & Ortho Lock -->
+  <!-- In-Place Drawing & Calibration Modal พร้อม Auto-Edge Pan -->
   <div id="drawModal" class="modal">
     <div class="modal-content">
       <div class="modal-header">
-        <div class="modal-title" id="drawModalHeaderTitle">📐 ตรวจสอบตำแหน่ง & แก้ไขพื้นที่ในแบบแปลน (Magnetic Snap & Ortho Lock)</div>
+        <div class="modal-title" id="drawModalHeaderTitle">📐 ตรวจสอบตำแหน่ง & แก้ไขพื้นที่ในแบบแปลน (Auto-Edge Pan & OSNAP)</div>
         <span class="close-btn" onclick="closeModal('drawModal')">&times;</span>
       </div>
       
@@ -697,7 +697,7 @@
         <button type="button" id="btnModeLine" class="tool-mode-btn btn-mode-line" onclick="switchToolMode('line')">📐 4. เส้นวัดความยาว (ม.)</button>
         <button type="button" id="btnModePan" class="tool-mode-btn btn-mode-pan" onclick="switchToolMode('pan')">✋ มือเลื่อนแบบ (Pan)</button>
 
-        <span class="snap-indicator-pill" title="ระบบดูดติดมุมอัตโนมัติ และกดปุ่ม Shift ค้างเพื่อล็อกฉาก 90°">🧲 แม่เหล็กดูดมุม & Shift=ล็อกฉาก</span>
+        <span class="snap-indicator-pill" title="ระบบเลื่อนแบบอัตโนมัติเมื่อเมาส์ใกล้ขอบจอ และดูดติดมุมอัตโนมัติ">🚀 ขอบจอเลื่อนเอง & 🧲 ดูดมุม</span>
 
         <!-- ชนิดการวัด -->
         <div class="measure-type-pill">
@@ -888,6 +888,13 @@
     // Snapping & Ortho Variables
     let activeSnappedPoint = null;
     const SNAP_RADIUS = 15; // รัศมีแม่เหล็กดูดมุม 15px
+
+    // ตัวแปร Auto-Edge Panning (การเลื่อนแบบแปลนอัตโนมัติ)
+    let autoPanAnimationId = null;
+    let autoPanVelocity = { x: 0, y: 0 };
+    let lastClientMousePos = { x: 0, y: 0 };
+    const EDGE_PAN_THRESHOLD = 45; // ขอบเขตเริ่มเลื่อนจอ (45px จากขอบ)
+    const EDGE_PAN_SPEED = 0.35;    // ตัวคูณความเร็วการเลื่อนจอ
 
     // เก็บรายการวัดแบบ Multi-Zone
     let measuredShapes = [];
@@ -1206,14 +1213,18 @@
       updateTransform();
     }
 
-    function getCanvasCoords(e) {
+    function getCanvasCoordsFromClient(clientX, clientY) {
       const viewport = document.getElementById("canvasViewport");
       const vRect = viewport.getBoundingClientRect();
-      const clientX = e.clientX - vRect.left;
-      const clientY = e.clientY - vRect.top;
-      const canvasX = (clientX - panOffsetX) / zoomScale;
-      const canvasY = (clientY - panOffsetY) / zoomScale;
+      const x = clientX - vRect.left;
+      const y = clientY - vRect.top;
+      const canvasX = (x - panOffsetX) / zoomScale;
+      const canvasY = (y - panOffsetY) / zoomScale;
       return { x: canvasX, y: canvasY };
+    }
+
+    function getCanvasCoords(e) {
+      return getCanvasCoordsFromClient(e.clientX, e.clientY);
     }
 
     /* ==========================================================
@@ -1232,10 +1243,8 @@
         }
       };
 
-      // 1. ตรวจสอบจุดใน Polygon ที่กำลังวาด
       currentPolygonPoints.forEach(checkPoint);
 
-      // 2. ตรวจสอบจุดใน Shapes ที่วาดเสร็จแล้วทั้งหมด
       measuredShapes.forEach(shape => {
         if (shape.type === 'rect') {
           checkPoint({ x: shape.x, y: shape.y });
@@ -1247,7 +1256,6 @@
         }
       });
 
-      // 3. ตรวจสอบปลายเส้นวัดความยาว
       measuredLines.forEach(l => {
         checkPoint({ x: l.x1, y: l.y1 });
         checkPoint({ x: l.x2, y: l.y2 });
@@ -1256,7 +1264,6 @@
       return closestPt;
     }
 
-    // ฟังก์ชันคำนวณ Ortho Lock (0, 45, 90 องศา) เมื่อกด Shift ค้าง
     function applyOrthoLock(baseX, baseY, targetX, targetY) {
       const dx = targetX - baseX;
       const dy = targetY - baseY;
@@ -1264,13 +1271,119 @@
       if (dist < 2) return { x: targetX, y: targetY };
 
       let angle = Math.atan2(dy, dx);
-      // Snap to closest 45 degrees (PI / 4)
       const snapAngle = Math.round(angle / (Math.PI / 4)) * (Math.PI / 4);
 
       return {
         x: baseX + dist * Math.cos(snapAngle),
         y: baseY + dist * Math.sin(snapAngle)
       };
+    }
+
+    /* ==========================================================
+       AUTO-EDGE PANNING (เลื่อนแบบแปลนอัตโนมัติเมื่อชิดขอบจอ)
+       ========================================================== */
+    function updateActiveMeasurementShape() {
+      const rawCoords = getCanvasCoordsFromClient(lastClientMousePos.x, lastClientMousePos.y);
+      currentMousePos = rawCoords;
+      activeSnappedPoint = findMagneticSnapPoint(rawCoords);
+
+      let effectiveX = activeSnappedPoint ? activeSnappedPoint.x : rawCoords.x;
+      let effectiveY = activeSnappedPoint ? activeSnappedPoint.y : rawCoords.y;
+
+      if (isShiftPressed && !activeSnappedPoint) {
+        const locked = applyOrthoLock(startX, startY, effectiveX, effectiveY);
+        effectiveX = locked.x;
+        effectiveY = locked.y;
+      }
+
+      if (isDrawing) {
+        if (currentToolMode === "calibrate" || currentToolMode === "line") {
+          currentDragLine = { x1: startX, y1: startY, x2: effectiveX, y2: effectiveY };
+        } else if (currentToolMode === "area") {
+          let x = Math.min(startX, effectiveX);
+          let y = Math.min(startY, effectiveY);
+          let w = Math.abs(effectiveX - startX);
+          let h = Math.abs(effectiveY - startY);
+
+          if (isShiftPressed && !activeSnappedPoint) {
+            const side = Math.max(w, h);
+            w = side;
+            h = side;
+            x = (effectiveX < startX) ? startX - side : startX;
+            y = (effectiveY < startY) ? startY - side : startY;
+          }
+
+          currentDragBox = { x, y, w, h };
+        }
+      }
+      redrawCanvas();
+    }
+
+    function startAutoPanLoop() {
+      if (autoPanAnimationId !== null) return;
+
+      const loop = () => {
+        if (autoPanVelocity.x !== 0 || autoPanVelocity.y !== 0) {
+          panOffsetX += autoPanVelocity.x;
+          panOffsetY += autoPanVelocity.y;
+          updateTransform();
+          updateActiveMeasurementShape();
+        }
+        autoPanAnimationId = requestAnimationFrame(loop);
+      };
+      autoPanAnimationId = requestAnimationFrame(loop);
+    }
+
+    function stopAutoPanLoop() {
+      if (autoPanAnimationId !== null) {
+        cancelAnimationFrame(autoPanAnimationId);
+        autoPanAnimationId = null;
+      }
+      autoPanVelocity = { x: 0, y: 0 };
+    }
+
+    function checkEdgePanning(clientX, clientY) {
+      const isDrawingActive = isDrawing || (currentToolMode === "polygon" && currentPolygonPoints.length > 0);
+      if (!isDrawingActive || currentToolMode === "pan") {
+        stopAutoPanLoop();
+        return;
+      }
+
+      const viewport = document.getElementById("canvasViewport");
+      const vRect = viewport.getBoundingClientRect();
+
+      let vx = 0;
+      let vy = 0;
+
+      // ด้านซ้าย
+      if (clientX < vRect.left + EDGE_PAN_THRESHOLD) {
+        const dist = (vRect.left + EDGE_PAN_THRESHOLD) - clientX;
+        vx = Math.min(30, dist * EDGE_PAN_SPEED + 3);
+      }
+      // ด้านขวา
+      else if (clientX > vRect.right - EDGE_PAN_THRESHOLD) {
+        const dist = clientX - (vRect.right - EDGE_PAN_THRESHOLD);
+        vx = -Math.min(30, dist * EDGE_PAN_SPEED + 3);
+      }
+
+      // ด้านบน
+      if (clientY < vRect.top + EDGE_PAN_THRESHOLD) {
+        const dist = (vRect.top + EDGE_PAN_THRESHOLD) - clientY;
+        vy = Math.min(30, dist * EDGE_PAN_SPEED + 3);
+      }
+      // ด้านล่าง
+      else if (clientY > vRect.bottom - EDGE_PAN_THRESHOLD) {
+        const dist = clientY - (vRect.bottom - EDGE_PAN_THRESHOLD);
+        vy = -Math.min(30, dist * EDGE_PAN_SPEED + 3);
+      }
+
+      autoPanVelocity = { x: vx, y: vy };
+
+      if (vx !== 0 || vy !== 0) {
+        startAutoPanLoop();
+      } else {
+        stopAutoPanLoop();
+      }
     }
 
     /* ==========================================================
@@ -1357,7 +1470,7 @@
       }
 
       document.getElementById("drawModal").style.display = "flex";
-      document.getElementById("drawStatus").innerText = `กำลังโหลดตำแหน่งเดิมของ "${targetItem.item_name}"... แม่เหล็กดูดมุมทำงานอัตโนมัติ (กด Shift ค้างเพื่อล็อกฉาก)`;
+      document.getElementById("drawStatus").innerText = `กำลังโหลดตำแหน่งเดิมของ "${targetItem.item_name}"... (ลากเมาส์ชิดขอบจอเพื่อเลื่อนแบบอัตโนมัติ)`;
 
       await loadDrawCanvasPage(targetPage);
 
@@ -1402,7 +1515,7 @@
 
     function openManualDrawModal() {
       editingItemId = null;
-      document.getElementById("drawModalHeaderTitle").innerText = "📐 สร้างรายการใหม่ด้วย Precision Geometry Tool (OSNAP & Ortho)";
+      document.getElementById("drawModalHeaderTitle").innerText = "📐 สร้างรายการใหม่ด้วย Precision Geometry Tool (Auto-Edge Pan)";
       const select = document.getElementById("drawPageSelect");
       select.innerHTML = "";
       const totalPages = pdfDocumentInstance ? pdfDocumentInstance.numPages : 1;
@@ -1464,19 +1577,19 @@
       } else if (mode === "calibrate") {
         viewport.style.cursor = "default";
         canvas.style.cursor = "crosshair";
-        statusElem.innerText = "📏 โหมดตั้งสเกล: คลิกลากเส้นตรงทับผนังหรือเส้นบอกระยะ 1 เส้น (กด Shift ค้างเพื่อล็อกแนวตรง)";
+        statusElem.innerText = "📏 โหมดตั้งสเกล: คลิกลากเส้นตรงทับผนังหรือเส้นบอกระยะ 1 เส้น (ลากชนขอบจอจะเลื่อนเอง)";
       } else if (mode === "polygon") {
         viewport.style.cursor = "default";
         canvas.style.cursor = "crosshair";
-        statusElem.innerText = "🔷 โหมด Polygon: คลิกวางจุดมุมเสา (มีแม่เหล็กดูดมุม OSNAP | ดับเบิลคลิกเพื่อปิดรูป)";
+        statusElem.innerText = "🔷 โหมด Polygon: คลิกวางจุดมุมเสา (ขอบจอเลื่อนเอง | ดับเบิลคลิกเพื่อปิดรูป)";
       } else if (mode === "line") {
         viewport.style.cursor = "default";
         canvas.style.cursor = "crosshair";
-        statusElem.innerText = "📐 โหมดลากเส้นวัดความยาว: คลิกลากเส้นตรง (กด Shift ค้างเพื่อล็อกฉาก 90°/45°)";
+        statusElem.innerText = "📐 โหมดลากเส้นวัดความยาว: คลิกลากเส้นตรง (ลากชนขอบจอจะเลื่อนเอง | Shift=ล็อกฉาก)";
       } else {
         viewport.style.cursor = "default";
         canvas.style.cursor = "crosshair";
-        statusElem.innerText = "🎯 โหมดสี่เหลี่ยม: คลิกลากคลุมพื้นที่ (กด Shift ค้างเพื่อสร้างสี่เหลี่ยมจัตุรัส)";
+        statusElem.innerText = "🎯 โหมดสี่เหลี่ยม: คลิกลากคลุมพื้นที่ (ลากชนขอบจอจะเลื่อนจออัตโนมัติ ไม่ต้องซูมออก)";
       }
       redrawCanvas();
     }
@@ -1677,7 +1790,6 @@
           else ctx.lineTo(pt.x, pt.y);
         });
 
-        // จุดปลายเส้น (ดูด Snap หรือล็อกฉาก Ortho)
         let endPt = activeSnappedPoint || currentMousePos;
         if (isShiftPressed && currentPolygonPoints.length > 0 && !activeSnappedPoint) {
           const lastPt = currentPolygonPoints[currentPolygonPoints.length - 1];
@@ -1735,7 +1847,7 @@
         }
       }
 
-      // วาด Snap Target Highlight (วงแหวนสีเขียวมะนาว แสดงการดูดมุม OSNAP)
+      // วาด Snap Target Highlight (วงแหวนสีเขียวมะนาว OSNAP)
       if (activeSnappedPoint) {
         ctx.save();
         ctx.strokeStyle = "#10b981";
@@ -1785,10 +1897,11 @@
         }
         if (e.key === "Shift") {
           isShiftPressed = true;
-          redrawCanvas();
+          updateActiveMeasurementShape();
         }
         if (e.key === "Escape" && currentToolMode === "polygon") {
           currentPolygonPoints = [];
+          stopAutoPanLoop();
           redrawCanvas();
         }
       });
@@ -1801,7 +1914,7 @@
         }
         if (e.key === "Shift") {
           isShiftPressed = false;
-          redrawCanvas();
+          updateActiveMeasurementShape();
         }
       });
 
@@ -1816,6 +1929,7 @@
         }
 
         if (e.button === 0) {
+          lastClientMousePos = { x: e.clientX, y: e.clientY };
           const rawCoords = getCanvasCoords(e);
           const coords = activeSnappedPoint || rawCoords;
 
@@ -1837,8 +1951,7 @@
       };
 
       window.addEventListener("mousemove", (e) => {
-        const rawCoords = getCanvasCoords(e);
-        currentMousePos = rawCoords;
+        lastClientMousePos = { x: e.clientX, y: e.clientY };
 
         if (isPanning) {
           panOffsetX = e.clientX - panStartX;
@@ -1847,52 +1960,13 @@
           return;
         }
 
-        // ตรวจหาจุด Magnetic Snap
-        activeSnappedPoint = findMagneticSnapPoint(rawCoords);
-
-        if (currentToolMode === "polygon" && currentPolygonPoints.length > 0) {
-          redrawCanvas();
-          return;
-        }
-
-        if (!isDrawing) {
-          if (activeSnappedPoint) redrawCanvas();
-          return;
-        }
-
-        let effectiveX = activeSnappedPoint ? activeSnappedPoint.x : rawCoords.x;
-        let effectiveY = activeSnappedPoint ? activeSnappedPoint.y : rawCoords.y;
-
-        // Ortho Lock (Shift Key)
-        if (isShiftPressed && !activeSnappedPoint) {
-          const locked = applyOrthoLock(startX, startY, effectiveX, effectiveY);
-          effectiveX = locked.x;
-          effectiveY = locked.y;
-        }
-
-        if (currentToolMode === "calibrate" || currentToolMode === "line") {
-          currentDragLine = { x1: startX, y1: startY, x2: effectiveX, y2: effectiveY };
-        } else if (currentToolMode === "area") {
-          let x = Math.min(startX, effectiveX);
-          let y = Math.min(startY, effectiveY);
-          let w = Math.abs(effectiveX - startX);
-          let h = Math.abs(effectiveY - startY);
-
-          // ถ้ากด Shift ในโหมด Area ให้เป็นสี่เหลี่ยมจัตุรัส
-          if (isShiftPressed && !activeSnappedPoint) {
-            const side = Math.max(w, h);
-            w = side;
-            h = side;
-            x = (effectiveX < startX) ? startX - side : startX;
-            y = (effectiveY < startY) ? startY - side : startY;
-          }
-
-          currentDragBox = { x, y, w, h };
-        }
-        redrawCanvas();
+        checkEdgePanning(e.clientX, e.clientY);
+        updateActiveMeasurementShape();
       });
 
       window.addEventListener("mouseup", (e) => {
+        stopAutoPanLoop();
+
         if (isPanning) {
           isPanning = false;
           viewport.style.cursor = (currentToolMode === "pan" || isSpacePressed) ? "grab" : "default";
@@ -1983,7 +2057,6 @@
         return;
       }
 
-      // ตรวจสอบการคลิกบรรจบจุดแรกเพื่อปิดรูป
       if (currentPolygonPoints.length >= 3) {
         const firstPt = currentPolygonPoints[0];
         const dist = Math.sqrt(Math.pow(coords.x - firstPt.x, 2) + Math.pow(coords.y - firstPt.y, 2));
@@ -2025,6 +2098,7 @@
       });
 
       currentPolygonPoints = [];
+      stopAutoPanLoop();
       updateBoxCounter();
       redrawCanvas();
     }
@@ -2037,6 +2111,7 @@
       } else if (measuredShapes.length > 0) {
         measuredShapes.pop();
       }
+      stopAutoPanLoop();
       updateBoxCounter();
       redrawCanvas();
     }
@@ -2048,6 +2123,7 @@
       currentDragBox = null;
       currentDragLine = null;
       activeSnappedPoint = null;
+      stopAutoPanLoop();
       updateBoxCounter();
       redrawCanvas();
       document.getElementById("drawStatus").innerText = "ล้างข้อมูลเรียบร้อยแล้ว ลากกรอบหรือคลิก Polygon ใหม่เพื่อวัด";
@@ -2573,12 +2649,13 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
     }
 
     function closeModal(modalId) {
+      stopAutoPanLoop();
       document.getElementById(modalId).style.display = "none";
     }
 
     window.onclick = function(event) {
       if (event.target.classList.contains("modal")) {
-        event.target.style.display = "none";
+        closeModal(event.target.id);
       }
     };
 
