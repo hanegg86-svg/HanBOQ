@@ -5,18 +5,24 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>SCG AI BOQ & Concrete Structure Estimator</title>
   
-  <!-- Web App Manifest & App Icons สำหรับมือถือและคอมพิวเตอร์ -->
+  <!-- Web App Manifest & Mobile Settings -->
   <meta name="theme-color" content="#dc2626">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
-  <meta name="apple-mobile-web-app-title" content="SCG AI BOQ">
+  <meta name="apple-mobile-web-app-title" content="SCG BOQ">
   
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='120' fill='%23dc2626'/%3E%3Cpath d='M110 370 L256 120 L402 370 Z' fill='none' stroke='%23ffffff' stroke-width='40' stroke-linejoin='round'/%3E%3Cpath d='M170 320 L342 320' stroke='%23ffffff' stroke-width='34' stroke-linecap='round'/%3E%3Ccircle cx='256' cy='230' r='24' fill='%23ffffff'/%3E%3C/svg%3E">
-  <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='120' fill='%23dc2626'/%3E%3Cpath d='M110 370 L256 120 L402 370 Z' fill='none' stroke='%23ffffff' stroke-width='40' stroke-linejoin='round'/%3E%3Cpath d='M170 320 L342 320' stroke='%23ffffff' stroke-width='34' stroke-linecap='round'/%3E%3Ccircle cx='256' cy='230' r='24' fill='%23ffffff'/%3E%3C/svg%3E">
-  <link rel="manifest" href='data:application/manifest+json,{"name":"SCG AI BOQ & Concrete Estimator","short_name":"SCG BOQ","start_url":".","display":"standalone","background_color":"#f8fafc","theme_color":"#dc2626","description":"เครื่องมือถอดแบบประมาณราคาและคำนวณสินค้า SCG และคอนกรีต CPAC","icons":[{"src":"data:image/svg+xml,%3Csvg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 512 512\"%3E%3Crect width=\"512\" height=\"512\" rx=\"120\" fill=\"%23dc2626\"/%3E%3Cpath d=\"M110 370 L256 120 L402 370 Z\" fill=\"none\" stroke=\"%23ffffff\" stroke-width=\"40\" stroke-linejoin=\"round\"/%3E%3Cpath d=\"M170 320 L342 320\" stroke=\"%23ffffff\" stroke-width=\"34\" stroke-linecap=\"round\"/%3E%3Ccircle cx=\"256\" cy=\"230\" r=\"24\" fill=\"%23ffffff\"/%3E%3C/svg%3E","sizes":"512x512","type":"image/svg+xml","purpose":"any maskable"}]}'>
+  <!-- ลิงก์ไฟล์ manifest.json สำหรับติดตั้งแอปบนหน้าจอมือถือ -->
+  <link rel="manifest" href="manifest.json">
+  
+  <!-- ไอคอนแอปสำหรับ Browser ทั่วไป และ Android (ใช้ไฟล์ icon.png) -->
+  <link rel="icon" type="image/png" sizes="192x192" href="icon.png">
+  <link rel="icon" type="image/png" sizes="512x512" href="icon.png">
 
-  <!-- PDF.js CDN -->
+  <!-- ไอคอนแอปสำหรับ iPhone / iPad (iOS Home Screen ใช้ไฟล์ icon.png) -->
+  <link rel="apple-touch-icon" href="icon.png">
+
+  <!-- PDF.js CDN สำหรับเรนเดอร์แบบแปลน PDF หลายหน้า -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script>
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
@@ -1594,11 +1600,9 @@
           if (i === 0) ctx.moveTo(pt.x, pt.y);
           else ctx.lineTo(pt.x, pt.y);
         });
-        // เส้นวิ่งตามเคอร์เซอร์
         ctx.lineTo(currentMousePos.x, currentMousePos.y);
         ctx.stroke();
 
-        // วาดจุด Vertices
         currentPolygonPoints.forEach((pt, idx) => {
           ctx.fillStyle = (idx === 0) ? "#ef4444" : "#38bdf8";
           ctx.beginPath();
@@ -1606,7 +1610,6 @@
           ctx.fill();
         });
 
-        // ข้อความแนะแนวใกล้จุดแรก
         const firstPt = currentPolygonPoints[0];
         if (currentPolygonPoints.length >= 3) {
           ctx.fillStyle = "#facc15";
@@ -1718,7 +1721,6 @@
         }
       };
 
-      // ดับเบิลคลิกเพื่อปิดรูป Polygon ทันที
       viewport.ondblclick = (e) => {
         if (currentToolMode === "polygon" && currentPolygonPoints.length >= 3) {
           closeAndFinishPolygon();
@@ -1840,14 +1842,12 @@
       });
     }
 
-    // ฟังก์ชันจัดการคลิกสำหรับ Polygon Tool
     function handlePolygonClick(coords) {
       if (!pixelsPerMeter) {
         alert("กรุณากดปุ่ม '1. ตั้งสเกล' ก่อนเริ่มวาดรูปหลายเหลี่ยม");
         return;
       }
 
-      // หากคลิกใกล้จุดแรก และมีจุด >= 3 จุด ให้ปิดรูป Polygon
       if (currentPolygonPoints.length >= 3) {
         const firstPt = currentPolygonPoints[0];
         const dist = Math.sqrt(Math.pow(coords.x - firstPt.x, 2) + Math.pow(coords.y - firstPt.y, 2));
@@ -1967,7 +1967,6 @@
       const statusElem = document.getElementById("drawStatus");
       statusElem.innerText = `กำลังคำนวณยอดสั่งซื้อสินค้าและระบบแพ็กเกจของ "${chosenProduct}" ...`;
 
-      // คำนวณ Bounding Box หลักสำหรับแสดงตำแหน่ง
       let mainBox = [100, 100, 500, 500];
       if (measuredShapes.length > 0 && currentDrawPageImg) {
         const primary = measuredShapes[0];
@@ -2344,7 +2343,6 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
       }
     }
 
-    // ฟังก์ชันคำนวณยอดสั่งซื้อจริง พร้อมระบบ Accessories Bundle อัตโนมัติ (Fallback Offline Logic)
     function updateNetQuantity(id, newValue) {
       if (!lastRawBOQItems) return;
       const item = lastRawBOQItems.find(it => it._id === id);
