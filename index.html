@@ -693,7 +693,7 @@
 
   <!-- เลือกวัสดุและอัปโหลดเอกสาร -->
   <div class="card">
-    <label>เลือกสเปกหรือวัสดุทดแทน (ระบบรองรับ Multi-Drawing ในหน้าเดียว, Symbol Legend Mapping, แยกหน้าอัตโนมัติ, Auto-Edge Panning, OSNAP, Ortho Lock และ Cross-Check 3D):</label>
+    <label>เลือกสเปกหรือวัสดุทดแทน (ระบบรองรับ Multi-Drawing ในหน้าเดียว, Symbol Legend Mapping, ภาษาไทย 100%, แยกหน้าอัตโนมัติ, Auto-Edge Panning, OSNAP, Ortho Lock และ Cross-Check 3D):</label>
     <div class="grid-options">
       <!-- 1. คอนกรีตและแผ่นพื้นโครงสร้าง CPAC -->
       <div>
@@ -817,7 +817,7 @@
       <div style="font-size: 12px; color: #7c2d12; font-weight: 600;">⚡ ปุ่มคำสั่งด่วน (คลิกเพื่อเติมข้อความ):</div>
       <div class="prompt-chip-group">
         <span class="prompt-chip" onclick="applyQuickPrompt('สแกนแยกทั้งแปลนพื้นและแปลนหลังคาที่อยู่ในหน้าเดียวกันให้ครบทุกหมวดงาน')">📑 สแกนทั้งพื้น & หลังคาในหน้าเดียว</span>
-        <span class="prompt-chip" onclick="applyQuickPrompt('ให้อ่านและจับคู่สัญลักษณ์ผนัง (เช่น △1, △5, △11) และสัญลักษณ์พื้น (เช่น F1, F2, HC) ตามตารางรายการวัสดุประกอบแบบ (Schedule Legend) ให้ครบถ้วน')">📐 จับคู่สัญลักษณ์ △ และ Schedule</span>
+        <span class="prompt-chip" onclick="applyQuickPrompt('ให้อ่านและจับคู่สัญลักษณ์ผนัง (เช่น △1, △5, △11) และสัญลักษณ์พื้น (เช่น F1, F2, HC) ตามตารางรายการวัสดุประกอบแบบ (Schedule Legend) ให้ครบถ้วนเป็นภาษาไทย')">📐 จับคู่สัญลักษณ์ △ และ Schedule (ภาษาไทย)</span>
         <span class="prompt-chip" onclick="applyQuickPrompt('วัดพื้นที่หลังคาตามกรอบสีแดงในแบบ')">🎯 วัดตามกรอบสีแดง</span>
         <span class="prompt-chip" onclick="applyQuickPrompt('ถอดแบบเฉพาะงานโครงสร้างคอนกรีตและแผ่นพื้น CPAC Hollow Core แยกแสดงทีละชั้น')">🏢 เน้นโครงสร้าง CPAC</span>
         <span class="prompt-chip" style="background: #f1f5f9; color: #475569; border-color: #cbd5e1;" onclick="clearQuickPrompt()">ล้างคำสั่ง</span>
@@ -1845,7 +1845,7 @@
         ctx.lineTo(calibrationLine.x2, calibrationLine.y2);
         ctx.stroke();
         const midX = (calibrationLine.x1 + calibrationLine.x2) / 2;
-        const midY = (calibrationLine.x1 + calibrationLine.y2) / 2;
+        const midY = (calibrationLine.x1 + calibrationLine.x2) / 2;
         ctx.fillStyle = "#8b5cf6";
         ctx.fillRect(midX - 50, midY - 26, 100, 24);
         ctx.fillStyle = "#ffffff";
@@ -2321,23 +2321,24 @@
         }
       }
       const promptText = `
-### Task:
-Calculate purchase bundle estimate (order_estimate) and calculation note for an on-site QS measurement.
+### คำสั่งและบริบทงาน (บังคับภาษาไทย 100%):
+ท่านคือวิศวกรและผู้เชี่ยวชาญการถอดแบบและประมาณราคา (QS) ของ SCG และ CPAC
+จงคำนวณยอดสั่งซื้อสินค้าจริง (order_estimate) และหมายเหตุวิธีคำนวณ (calculation_note) สำหรับงานก่อสร้างนี้เป็น "ภาษาไทยล้วน 100%"
 
-### Inputs:
-- Category: "${category}"
-- Recommended Product: "${chosenProduct}"
-- Net Quantity: ${chosenValue.toFixed(2)} ${chosenUnit}
-- Measurement Breakdown: ${auditSummary}
-- Roof Waste Margin: ${wasteFactor}
+### ข้อมูลนำเข้า:
+- หมวดงาน: "${category}"
+- สินค้าที่แนะนำ: "${chosenProduct}"
+- ปริมาณงานสุทธิ: ${chosenValue.toFixed(2)} ${chosenUnit}
+- ที่มาการวัด: ${auditSummary}
+- สัดส่วนเผื่อเศษ: ${wasteFactor}
 
-### Requirements:
-1. In "order_estimate", list all main items and system bundle accessories. Each item must start on a new line with "- "
-2. State the calculation formula and waste factor in "calculation_note"
-3. Return a clean JSON Object:
+### ข้อกำหนดสำคัญ:
+1. ใน "order_estimate" ให้ระบุสินค้าหลักและอุปกรณ์ส่วนควบในระบบเป็นภาษาไทย แต่ละบรรทัดขึ้นต้นด้วย "- "
+2. ใน "calculation_note" อธิบายสูตรคำนวณและสัดส่วนเผื่อเศษเป็นภาษาไทย
+3. ส่งออกเฉพาะ JSON Object ที่ถูกต้อง:
 {
-  "order_estimate": "- Item 1\\n- Item 2",
-  "calculation_note": "Formula & waste details"
+  "order_estimate": "- รายการสินค้า 1\\n- อุปกรณ์เสริม 2",
+  "calculation_note": "สูตรคำนวณและอัตราเผื่อเศษภาษาไทย"
 }
 `;
       try {
@@ -2347,7 +2348,7 @@ Calculate purchase bundle estimate (order_estimate) and calculation note for an 
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             system_instruction: {
-              parts: [{ text: "You are an expert Quantity Surveyor (QS) for SCG & CPAC construction materials. Always output pure valid JSON." }]
+              parts: [{ text: "ท่านคือวิศวกรผู้เชี่ยวชาญการถอดแบบ BOQ ของ SCG และ CPAC ข้อมูลข้อความทุกช่องต้องแสดงเป็นภาษาไทยล้วน 100% ตอบกลับด้วย JSON เท่านั้น" }]
             },
             contents: [{ parts: [{ text: promptText }] }],
             generationConfig: { responseMimeType: "application/json" }
@@ -2358,7 +2359,7 @@ Calculate purchase bundle estimate (order_estimate) and calculation note for an 
         const rawContent = data.candidates[0].content.parts[0].text;
         const result = cleanAndParseJSON(rawContent);
         if (editingItemId) {
-          const item = lastRawBOQItems.find(it => it._id === editingItemId);
+          const item = lastRawBOQItems.find(it => it._id === itemId);
           if (item) {
             item.category = category;
             item.net_quantity = `${chosenValue.toFixed(2)} ${chosenUnit}`;
@@ -2409,7 +2410,7 @@ Calculate purchase bundle estimate (order_estimate) and calculation note for an 
     /* ==========================================================
        ระบบเพิ่มรายการเฉพาะเจาะจง (CUSTOM ITEM ROW GENERATION)
        ใช้โมเดล gemini-3.5-flash-lite พร้อมตัวเลือกสแกนทุกหน้า
-       และรองรับการจับคู่สัญลักษณ์ Schedule Legend
+       และบังคับภาษาไทย 100%
        ========================================================== */
     function toggleCustomScopeMode() {
       const isSingle = document.getElementById("scopeSinglePageRadio").checked;
@@ -2462,9 +2463,9 @@ Calculate purchase bundle estimate (order_estimate) and calculation note for an 
 
       submitBtn.disabled = true;
       if (isAllPages) {
-        statusElem.innerText = `Gemini 3.5 Flash Lite กำลังสแกนหา "${category}" และจับคู่สัญลักษณ์ Schedule จากแบบแปลนครบทุกหน้า (หน้า 1 ถึง ${detectedTotalPages}) ...`;
+        statusElem.innerText = `Gemini 3.5 Flash Lite กำลังสแกนหา "${category}" และจับคู่สัญลักษณ์ Schedule เป็นภาษาไทยจากแบบแปลนครบทุกหน้า (หน้า 1 ถึง ${detectedTotalPages}) ...`;
       } else {
-        statusElem.innerText = `กำลังวิเคราะห์คำสั่งเฉพาะเจาะจงสำหรับหน้า ${pageNum} ...`;
+        statusElem.innerText = `กำลังวิเคราะห์คำสั่งเฉพาะเจาะจงสำหรับหน้า ${pageNum} เป็นภาษาไทย...`;
       }
 
       try {
@@ -2481,37 +2482,40 @@ Calculate purchase bundle estimate (order_estimate) and calculation note for an 
         let promptText = "";
         if (isAllPages) {
           promptText = `
-### Scope & Task:
-You are an expert SCG & CPAC Quantity Surveyor.
-Scan all pages (1 to ${detectedTotalPages}) of the uploaded architectural drawings to extract and estimate items matching this specific user directive:
+### บทบาทและข้อกำหนดภาษา (บังคับภาษาไทย 100%):
+ท่านคือวิศวกรผู้เชี่ยวชาญการถอดแบบ BOQ ของ SCG และ CPAC
+ข้อมูลข้อความทุกช่อง (ยกเว้นรหัสสัญลักษณ์ เช่น △1, △5, F1, HC หรือชื่อแบรนด์ SCG, CPAC, Q-CON) ต้องเขียนเป็น "ภาษาไทยล้วน 100%" ห้ามมีคำอธิบายภาษาอังกฤษเด็ดขาด
+
+### ขอบเขตและงาน:
+จงสแกนตรวจสอบแบบแปลนทุกหน้า (หน้า 1 ถึง ${detectedTotalPages}) เพื่อถอดแบบและประมาณราคาตามคำสั่งเฉพาะเจาะจงนี้:
 """
 หมวดงาน: ${category}
 คำสั่งเฉพาะเจาะจง: ${instructionText}
 โหมดการทำงาน: สแกนตรวจหาและคำนวณจากแบบแปลนทุกหน้า
 """
 
-### Symbol & Schedule Legend Mapping Rule:
-- Search for symbol legends/schedules (e.g., Wall types: △1, △5, △11, Floor types: F1, F2, HC, Roof types).
-- Match every symbol on the floor plan lines with its definition in the schedule (e.g., △1 = Q-CON Lightweight Block 7.5cm + plaster 10cm).
-- Put the symbol identifier (e.g., "△1", "△5", "F1") into "code_ref".
-- If no symbol exists, fallback to standard extraction as normal.
+### กฎการอ่านสัญลักษณ์และตารางประกอบแบบ (Symbol & Schedule Legend Mapping):
+- ตรวจหาตารางรายการวัสดุ (เช่น "รายการวัสดุผนัง", "รายการวัสดุพื้น", "ตารางประตูหน้าต่าง") ที่อยู่ข้างแปลนหรือในหน้าประกอบแบบ
+- จับคู่สัญลักษณ์บนแนวเส้นแปลน (เช่น สามเหลี่ยม △1, △5, △11, วงกลม ○, สี่เหลี่ยม □, F1, F2, HC) เข้ากับคำอธิบายสเปกในตาราง
+- ใส่รหัสสัญลักษณ์ (เช่น "△1", "△5", "F1") ลงในช่อง "code_ref"
+- นำคำอธิบายวัสดุภาษาไทยจากตารางมาตั้งเป็น "item_name" และแนะนำสินค้า SCG / CPAC ที่ตรงรุ่น
 
-### Rules (MANDATORY):
-1. Scan across all pages. For every floor/zone where this category/symbol is found, create a separate JSON item in the array.
-2. In "source_location.page_number", specify the exact page number (1 to ${detectedTotalPages}) where that particular item was identified.
-3. In "order_estimate", break down the purchase package and system bundle with each item starting on a new line with "- ".
-4. Provide estimated box_2d [ymin, xmin, ymax, xmax] (0-1000 scale) for the location found on that page.
-5. Return ONLY a valid JSON Array with elements having these exact keys:
+### กฎการตอบกลับ:
+1. สำหรับทุกชั้น/โซนที่พบหมวดงานหรือสัญลักษณ์นี้ ให้สร้างเป็นรายการแยกแถวใน Array
+2. ระบุเลขหน้าที่พบจริง (1 ถึง ${detectedTotalPages}) ลงใน "source_location.page_number"
+3. ใน "order_estimate" ให้แจกแจงรายการสินค้าสั่งซื้อและอุปกรณ์แพ็กเกจระบบเป็นภาษาไทย แต่ละบรรทัดขึ้นต้นด้วย "- "
+4. ใน "calculation_note" และ "verification_method" ให้อธิบายสูตรและการคำนวณเป็นภาษาไทย
+5. ส่งออกเฉพาะ JSON Array:
 [
   {
     "category": "${category}",
-    "code_ref": "string (e.g. △1, △5, W1)",
-    "item_name": "ชื่อรายการงานตามแบบแปลน/ตารางสัญลักษณ์ (ระบุชั้น/ห้อง/โซน)",
+    "code_ref": "รหัสสัญลักษณ์ เช่น △1, △5, F1",
+    "item_name": "ชื่อรายการงานตามแบบแปลน/ตารางสัญลักษณ์ภาษาไทย (ระบุชั้น/ห้อง/โซน)",
     "net_quantity": "ปริมาณพร้อมหน่วย เช่น 120.50 ตร.ม.",
     "scg_product": "ชื่อสินค้า SCG หรือ CPAC ที่แนะนำ",
     "order_estimate": "- รายการสินค้าหลัก 1\\n- อุปกรณ์ระบบ 2",
     "confidence_score": 98,
-    "calculation_note": "สูตรคำนวณและสัดส่วนเผื่อเศษ",
+    "calculation_note": "สูตรคำนวณและสัดส่วนเผื่อเศษภาษาไทย",
     "verification_method": "[สแกนพบจากทุกหน้า - หน้า {page}]: ${instructionText}",
     "source_location": {
       "page_number": 1,
@@ -2523,33 +2527,33 @@ Scan all pages (1 to ${detectedTotalPages}) of the uploaded architectural drawin
 `;
         } else {
           promptText = `
-### Scope & Task:
-You are an expert SCG & CPAC Quantity Surveyor.
-Add a specific custom line item to the BOQ for page ${pageNum} based on this user directive:
+### บทบาทและข้อกำหนดภาษา (บังคับภาษาไทย 100%):
+ท่านคือวิศวกรผู้เชี่ยวชาญการถอดแบบ BOQ ของ SCG และ CPAC
+ข้อมูลข้อความทุกช่องต้องเป็น "ภาษาไทยล้วน 100%" (ยกเว้นรหัสสัญลักษณ์ เช่น △1, F1 หรือชื่อแบรนด์ SCG, CPAC, Q-CON)
+
+### ขอบเขตและงาน:
+เพิ่มรายการเฉพาะเจาะจงลงในตาราง BOQ สำหรับแปลนหน้า ${pageNum} ตามคำสั่งนี้:
 """
 หมวดงาน: ${category}
 คำสั่งเฉพาะเจาะจง: ${instructionText}
 อ้างอิงหน้าแปลน: หน้า ${pageNum}
 """
 
-### Symbol & Schedule Legend Mapping Rule:
-- Search for symbol legends/schedules (e.g., △1, △5, F1, F2).
-- Match symbol on the drawing with the schedule description and put the symbol identifier in "code_ref".
-
-### Rules:
-1. Extract item_name, net_quantity (with unit), and the best matching SCG/CPAC product.
-2. In "order_estimate", break down the purchase bundle and required accessories with each item starting on a new line with "- ".
-3. Explain calculation in "calculation_note" and cite "[รายการสั่งเพิ่มเฉพาะเจาะจง หน้า ${pageNum}]" in verification_method.
-4. Return ONLY a valid JSON Object:
+### กฎการตอบกลับ:
+1. สกัด item_name, net_quantity (พร้อมหน่วยภาษาไทย เช่น ตร.ม., ม.), และสินค้า SCG/CPAC ที่เหมาะสมที่สุด
+2. ใส่รหัสสัญลักษณ์ในแบบ (ถ้ามี) ลงใน "code_ref"
+3. ใน "order_estimate" แจกแจงรายการสินค้าและอุปกรณ์เสริมเป็นภาษาไทย แต่ละบรรทัดขึ้นต้นด้วย "- "
+4. อธิบายสูตรคำนวณใน "calculation_note" เป็นภาษาไทย และระบุ "[รายการสั่งเพิ่มเฉพาะเจาะจง หน้า ${pageNum}]" ใน verification_method
+5. ส่งออกเฉพาะ JSON Object:
 {
   "category": "${category}",
-  "code_ref": "string (e.g. △1, Custom)",
-  "item_name": "ชื่อรายการงาน",
-  "net_quantity": "ปริมาณพร้อมหน่วย",
+  "code_ref": "รหัสสัญลักษณ์ เช่น △1 หรือ กำหนดเอง",
+  "item_name": "ชื่อรายการงานภาษาไทย",
+  "net_quantity": "ปริมาณพร้อมหน่วยภาษาไทย",
   "scg_product": "ชื่อสินค้า SCG หรือ CPAC ที่แนะนำ",
   "order_estimate": "- สินค้าหลัก 1\\n- อุปกรณ์เสริม 2",
   "confidence_score": 99,
-  "calculation_note": "สูตรคำนวณและสัดส่วนเผื่อเศษ",
+  "calculation_note": "สูตรคำนวณและสัดส่วนเผื่อเศษภาษาไทย",
   "verification_method": "[รายการสั่งเพิ่มเฉพาะเจาะจง หน้า ${pageNum}]: ${instructionText}",
   "source_location": {
     "page_number": ${pageNum},
@@ -2569,7 +2573,7 @@ Add a specific custom line item to the BOQ for page ${pageNum} based on this use
           body: JSON.stringify({
             system_instruction: {
               parts: [{
-                text: "You are a professional Quantity Surveyor (QS) for SCG & CPAC building materials. Always return clean, parseable JSON without commentary."
+                text: "ท่านคือวิศวกรผู้เชี่ยวชาญการถอดแบบ BOQ ของ SCG และ CPAC ข้อความและข้อมูลทุกช่องในตารางต้องเป็นภาษาไทยล้วน 100% ห้ามตอบเป็นภาษาอังกฤษ ตอบกลับด้วยรูปแบบ JSON เท่านั้น"
               }]
             },
             contents: [{ parts: parts }],
@@ -2617,7 +2621,7 @@ Add a specific custom line item to the BOQ for page ${pageNum} based on this use
 
     /* ==========================================================
        ระบบประมวลผลอัตโนมัติ CROSS-CHECK 3D & MULTI-DRAWING SCAN
-       ใช้โมเดล gemini-3.5-flash-lite พร้อม Symbol & Schedule Mapping
+       ใช้โมเดล gemini-3.5-flash-lite พร้อมบังคับภาษาไทย 100%
        ========================================================== */
     async function processDocuments() {
       const apiKey = document.getElementById("apiKey").value.trim();
@@ -2664,57 +2668,61 @@ Add a specific custom line item to the BOQ for page ${pageNum} based on this use
           const specPart = await fileToGenerativePart(specFile);
           parts.push(specPart);
         }
-        statusDiv.innerText = `Gemini 3.5 Flash Lite กำลังสแกนทุกผังและจับคู่สัญลักษณ์ Schedule ในเอกสารทั้งหมด ${detectedTotalPages} หน้า...`;
+        statusDiv.innerText = `Gemini 3.5 Flash Lite กำลังสแกนทุกผังและจับคู่สัญลักษณ์ Schedule เป็นภาษาไทยในเอกสารทั้งหมด ${detectedTotalPages} หน้า...`;
 
         let customDirective = "";
         if (customInstruction) {
-          customDirective = `\n### User Priority Directive:\n"""\n${customInstruction}\n"""\n`;
+          customDirective = `\n### คำสั่งเน้นย้ำของผู้ใช้งาน:\n"""\n${customInstruction}\n"""\n`;
         }
 
         const promptText = `
-### Task:
-Analyze architectural and structural drawings across all ${detectedTotalPages} pages, performing a 3D Cross-Check (Plan ↔ Section ↔ Elevation) to generate an exact Quantity Surveying BOQ for SCG and CPAC products.
+### กฎเหล็กด้านภาษา (MANDATORY THAI LANGUAGE RULE):
+ท่านคือหัวหน้าวิศวกรผู้เชี่ยวชาญการถอดแบบและประมาณราคา (Chief QS) ของ SCG และ CPAC
+ข้อมูลและคำอธิบายทุกช่องในตาราง BOQ ต้องเขียนเป็น "ภาษาไทยล้วน 100%" ห้ามมีคำอธิบายภาษาอังกฤษเด็ดขาด
+(ยกเว้นรหัสสัญลักษณ์ตามแบบ เช่น △1, △5, △11, F1, F2, HC, เสา C1, คาน B1 หรือชื่อแบรนด์ทางการ เช่น SCG, CPAC, Q-CON, COTTO)
 
-### Multi-Drawing Rule (MANDATORY):
-- If a single page/sheet contains multiple plans (e.g. Floor Plan + Roof Plan), you MUST extract them as separate individual rows.
-- Never omit roof or floor structures when they co-exist on the same page.
-- "source_location.box_2d" must tightly bound each individual drawing zone [ymin, xmin, ymax, xmax] (0-1000 scale).
+### งานที่ต้องปฏิบัติ:
+วิเคราะห์แบบสถาปัตย์ แบบโครงสร้าง และแบบรูปตัด/รูปด้าน ทั้งหมด ${detectedTotalPages} หน้า พร้อมตรวจสอบสอบทาน 3 มิติ (3D Cross-Check แปลน ↔ รูปตัด ↔ รูปด้าน) เพื่อจัดทำรายการประมาณการวัสดุ BOQ สินค้า SCG และคอนกรีต CPAC อย่างละเอียดและแม่นยำ
 
-### Symbol & Schedule Legend Mapping Rule:
-- Actively detect Schedule Tables / Material Legends (e.g. "รายการวัสดุผนัง", "รายการวัสดุพื้น", "Door/Window Schedule") which may exist alongside plans or in the specifications.
-- When lines or zones on the floor plan contain symbols (e.g. Triangle △1, △5, △11, Circle ○, Square □, F1, F2, HC):
-  1. Map the symbol to its full description in the schedule table (e.g. △1 = "ผนังก่ออิฐมวลเบา Q-CON ขนาด 7.50 ซม. ฉาบปูนเรียบ หนา 10 ซม.").
-  2. Put the symbol code (e.g. "△1", "△5", "F1") into "code_ref".
-  3. Extract item_name using the specification defined in the schedule.
-  4. Select the matching SCG/CPAC product (e.g. Q-CON Lightweight Block + Mortar, CPAC Ready-mix, Smartwood).
-- Fallback: If no symbol/legend exists, extract items based on plan labels and selected material options as normal.
+### กฎการสแกนหลายผังในหน้าเดียว (Multi-Drawing Rule):
+- หากในหน้าเดียวกันมีทั้งแปลนพื้น (Floor Plan) และแปลนหลังคา (Roof Plan) ท่านต้องแยกแถวถอดแบบเป็นรายการอิสระแยกจากกันให้ครบถ้วน ห้ามละเลยโครงสร้างหลังคาหรือโครงสร้างพื้น
+- "source_location.box_2d" ต้องตีกรอบล้อมรอบเฉพาะบริเวณผังนั้นๆ ให้ถูกต้อง [ymin, xmin, ymax, xmax] (สเกล 0-1000)
+
+### กฎการจับคู่สัญลักษณ์และตารางรายการประกอบแบบ (Symbol & Schedule Legend Mapping):
+- ตรวจหาตารางรายการวัสดุประกอบแบบ (Schedule Tables / Legends) เช่น "รายการวัสดุผนัง", "รายการวัสดุพื้น", "ตารางประตูหน้าต่าง" ที่ปรากฏอยู่ข้างผังหรือในหน้าประกอบแบบ
+- เมื่อพบบนแนวแปลนมีสัญลักษณ์ (เช่น สามเหลี่ยม △1, △5, △11, วงกลม ○, สี่เหลี่ยม □, F1, F2, HC):
+  1. นำสัญลักษณ์ไปเทียบกับตารางเพื่อดึงสเปกวัสดุภาษาไทยที่ระบุไว้ (เช่น △1 = "ผนังก่ออิฐมวลเบา Q-CON ขนาด 7.50 ซม. ฉาบปูนเรียบ หนา 10 ซม.")
+  2. ใส่รหัสสัญลักษณ์ (เช่น "△1", "△5", "F1", "HC") ลงในช่อง "code_ref"
+  3. กำหนด "item_name" เป็นภาษาไทยตามตารางรายการประกอบแบบ
+  4. เลือกสินค้า SCG หรือ CPAC ที่ตรงรุ่น เช่น ก่ออิฐมวลเบา Q-CON + ปูนฉาบเสือมอร์ตาร์, คอนกรีตผสมเสร็จ CPAC, ไม้ฝา Smartwood
+- กรณีที่แบบไม่ได้ใช้สัญลักษณ์ ให้ถอดแบบตามชื่อระบุในแบบและสเปกวัสดุที่เลือกไว้ด้านล่างเป็นภาษาไทยตามปกติ
 ${customDirective}
-### Selected Material Specifications (Used as reference or fallback):
-1. Concrete & Structure CPAC: "${concreteChoice}" (If hollow core: specify CPAC Hollow Core + 5cm Topping + Wire Mesh 4mm @ 20cm).
-2. Roof: "${roofChoice}" (Convert flat area to sloped area by dividing with cos(${slopeDeg}°)).
-3. Ceiling Insulation: "${ceilingInsChoice}" (SCG STAY COOL on flat ceiling, 2.40 m²/roll, 5% waste).
-4. Under-roof Insulation: "${roofInsChoice}" (SCG FSO following sloped roof area).
-5. Ridge/Hip: If ridges exist, include SCG Dry Tech System (3m/roll) + ridge tiles.
-6. Wall: "${wallChoice}", Floor: "${floorChoice}", Ceiling: "${ceilingChoice}", Smartwood: "${woodChoice}".
+### สเปกวัสดุที่ผู้ใช้เลือก (ใช้อ้างอิงหรือเป็นสเปกหลัก):
+1. หมวดคอนกรีตและโครงสร้าง CPAC: "${concreteChoice}" (หากเป็น Hollow Core ให้ระบุ แผ่นพื้นสำเร็จรูป CPAC Hollow Core + คอนกรีตทับหน้า Topping หนา 5 ซม. + ตะแกรง Wire Mesh 4 มม. @ 20 ซม.)
+2. หมวดหลังคา: "${roofChoice}" (แปลงพื้นที่ราบเป็นพื้นที่ลาดเอียงจริงโดยหารด้วย cos(${slopeDeg}°))
+3. หมวดฉนวนปูเหนือฝ้า: "${ceilingInsChoice}" (SCG STAY COOL ปูบนฝ้าเพดานเรียบ ม้วนละ 2.40 ตร.ม. เผื่อเศษ 5%)
+4. หมวดฉนวนใต้หลังคา: "${roofInsChoice}" (SCG FSO ปูตามแนวลาดเอียงหลังคา)
+5. สันหลังคา/ตะเข้สัน: หากมีแนวสันหลังคา ให้ระบุ ระบบครอบแห้ง SCG Dry Tech System (ม้วนละ 3.0 ม.) พร้อมแผ่นครอบสันหลังคา
+6. ผนัง: "${wallChoice}", พื้น: "${floorChoice}", ฝ้า: "${ceilingChoice}", ไม้ตกแต่ง: "${woodChoice}"
 
-### Output Format:
-In "order_estimate", format each item and accessory starting on a new line with "- ".
-Return ONLY a valid JSON Array with elements having these exact keys:
+### รูปแบบผลลัพธ์ (ภาษาไทยล้วน 100%):
+ในช่อง "order_estimate" ให้ขึ้นต้นแต่ละรายการสินค้าและอุปกรณ์ระบบด้วย "- "
+ส่งออกเฉพาะ JSON Array ที่ถูกต้องตามโครงสร้างนี้:
 [
   {
-    "category": "string",
-    "code_ref": "string (e.g. △1, △5, F1, or plan ref)",
-    "item_name": "string",
-    "net_quantity": "string",
-    "scg_product": "string",
-    "order_estimate": "string",
+    "category": "หมวดงานภาษาไทย เช่น งานผนัง, งานหลังคา, งานโครงสร้างและคอนกรีต CPAC",
+    "code_ref": "รหัสสัญลักษณ์ เช่น △1, △5, F1, HC หรือรหัสอ้างอิงในแบบ",
+    "item_name": "ชื่อรายการงานตามแบบแปลน/ตารางสัญลักษณ์ภาษาไทย (ระบุชั้น/ห้อง/โซน)",
+    "net_quantity": "ปริมาณพร้อมหน่วยภาษาไทย เช่น 120.50 ตร.ม. หรือ 45.00 ม.",
+    "scg_product": "ชื่อสินค้า SCG หรือ CPAC ที่แนะนำ",
+    "order_estimate": "- รายการสินค้าหลัก 1 พร้อมจำนวนและหน่วย\\n- อุปกรณ์ส่วนควบระบบ 2",
     "confidence_score": 98,
-    "calculation_note": "string",
-    "verification_method": "string",
+    "calculation_note": "สูตรคำนวณและสัดส่วนเผื่อเศษเป็นภาษาไทย",
+    "verification_method": "ที่มาการคำนวณและการ Cross-Check 3D เป็นภาษาไทย",
     "source_location": {
       "page_number": 1,
       "box_2d": [ymin, xmin, ymax, xmax],
-      "location_description": "string"
+      "location_description": "คำอธิบายตำแหน่งบนแบบแปลนหน้านั้นภาษาไทย"
     }
   }
 ]
@@ -2729,7 +2737,7 @@ Return ONLY a valid JSON Array with elements having these exact keys:
           body: JSON.stringify({
             system_instruction: {
               parts: [{
-                text: "You are the Chief Quantity Surveyor (QS) for SCG and CPAC. Provide rigorous, pure JSON BOQ outputs without markdown wrappings."
+                text: "ท่านคือหัวหน้าวิศวกรผู้เชี่ยวชาญการถอดแบบ BOQ ของ SCG และ CPAC ข้อความและข้อมูลทุกช่องในตารางต้องเป็นภาษาไทยล้วน 100% ห้ามตอบเป็นภาษาอังกฤษเด็ดขาด ส่งออกเฉพาะ JSON ล้วนโดยไม่มี markdown หรือคำบรรยายอื่น"
               }]
             },
             contents: [{ parts: parts }],
@@ -2754,7 +2762,7 @@ Return ONLY a valid JSON Array with elements having these exact keys:
         lastRawBOQItems = boqItems;
         recalcBtn.disabled = false;
         renderBOQTable(lastRawBOQItems);
-        statusDiv.innerText = `ประมวลผลสำเร็จเรียบร้อย! ถอดปริมาณงานได้ทั้งหมด ${boqItems.length} รายการ (ครอบคลุมทั้งแปลนพื้น หลังคา และสัญลักษณ์ Schedule)`;
+        statusDiv.innerText = `ประมวลผลสำเร็จเรียบร้อย! ถอดปริมาณงานได้ทั้งหมด ${boqItems.length} รายการเป็นภาษาไทย (ครอบคลุมทั้งแปลนพื้น หลังคา และสัญลักษณ์ Schedule)`;
       } catch (err) {
         statusDiv.innerText = "เกิดข้อผิดพลาดในการประมวลผล กรุณาลองใหม่อีกครั้ง";
       } finally {
@@ -2772,13 +2780,13 @@ Return ONLY a valid JSON Array with elements having these exact keys:
       const recalcBtn = document.getElementById("recalcBtn");
       const slopeDeg = document.getElementById("roofSlopeDeg").value;
       recalcBtn.disabled = true;
-      statusDiv.innerText = "กำลังคำนวณปริมาณสินค้าใหม่ตามสเปกที่เลือก...";
+      statusDiv.innerText = "กำลังคำนวณปริมาณสินค้าใหม่ตามสเปกที่เลือกเป็นภาษาไทย...";
       try {
         const promptText = `
-### Task:
-Recalculate SCG & CPAC product specifications and order quantities for the existing BOQ items based on newly selected materials.
+### คำสั่งคำนวณใหม่ (บังคับภาษาไทย 100%):
+จงปรับปรุงสเปกสินค้า SCG & CPAC และคำนวณยอดสั่งซื้อใหม่สำหรับรายการ BOQ ที่มีอยู่เดิม โดยทุกข้อความต้องเป็น "ภาษาไทยล้วน 100%"
 
-### Existing Items:
+### รายการเดิม:
 ${JSON.stringify(lastRawBOQItems.map(it => ({
   _id: it._id,
   category: it.category,
@@ -2788,20 +2796,20 @@ ${JSON.stringify(lastRawBOQItems.map(it => ({
   source_location: it.source_location
 })), null, 2)}
 
-### New Target Specs:
-- Roof: "${document.getElementById("roofOption").value}" (Slope: ${slopeDeg} deg)
-- Ceiling Insulation: "${document.getElementById("ceilingInsulationOption").value}"
-- Under-roof Insulation: "${document.getElementById("roofInsulationOption").value}"
-- Concrete/Structure CPAC: "${document.getElementById("concreteOption").value}"
-- Wall: "${document.getElementById("wallOption").value}"
-- Floor: "${document.getElementById("floorOption").value}"
-- Ceiling: "${document.getElementById("ceilingOption").value}"
-- Smartwood: "${document.getElementById("woodOption").value}"
+### สเปกใหม่ที่เลือก:
+- หมวดหลังคา: "${document.getElementById("roofOption").value}" (ความชัน: ${slopeDeg} องศา)
+- หมวดฉนวนปูเหนือฝ้า: "${document.getElementById("ceilingInsulationOption").value}"
+- หมวดฉนวนใต้หลังคา: "${document.getElementById("roofInsulationOption").value}"
+- หมวดโครงสร้างคอนกรีต CPAC: "${document.getElementById("concreteOption").value}"
+- หมวดผนัง: "${document.getElementById("wallOption").value}"
+- หมวดพื้น: "${document.getElementById("floorOption").value}"
+- หมวดฝ้าเพดาน: "${document.getElementById("ceilingOption").value}"
+- หมวดไม้ตกแต่ง: "${document.getElementById("woodOption").value}"
 
-### Requirements:
-1. Maintain all existing rows and IDs.
-2. In "order_estimate", format each item and accessory starting on a new line with "- ".
-3. Return ONLY a valid JSON Array.
+### ข้อกำหนด:
+1. คงลำดับแถวและ _id เดิมทั้งหมด
+2. ใน "order_estimate" ให้แสดงรายการสั่งซื้อและอุปกรณ์เสริมเป็นภาษาไทย แต่ละรายการขึ้นต้นด้วย "- "
+3. ส่งออกเฉพาะ JSON Array ที่ถูกต้อง
 `;
         const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key=${apiKey}`;
         const response = await fetch(endpoint, {
@@ -2809,7 +2817,7 @@ ${JSON.stringify(lastRawBOQItems.map(it => ({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             system_instruction: {
-              parts: [{ text: "You are an expert SCG & CPAC Quantity Surveyor updating BOQ specifications. Return only valid JSON array." }]
+              parts: [{ text: "ท่านคือวิศวกรผู้เชี่ยวชาญการถอดแบบ BOQ ของ SCG และ CPAC ข้อความและข้อมูลทุกช่องต้องเป็นภาษาไทยล้วน 100% ห้ามตอบเป็นภาษาอังกฤษ ตอบกลับด้วย JSON เท่านั้น" }]
             },
             contents: [{ parts: [{ text: promptText }] }],
             generationConfig: {
@@ -2826,7 +2834,7 @@ ${JSON.stringify(lastRawBOQItems.map(it => ({
         });
         lastRawBOQItems = updatedItems;
         renderBOQTable(lastRawBOQItems);
-        statusDiv.innerText = "คำนวณและอัปเดตสเปกสินค้าใหม่สำเร็จ!";
+        statusDiv.innerText = "คำนวณและอัปเดตสเปกสินค้าใหม่เป็นภาษาไทยสำเร็จ!";
       } catch (err) {
         statusDiv.innerText = "เกิดข้อผิดพลาดในการคำนวณใหม่ กรุณาลองอีกครั้ง";
       } finally {
@@ -2944,14 +2952,14 @@ ${JSON.stringify(lastRawBOQItems.map(it => ({
             const sqmAmt = (rawNum * 1.05).toFixed(1);
             const toppingCubic = (rawNum * 0.05 * 1.05).toFixed(2);
             const wireMeshSqm = (rawNum * 1.10).toFixed(1);
-            newEstimate = `- แผ่นพื้น CPAC Hollow Core: ${sqmAmt} ตร.ม.\n- คอนกรีต Topping หนา 5 ซม.: ${toppingCubic} ลบ.ม. (คิว)\n- ตะแกรงเหล็ก Wire Mesh: ${wireMeshSqm} ตร.ม. (เผื่อทาบ 10%)`;
+            newEstimate = `- แผ่นพื้น CPAC Hollow Core: ${sqmAmt} ตร.ม.\n- คอนกรีตทับหน้า Topping หนา 5 ซม.: ${toppingCubic} คิว (ลบ.ม.)\n- ตะแกรงเหล็ก Wire Mesh: ${wireMeshSqm} ตร.ม. (เผื่อทาบ 10%)`;
           } else if (product.includes("prestige") || product.includes("เพรสทีจ") || product.includes("neustile") || product.includes("นิวสไตล์") || product.includes("cpac") || product.includes("ลอนคู่")) {
             const tiles = Math.ceil(rawNum * 11 * 1.05);
             newEstimate = `- กระเบื้องหลังคา: ${tiles} แผ่น (เผื่อเศษ 5%)`;
           } else if (product.includes("post-tension") || product.includes("โพสต์เทนชั่น")) {
             const sqmAmt = (rawNum * 1.05).toFixed(1);
             const strandKg = Math.round(rawNum * 4.0);
-            newEstimate = `- พื้น Post-tension: ${sqmAmt} ตร.ม.\n- ลวดสลิง PC Strand: ~${strandKg} กก.`;
+            newEstimate = `- พื้นคอนกรีตอัดแรง Post-tension: ${sqmAmt} ตร.ม.\n- ลวดสลิง PC Strand: ~${strandKg} กก.`;
           } else if (product.includes("คอนกรีตผสมเสร็จ") || product.includes("ready-mix")) {
             const cubic = (rawNum * 1.05).toFixed(2);
             newEstimate = `- คอนกรีตผสมเสร็จ CPAC: ${cubic} คิว (ลบ.ม.)`;
@@ -2969,7 +2977,7 @@ ${JSON.stringify(lastRawBOQItems.map(it => ({
             newEstimate = `- แผ่นบอร์ด: ${sheets} แผ่น`;
           } else if (product.includes("ไม้ฝา") || product.includes("siding")) {
             const planks = Math.ceil(rawNum * 2.22 * 1.05);
-            newEstimate = `- ไม้ฝาตกแต่ง: ${planks} แผ่น`;
+            newEstimate = `- ไม้ฝาตกแต่ง SCG Smartwood: ${planks} แผ่น`;
           } else if (product.includes("lumax") || product.includes("metal sheet") || product.includes("เมทัลชีท")) {
             const sqmAmt = (rawNum * 1.05).toFixed(1);
             newEstimate = `- แผ่นหลังคา Metal Sheet: ${sqmAmt} ตร.ม.`;
@@ -3090,7 +3098,7 @@ ${JSON.stringify(lastRawBOQItems.map(it => ({
       `;
       return headerHTML + tableHTML;
     }
-    function openPdfPreviewModal() {
+        function openPdfPreviewModal() {
       if (!lastRawBOQItems || lastRawBOQItems.length === 0) {
         alert("ไม่มีข้อมูลสำหรับแสดงรายงาน PDF");
         return;
