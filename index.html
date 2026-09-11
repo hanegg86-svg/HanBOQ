@@ -655,8 +655,29 @@
       border-radius: 12px;
       padding: 20px;
       width: 94%;
-      max-width: 600px;
+      max-width: 620px;
       box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+    }
+    .scope-selector-card {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 10px 14px;
+      margin-bottom: 12px;
+    }
+    .scope-radio-group {
+      display: flex;
+      gap: 16px;
+      margin-top: 6px;
+    }
+    .scope-radio-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      color: #1e293b;
     }
   </style>
 </head>
@@ -852,7 +873,7 @@
     </div>
   </div>
 
-  <!-- Modal สำหรับเพิ่มรายการเฉพาะเจาะจง (Add Custom Item Dialog พร้อมตัวเลือกสแกนทุกหน้า) -->
+  <!-- Modal สำหรับเพิ่มรายการเฉพาะเจาะจง (Add Custom Item Dialog พร้อมสวิตช์เลือกทุกหน้า) -->
   <div id="customItemModal" class="modal">
     <div class="custom-item-modal-content">
       <div class="modal-header">
@@ -860,24 +881,41 @@
         <span class="close-btn" onclick="closeModal('customItemModal')">&times;</span>
       </div>
       <div style="margin-top: 10px;">
-        <label for="customItemPageSelect">อ้างอิงกับแบบแปลนหน้า (หรือเลือกสแกนหาจากทุกหน้า):</label>
-        <select id="customItemPageSelect"></select>
+        <!-- ตัวเลือกขอบเขต: สแกนทุกหน้า vs เลือกเฉพาะหน้า -->
+        <div class="scope-selector-card">
+          <label style="margin-bottom: 4px; color: #0f172a;">🎯 ขอบเขตการค้นหา & วิเคราะห์ในแบบแปลน:</label>
+          <div class="scope-radio-group">
+            <label class="scope-radio-label">
+              <input type="radio" name="customScopeRadio" id="scopeAllPagesRadio" value="all" checked onchange="toggleCustomScopeMode()">
+              <span>📑 สแกนตรวจหาจากทุกหน้า (สแกนทั้งเล่ม)</span>
+            </label>
+            <label class="scope-radio-label">
+              <input type="radio" name="customScopeRadio" id="scopeSinglePageRadio" value="single" onchange="toggleCustomScopeMode()">
+              <span>📄 ระบุเฉพาะเจาะจงหน้า</span>
+            </label>
+          </div>
+        </div>
+
+        <div id="customPageSelectContainer" style="display: none;">
+          <label for="customItemPageSelect">เลือกหน้าแปลนที่ต้องการโฟกัส:</label>
+          <select id="customItemPageSelect"></select>
+        </div>
 
         <label for="customItemCategorySelect">หมวดงาน:</label>
         <select id="customItemCategorySelect">
+          <option value="งานผนัง">งานผนัง</option>
           <option value="งานหลังคา">งานหลังคา</option>
           <option value="งานสันหลังคา/ตะเข้สัน (SCG Dry Tech)">งานสันหลังคา/ตะเข้สัน (SCG Dry Tech)</option>
           <option value="งานฉนวนใต้หลังคา (SCG FSO)">งานฉนวนใต้หลังคา (SCG FSO)</option>
           <option value="งานฉนวนปูเหนือฝ้า (STAY COOL)">งานฉนวนปูเหนือฝ้า (STAY COOL)</option>
           <option value="งานโครงสร้างและคอนกรีต CPAC">งานโครงสร้างและคอนกรีต CPAC</option>
           <option value="งานฝ้าเพดาน">งานฝ้าเพดาน</option>
-          <option value="งานผนัง">งานผนัง</option>
           <option value="งานพื้น">งานพื้น</option>
           <option value="งานไม้สังเคราะห์/ตกแต่ง">งานไม้สังเคราะห์/ตกแต่ง</option>
         </select>
 
         <label for="customItemTextInput">ระบุรายละเอียดสินค้า / พื้นที่ / ความต้องการเฉพาะเจาะจง:</label>
-        <textarea id="customItemTextInput" style="min-height: 90px;" placeholder="เช่น: สั่งเพิ่มไม้เชิงชาย SCG Smartwood 2in1 ความยาวรอบชายคา 48 เมตร หรือ ตรวจนับจุดเสาทุกต้น"></textarea>
+        <textarea id="customItemTextInput" style="min-height: 95px;" placeholder="เช่น: สแกนถอดแบบผนังก่ออิฐมวลเบา Q-CON และผนังเบาสมาร์ทบอร์ด SCG ทุกห้อง ทุกชั้น"></textarea>
 
         <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 10px;">
           <button type="button" style="background: #64748b; flex: none; padding: 8px 16px;" onclick="closeModal('customItemModal')">ยกเลิก</button>
@@ -1808,7 +1846,7 @@
         ctx.lineTo(calibrationLine.x2, calibrationLine.y2);
         ctx.stroke();
         const midX = (calibrationLine.x1 + calibrationLine.x2) / 2;
-        const midY = (calibrationLine.x1 + calibrationLine.y2) / 2;
+        const midY = (calibrationLine.x1 + calibrationLine.x2) / 2;
         ctx.fillStyle = "#8b5cf6";
         ctx.fillRect(midX - 50, midY - 26, 100, 24);
         ctx.fillStyle = "#ffffff";
@@ -2227,7 +2265,7 @@
         return;
       }
       const category = document.getElementById("drawCategorySelect").value;
-      const isRoofRelated = (category.includes("หลังคา") || category.includes("FSO") || cat.includes("Dry Tech"));
+      const isRoofRelated = (category.includes("หลังคา") || category.includes("FSO") || category.includes("Dry Tech"));
       const chosenProduct = document.getElementById("drawProductSelect").value;
       const pageNum = parseInt(document.getElementById("drawPageSelect").value);
       const slopeDeg = document.getElementById("modalSlopeDeg").value;
@@ -2371,27 +2409,31 @@ Calculate purchase bundle estimate (order_estimate) and calculation note for an 
 
     /* ==========================================================
        ระบบเพิ่มรายการเฉพาะเจาะจง (CUSTOM ITEM ROW GENERATION)
-       ใช้โมเดล gemini-3.5-flash-lite พร้อม Prompt Modularization
+       ใช้โมเดล gemini-3.5-flash-lite พร้อมตัวเลือกสแกนทุกหน้า
        ========================================================== */
+    function toggleCustomScopeMode() {
+      const isSingle = document.getElementById("scopeSinglePageRadio").checked;
+      document.getElementById("customPageSelectContainer").style.display = isSingle ? "block" : "none";
+    }
+
     function openCustomItemModal() {
       const pageSelect = document.getElementById("customItemPageSelect");
       pageSelect.innerHTML = "";
 
       const totalPages = detectedTotalPages || (pdfDocumentInstance ? pdfDocumentInstance.numPages : 1);
 
-      // เพิ่มตัวเลือก "สแกนตรวจหาจากทุกหน้า" เป็นตัวเลือกแรก
-      const allOpt = document.createElement("option");
-      allOpt.value = "all";
-      allOpt.innerText = `📑 สแกนตรวจหาจากทุกหน้า (สแกนแบบแปลนหน้า 1 ถึง ${totalPages} ทั้งหมด)`;
-      pageSelect.appendChild(allOpt);
-
-      // เพิ่มตัวเลือกรายหน้า
+      // เติมตัวเลือกหน้า 1 ถึง N
       for (let i = 1; i <= totalPages; i++) {
         const opt = document.createElement("option");
         opt.value = i;
         opt.innerText = `หน้า ${i}`;
         pageSelect.appendChild(opt);
       }
+
+      // รีเซ็ตค่าเริ่มต้นเป็น "สแกนตรวจหาจากทุกหน้า"
+      document.getElementById("scopeAllPagesRadio").checked = true;
+      toggleCustomScopeMode();
+
       document.getElementById("customItemTextInput").value = "";
       document.getElementById("customItemStatus").innerText = "";
       document.getElementById("customItemModal").style.display = "flex";
@@ -2400,8 +2442,8 @@ Calculate purchase bundle estimate (order_estimate) and calculation note for an 
     async function submitCustomItemRow() {
       const apiKey = document.getElementById("apiKey").value.trim();
       const instructionText = document.getElementById("customItemTextInput").value.trim();
+      const isAllPages = document.getElementById("scopeAllPagesRadio").checked;
       const selectedPageVal = document.getElementById("customItemPageSelect").value;
-      const isAllPages = (selectedPageVal === "all");
       const pageNum = isAllPages ? 1 : (parseInt(selectedPageVal) || 1);
       const category = document.getElementById("customItemCategorySelect").value;
       const statusElem = document.getElementById("customItemStatus");
@@ -2419,7 +2461,7 @@ Calculate purchase bundle estimate (order_estimate) and calculation note for an 
 
       submitBtn.disabled = true;
       if (isAllPages) {
-        statusElem.innerText = `กำลังสแกนค้นหาจากเอกสารแบบแปลนครบทุกหน้า (หน้า 1 ถึง ${detectedTotalPages}) ...`;
+        statusElem.innerText = `Gemini 3.5 Flash Lite กำลังสแกนหา "${category}" จากแบบแปลนครบทุกหน้า (หน้า 1 ถึง ${detectedTotalPages}) ...`;
       } else {
         statusElem.innerText = `กำลังวิเคราะห์คำสั่งเฉพาะเจาะจงสำหรับหน้า ${pageNum} ...`;
       }
@@ -2436,28 +2478,28 @@ Calculate purchase bundle estimate (order_estimate) and calculation note for an 
           promptText = `
 ### Scope & Task:
 You are an expert SCG & CPAC Quantity Surveyor.
-Scan all pages (1 to ${detectedTotalPages}) of the uploaded drawings to extract items matching this specific user directive:
+Scan all pages (1 to ${detectedTotalPages}) of the uploaded architectural drawings to extract and estimate items matching this specific user directive:
 """
 หมวดงาน: ${category}
 คำสั่งเฉพาะเจาะจง: ${instructionText}
 โหมดการทำงาน: สแกนตรวจหาและคำนวณจากแบบแปลนทุกหน้า
 """
 
-### Rules:
-1. If the item appears on multiple pages, create a separate JSON item for each page (specify source_location.page_number accurately 1 to ${detectedTotalPages}).
-2. If it is a global combined requirement, return 1 item with page_number = 1.
-3. In "order_estimate", format each item/bundle accessory starting on a new line with "- ".
+### Rules (MANDATORY):
+1. Scan across all pages. For every floor/zone where this category is found, create a separate JSON item in the array.
+2. In "source_location.page_number", specify the exact page number (1 to ${detectedTotalPages}) where that particular item was identified.
+3. In "order_estimate", break down the purchase package and system bundle with each item starting on a new line with "- ".
 4. Provide estimated box_2d [ymin, xmin, ymax, xmax] (0-1000 scale) for the location found on that page.
-5. Return ONLY a valid JSON Array:
+5. Return ONLY a valid JSON Array with elements having these exact keys:
 [
   {
     "category": "${category}",
-    "code_ref": "Custom-All",
-    "item_name": "ชื่อรายการงานตามแบบแปลน (ระบุตำแหน่ง/ชั้น/ผัง)",
-    "net_quantity": "ปริมาณพร้อมหน่วย",
+    "code_ref": "string",
+    "item_name": "ชื่อรายการงานตามแบบแปลน (ระบุชั้น/ห้อง/โซน)",
+    "net_quantity": "ปริมาณพร้อมหน่วย เช่น 120.50 ตร.ม.",
     "scg_product": "ชื่อสินค้า SCG หรือ CPAC ที่แนะนำ",
-    "order_estimate": "- สินค้าหลัก 1\\n- อุปกรณ์เสริม 2",
-    "confidence_score": 99,
+    "order_estimate": "- รายการสินค้าหลัก 1\\n- อุปกรณ์ระบบ 2",
+    "confidence_score": 98,
     "calculation_note": "สูตรคำนวณและสัดส่วนเผื่อเศษ",
     "verification_method": "[สแกนพบจากทุกหน้า - หน้า {page}]: ${instructionText}",
     "source_location": {
