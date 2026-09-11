@@ -63,7 +63,7 @@
       margin-bottom: 6px;
       color: #475569;
     }
-    input[type="password"], input[type="number"], select {
+    input[type="password"], input[type="number"], select, textarea {
       width: 100%;
       padding: 10px;
       border: 1px solid var(--border);
@@ -72,6 +72,11 @@
       font-size: 14px;
       background: #ffffff;
       color: var(--text);
+    }
+    textarea {
+      resize: vertical;
+      min-height: 70px;
+      line-height: 1.5;
     }
     input[type="file"] {
       width: 100%;
@@ -271,6 +276,36 @@
       color: #0f172a;
       font-weight: 600;
       word-break: break-word;
+    }
+
+    /* กล่องคำสั่งพิเศษสำหรับ AI */
+    .custom-prompt-container {
+      background: #fff7ed;
+      border: 1px solid #fed7aa;
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 14px;
+    }
+    .prompt-chip-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 6px;
+    }
+    .prompt-chip {
+      background: #ffedd5;
+      color: #9a3412;
+      border: 1px solid #fdba74;
+      padding: 4px 8px;
+      border-radius: 16px;
+      font-size: 12px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.15s ease;
+    }
+    .prompt-chip:hover {
+      background: #fed7aa;
+      color: #7c2d12;
     }
 
     .edit-qty-wrapper {
@@ -671,6 +706,24 @@
 
     <label for="specFile">3. รายการประกอบแบบ/สเปก (ถ้ามี):</label>
     <input type="file" id="specFile" accept="image/*,application/pdf">
+
+    <!-- กล่องใส่ข้อความสั่งให้ AI ประเมินพื้นที่เจาะจง -->
+    <div class="custom-prompt-container">
+      <label for="customInstructionPrompt" style="color: #c2410c; margin-bottom: 4px;">
+        💬 คำสั่งเฉพาะเจาะจงสำหรับ AI (สั่งโฟกัสกรอบสี จุด หรือเงื่อนไขพิเศษในแบบ):
+      </label>
+      <textarea id="customInstructionPrompt" placeholder="เช่น: วัดพื้นที่หลังคาตามกรอบสีแดงในแบบ, ถอดเฉพาะงานผนังห้องนอน 1, หรือตรวจสอบความสูงคานจากรูปตัด"></textarea>
+      
+      <div style="font-size: 12px; color: #7c2d12; font-weight: 600;">⚡ ปุ่มคำสั่งด่วน (คลิกเพื่อเติมข้อความ):</div>
+      <div class="prompt-chip-group">
+        <span class="prompt-chip" onclick="applyQuickPrompt('วัดพื้นที่หลังคาตามกรอบสีแดงในแบบ')">🎯 วัดตามกรอบสีแดง</span>
+        <span class="prompt-chip" onclick="applyQuickPrompt('วัดพื้นที่ตามเส้นประ/กรอบไฮไลต์สีน้ำเงินในแบบ')">🔷 วัดตามกรอบสีน้ำเงิน</span>
+        <span class="prompt-chip" onclick="applyQuickPrompt('ถอดแบบและคำนวณเฉพาะงานหลังคาและฉนวนกันความร้อน')">🏠 เน้นเฉพาะงานหลังคา & ฉนวน</span>
+        <span class="prompt-chip" onclick="applyQuickPrompt('ถอดแบบเฉพาะงานโครงสร้างคอนกรีตและแผ่นพื้น CPAC Hollow Core')">🏢 เน้นเฉพาะโครงสร้าง CPAC</span>
+        <span class="prompt-chip" onclick="applyQuickPrompt('ช่วยตรวจเช็กความสูงฝ้าและท้องคานจากรูปตัด เพื่อคูณพื้นที่ผนังจริง')">📐 ตรวจสอบความสูงจากรูปตัด</span>
+        <span class="prompt-chip" style="background: #f1f5f9; color: #475569; border-color: #cbd5e1;" onclick="clearQuickPrompt()">ล้างคำสั่ง</span>
+      </div>
+    </div>
     
     <div class="btn-group">
       <button id="processBtn" onclick="processDocuments()">เริ่มวิเคราะห์และ Cross-Check 3D (อัตโนมัติทั้งแผ่น)</button>
@@ -810,6 +863,20 @@
     let lastRawBOQItems = [];
     
     let editingItemId = null;
+
+    // คำสั่งเฉพาะเจาะจง
+    function applyQuickPrompt(text) {
+      const promptInput = document.getElementById("customInstructionPrompt");
+      if (promptInput.value.trim() === "") {
+        promptInput.value = text;
+      } else {
+        promptInput.value += "\n" + text;
+      }
+    }
+
+    function clearQuickPrompt() {
+      document.getElementById("customInstructionPrompt").value = "";
+    }
 
     // มาตรฐานความชันขั้นต่ำ
     const SCG_ROOF_MIN_SLOPE = {
@@ -1444,12 +1511,10 @@
     function formatOrderEstimateHTML(text) {
       if (!text) return "-";
 
-      // แยกข้อความด้วยขึ้นบรรทัดใหม่, ขีดหน้า (- ), จุด (•), หรือเครื่องหมายแบ่ง
       let items = text.split(/(?:\r?\n|(?<=\s|^)[-•]\s+|\s*\[|\s*\]|\s*\|\s*)/g)
                       .map(s => s.trim())
                       .filter(s => s.length > 0 && s !== "-");
 
-      // กรณีที่ข้อความถูกคั่นด้วย " - "
       if (items.length <= 1 && text.includes(" - ")) {
         items = text.split(/\s+-\s+/).map(s => s.trim()).filter(s => s.length > 0);
       }
@@ -1458,7 +1523,6 @@
 
       let html = `<div class="order-bundle-list">`;
       items.forEach(item => {
-        // ลบเครื่องหมายขีดหรือจุดที่ติดมาด้านหน้า
         const cleanItem = item.replace(/^[-•*]\s*/, '').trim();
         if (cleanItem) {
           html += `
@@ -2359,13 +2423,15 @@
     }
 
     /* ==========================================================
-       ระบบประมวลผลอัตโนมัติ CROSS-CHECK 3D (แปลน ↔ รูปตัด ↔ รูปด้าน)
+       ระบบประมวลผลอัตโนมัติ CROSS-CHECK 3D + CUSTOM PROMPT
        ========================================================== */
     async function processDocuments() {
       const apiKey = document.getElementById("apiKey").value.trim();
       const planFile = document.getElementById("planFile").files[0];
       const sectionFile = document.getElementById("sectionFile").files[0];
       const specFile = document.getElementById("specFile").files[0];
+
+      const customInstruction = document.getElementById("customInstructionPrompt").value.trim();
 
       const concreteChoice = document.getElementById("concreteOption").value;
       const roofChoice = document.getElementById("roofOption").value;
@@ -2413,11 +2479,23 @@
           parts.push(specPart);
         }
 
-        statusDiv.innerText = "Gemini กำลัง Cross-Check ความสูงคาน/ผนัง และองศาหลังคาเพื่อถอดแบบขั้นสูง...";
+        statusDiv.innerText = "Gemini กำลังอ่านแบบและปฏิบัติตามคำสั่งเฉพาะจุดเพื่อถอดแบบ...";
+
+        let customPromptSection = "";
+        if (customInstruction) {
+          customPromptSection = `
+[คำสั่งพิเศษที่มีลำดับความสำคัญสูงสุดจากผู้ใช้งาน (USER PRIORITY DIRECTIVE)]:
+"""
+${customInstruction}
+"""
+* ให้โฟกัสการถอดแบบตามคำสั่งข้างต้นนี้เป็นอันดับ 1 (เช่น หากระบุให้วัดเฉพาะกรอบสีแดง ให้เน้นถอดพื้นที่ที่ล้อมรอบด้วยกรอบสีแดงในแบบแปลน) และระบุใน verification_method ว่าเป็นผลลัพธ์จากคำสั่งพิเศษนี้
+`;
+        }
 
         const promptText = `
 คุณเป็น Quantity Surveyor (QS) ระดับสูงประจำเครือ SCG และ CPAC
-หน้าที่ของคุณคือการวิเคราะห์แบบแปลนก่อสร้าง พร้อมทำ [Cross-Check ตรวจสอบความสอดคล้อง 3 มิติ (Plan ↔ Section ↔ Elevation)]:
+หน้าที่ของคุณคือการวิเคราะห์แบบแปลนก่อสร้าง พร้อมทำ [Cross-Check ตรวจสอบความสอดคล้อง 3 มิติ (Plan ↔ Section ↔ Elevation)]
+${customPromptSection}
 
 [แนวทาง Cross-Check 3D เพื่อความแม่นยำสูงสุด]:
 1. หากมีไฟล์รูปตัด (Section): ให้ตรวจสอบระดับความสูงพื้นถึงใต้ท้องคาน (Clear Height) หรือความสูงพื้นถึงฝ้าจริง ห้ามเดา 2.8 หรือ 3.0 เมตร และนำความสูงจริงนี้มาคูณกับความยาวผนังที่ถอดได้จาก Floor Plan เพื่อคำนวณพื้นที่ผนังก่ออิฐ Q-CON หรือแผ่นสมาร์ทบอร์ด
@@ -2444,7 +2522,7 @@
     "order_estimate": "- สินค้าหลัก 1 ...\\n- อุปกรณ์เสริม 2 ...",
     "confidence_score": 98,
     "calculation_note": "สูตรคำนวณ ความสูงที่ Cross-check ได้จากรูปตัด หรือ % เผื่อเศษ",
-    "verification_method": "สรุปผลการ Cross-check แปลนพื้นกับรูปตัด/รูปด้าน และที่มาตัวเลขอย่างละเอียด",
+    "verification_method": "สรุปผลการ Cross-check แปลนพื้นกับรูปตัด/รูปด้าน และที่มาตัวเลขอย่างละเอียด (รวมถึงการปฏิบัติตามคำสั่งพิเศษ)",
     "source_location": {
       "page_number": 1,
       "box_2d": [100, 100, 500, 500],
@@ -2477,7 +2555,7 @@
         lastRawBOQItems = boqItems;
         recalcBtn.disabled = false;
         renderBOQTable(lastRawBOQItems);
-        statusDiv.innerText = "ประมวลผลและ Cross-Check 3D สำเร็จเรียบร้อย!";
+        statusDiv.innerText = "ประมวลผลและปฏิบัติตามคำสั่งเฉพาะจุดสำเร็จเรียบร้อย!";
       } catch (err) {
         statusDiv.innerText = "เกิดข้อผิดพลาดในการประมวลผล กรุณาลองใหม่อีกครั้ง";
       } finally {
@@ -2591,7 +2669,6 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
                               (item.verification_method || "").includes("ความสูง");
         const crossCheckBadge = hasCrossCheck ? `<div class="cross-check-tag">🔍 Cross-Checked 3D</div>` : "";
 
-        // จัดรูปแบบการแสดงผลสั่งซื้อจริงแยกเป็นแต่ละบรรทัด
         const orderEstimateFormatted = formatOrderEstimateHTML(item.order_estimate);
 
         const row = document.createElement("tr");
