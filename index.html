@@ -23,8 +23,6 @@
   </script>
   <!-- SheetJS CDN สำหรับสร้างไฟล์ Excel (.xlsx) แท้ -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-  <!-- html2pdf.js CDN สำหรับสร้างรายงาน PDF คุณภาพสูง A4 แนวนอน -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <style>
     :root {
       --primary: #dc2626; /* SCG Red */
@@ -606,7 +604,7 @@
 
     /* Modal พรีวิวกระดาษ A4 แนวนอน */
     .pdf-preview-modal-content {
-      background: #334155;
+      background: #1e293b;
       border-radius: 12px;
       padding: 16px;
       width: 98%;
@@ -614,19 +612,19 @@
       height: 94vh;
       display: flex;
       flex-direction: column;
-      box-shadow: 0 10px 25px rgba(0,0,0,0.4);
+      box-shadow: 0 10px 25px rgba(0,0,0,0.5);
     }
     .pdf-preview-viewport {
       flex: 1;
       overflow: auto;
-      background: #475569;
+      background: #334155;
       border-radius: 8px;
       padding: 24px;
       display: flex;
       justify-content: center;
       align-items: flex-start;
     }
-    /* แผ่นกระดาษ A4 แนวนอนจำลอง (สเกลมาตรฐาน 297mm x 210mm) */
+    /* แผ่นกระดาษ A4 แนวนอนจำลอง (สเกลมาตรฐาน) */
     .a4-landscape-page {
       background: #ffffff;
       width: 1120px;
@@ -641,35 +639,13 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      background: #1e293b;
+      background: #0f172a;
       padding: 10px 16px;
       border-radius: 8px;
       margin-bottom: 12px;
       color: #f8fafc;
       flex-wrap: wrap;
       gap: 10px;
-    }
-
-    /* สไตล์สำหรับการสั่งพิมพ์จากเบราว์เซอร์โดยตรง (Print Stylesheet) */
-    @media print {
-      body * {
-        visibility: hidden;
-      }
-      #a4ReportPaper, #a4ReportPaper * {
-        visibility: visible;
-      }
-      #a4ReportPaper {
-        position: absolute;
-        left: 0;
-        top: 0;
-        width: 100% !important;
-        padding: 0 !important;
-        box-shadow: none !important;
-      }
-      @page {
-        size: A4 landscape;
-        margin: 10mm;
-      }
     }
   </style>
 </head>
@@ -852,7 +828,7 @@
     <!-- แผงปุ่ม Export / Import 4 ปุ่มหลัก -->
     <div class="export-import-grid">
       <button type="button" class="btn-export-excel" onclick="exportExcel()">📊 Export เป็น Excel (.xlsx แท้)</button>
-      <button type="button" class="btn-export-pdf" id="btnExportPdf" onclick="openPdfPreviewModal()">📄 พรีวิว & ตีกรอบบันทึก PDF (A4 แนวนอน)</button>
+      <button type="button" class="btn-export-pdf" id="btnExportPdf" onclick="openPdfPreviewModal()">📄 พรีวิว & พิมพ์/บันทึก PDF (A4 แนวนอน)</button>
       <button type="button" class="btn-export-json" onclick="exportJSON()">💾 บันทึกโปรเจกต์ (Export JSON)</button>
       <button type="button" class="btn-import-json" onclick="document.getElementById('jsonFileInput').click()">📂 นำเข้าโปรเจกต์ (Import JSON)</button>
     </div>
@@ -866,17 +842,16 @@
           <span style="font-size: 18px;">📄</span>
           <div>
             <div style="font-weight: bold; font-size: 15px;">พรีวิวรายงานเอกสาร A4 แนวนอน (SCG BOQ Report)</div>
-            <div style="font-size: 12px; opacity: 0.8;">ตรวจสอบความถูกต้องของหน้ากระดาษก่อนบันทึกหรือสั่งพิมพ์</div>
+            <div style="font-size: 12px; opacity: 0.8;">ตรวจสอบความถูกต้องก่อนกดพิมพ์หรือบันทึกเป็น PDF</div>
           </div>
         </div>
         <div style="display: flex; gap: 8px; align-items: center;">
-          <button type="button" id="btnDownloadPdfDirect" onclick="downloadPdfFromCurrentPaper()" style="background: #16a34a; padding: 8px 16px; font-size: 13px;">💾 บันทึกเป็นไฟล์ PDF ทันที</button>
-          <button type="button" onclick="window.print()" style="background: #0284c7; padding: 8px 16px; font-size: 13px;">🖨️ สั่งพิมพ์ / Save as PDF (บราวเซอร์)</button>
+          <button type="button" onclick="printReportDocument()" style="background: #16a34a; padding: 8px 18px; font-size: 13px; font-weight: bold;">🖨️ พิมพ์ / บันทึกเป็น PDF (Save as PDF)</button>
           <button type="button" onclick="closeModal('pdfPreviewModal')" style="background: #64748b; padding: 8px 14px; font-size: 13px;">✕ ปิด</button>
         </div>
       </div>
       <div class="pdf-preview-viewport">
-        <!-- แผ่นกระดาษ A4 แนวนอนจริงที่ผู้ใช้มองเห็นและให้ระบบจับภาพ -->
+        <!-- แผ่นกระดาษ A4 แนวนอนจำลองที่ผู้ใช้มองเห็น -->
         <div id="a4ReportPaper" class="a4-landscape-page"></div>
       </div>
     </div>
@@ -1775,7 +1750,7 @@
         ctx.lineTo(calibrationLine.x2, calibrationLine.y2);
         ctx.stroke();
         const midX = (calibrationLine.x1 + calibrationLine.x2) / 2;
-        const midY = (calibrationLine.y1 + calibrationLine.y2) / 2;
+        const midY = (calibrationLine.x1 + calibrationLine.x2) / 2;
         ctx.fillStyle = "#8b5cf6";
         ctx.fillRect(midX - 50, midY - 26, 100, 24);
         ctx.fillStyle = "#ffffff";
@@ -2545,7 +2520,7 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
         if (cat.includes("หลังคา")) badgeClass = "badge badge-roof";
         else if (cat.includes("สันหลังคา") || cat.includes("Dry Tech")) badgeClass = "badge badge-roof";
         else if (cat.includes("ฉนวนใต้หลังคา") || cat.includes("FSO")) badgeClass = "badge badge-roof";
-        else if (cat.includes("ฉนวนปูเหนือฝ้า") || cat.includes("STAY COOL") || cat.includes("ฉนวน")) badgeClass = "badge badge-insulation";
+        else if (cat.includes("ฉนวนปูเหนือฝ้า") || cat.includes("STAY COOL")) badgeClass = "badge badge-insulation";
         else if (cat.includes("โครงสร้าง") || cat.includes("คอนกรีต") || cat.includes("CPAC") || cat.includes("Hollow") || cat.includes("Post")) badgeClass = "badge badge-concrete";
         else if (cat.includes("ไม้")) badgeClass = "badge badge-wood";
         else if (cat.includes("ผนัง")) badgeClass = "badge badge-wall";
@@ -2722,20 +2697,10 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
         };
       });
       const worksheet = XLSX.utils.json_to_sheet(excelData);
-      // ปรับความกว้างคอลัมน์อัตโนมัติ (Auto column width)
       const colWidths = [
-        { wch: 16 }, // หมวดงาน
-        { wch: 10 }, // หน้าที่พบ
-        { wch: 12 }, // รหัสอ้างอิง
-        { wch: 32 }, // รายการงาน
-        { wch: 14 }, // ปริมาณสุทธิ
-        { wch: 16 }, // สถานะ
-        { wch: 35 }, // สินค้า SCG/CPAC
-        { wch: 45 }, // สั่งซื้อจริง
-        { wch: 14 }, // ความมั่นใจ
-        { wch: 35 }, // หมายเหตุ
-        { wch: 40 }, // Cross-Check
-        { wch: 30 }  // ตำแหน่ง
+        { wch: 16 }, { wch: 10 }, { wch: 12 }, { wch: 32 },
+        { wch: 14 }, { wch: 16 }, { wch: 35 }, { wch: 45 },
+        { wch: 14 }, { wch: 35 }, { wch: 40 }, { wch: 30 }
       ];
       worksheet['!cols'] = colWidths;
       const workbook = XLSX.utils.book_new();
@@ -2743,20 +2708,14 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
       const fileName = `SCG_CPAC_BOQ_${new Date().toISOString().slice(0,10)}.xlsx`;
       XLSX.writeFile(workbook, fileName);
     }
-    /* ==========================================================
-       2. ระบบพรีวิวเอกสารตีกรอบหน้ากระดาษ A4 แนวนอน (แก้บั๊ก PDF เปล่า)
-       ========================================================== */
-    function openPdfPreviewModal() {
-      if (!lastRawBOQItems || lastRawBOQItems.length === 0) {
-        alert("ไม่มีข้อมูลสำหรับแสดงรายงาน PDF");
-        return;
-      }
-      const paper = document.getElementById("a4ReportPaper");
+
+    /* สร้างเนื้อหารายงาน HTML สำหรับ Preview และ Print */
+    function buildReportHTML() {
       const headerHTML = `
         <div style="border-bottom: 3px solid #dc2626; padding-bottom: 12px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: flex-end;">
           <div>
-            <h2 style="margin: 0; color: #dc2626; font-size: 20px; font-weight: bold;">รายงานถอดแบบและประมาณการสั่งซื้อสินค้า SCG & คอนกรีต CPAC</h2>
-            <div style="font-size: 12px; color: #64748b; margin-top: 4px;">สรุปรายการแยกตามหน้าแปลนก่อสร้างจริง พร้อมระบบตรวจสอบ Cross-Check 3D</div>
+            <h2 style="margin: 0; color: #dc2626; font-size: 19px; font-weight: bold;">รายงานถอดแบบและประมาณการสั่งซื้อสินค้า SCG & คอนกรีต CPAC</h2>
+            <div style="font-size: 11px; color: #64748b; margin-top: 4px;">สรุปรายการแยกตามหน้าแปลนก่อสร้างจริง พร้อมระบบตรวจสอบ Cross-Check 3D</div>
           </div>
           <div style="text-align: right; font-size: 11px; color: #475569; line-height: 1.4;">
             <div><strong>วันที่ออกรายงาน:</strong> ${new Date().toLocaleDateString('th-TH')}</div>
@@ -2774,15 +2733,15 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
           .map(s => `• ${s}`)
           .join("<br>");
         rowsHTML += `
-          <tr style="border-bottom: 1px solid #cbd5e1; font-size: 10px; background: ${i % 2 === 0 ? '#ffffff' : '#f8fafc'}; page-break-inside: avoid;">
-            <td style="padding: 6px 8px; font-weight: bold; color: #b91c1c;">${row.category || "-"}</td>
-            <td style="padding: 6px 8px; text-align: center; font-weight: bold;">หน้า ${page}</td>
-            <td style="padding: 6px 8px; font-weight: bold;">${row.item_name || "-"}</td>
-            <td style="padding: 6px 8px; font-weight: bold; color: #0284c7;">${row.net_quantity || "-"}</td>
-            <td style="padding: 6px 8px; font-weight: bold; color: #b91c1c;">${row.scg_product || "-"}</td>
-            <td style="padding: 6px 8px; line-height: 1.35;">${cleanEstimate}</td>
-            <td style="padding: 6px 8px; color: #475569; line-height: 1.3;">${row.calculation_note || "-"}</td>
-            <td style="padding: 6px 8px; color: #0369a1; font-size: 9px; line-height: 1.3;">${row.verification_method || "-"}</td>
+          <tr style="border-bottom: 1px solid #cbd5e1; font-size: 10px; background: ${i % 2 === 0 ? '#ffffff' : '#f8fafc'}; page-break-inside: avoid; -webkit-column-break-inside: avoid; break-inside: avoid;">
+            <td style="padding: 6px 8px; font-weight: bold; color: #b91c1c; vertical-align: top;">${row.category || "-"}</td>
+            <td style="padding: 6px 8px; text-align: center; font-weight: bold; vertical-align: top;">หน้า ${page}</td>
+            <td style="padding: 6px 8px; font-weight: bold; vertical-align: top;">${row.item_name || "-"}</td>
+            <td style="padding: 6px 8px; font-weight: bold; color: #0284c7; vertical-align: top;">${row.net_quantity || "-"}</td>
+            <td style="padding: 6px 8px; font-weight: bold; color: #b91c1c; vertical-align: top;">${row.scg_product || "-"}</td>
+            <td style="padding: 6px 8px; line-height: 1.35; vertical-align: top;">${cleanEstimate}</td>
+            <td style="padding: 6px 8px; color: #475569; line-height: 1.3; vertical-align: top;">${row.calculation_note || "-"}</td>
+            <td style="padding: 6px 8px; color: #0369a1; font-size: 9px; line-height: 1.3; vertical-align: top;">${row.verification_method || "-"}</td>
           </tr>
         `;
       });
@@ -2805,54 +2764,108 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
           </tbody>
         </table>
       `;
-      paper.innerHTML = headerHTML + tableHTML;
+      return headerHTML + tableHTML;
+    }
+
+    /* ==========================================================
+       2. ระบบพรีวิวเอกสารตีกรอบหน้ากระดาษ A4 แนวนอน
+       ========================================================== */
+    function openPdfPreviewModal() {
+      if (!lastRawBOQItems || lastRawBOQItems.length === 0) {
+        alert("ไม่มีข้อมูลสำหรับแสดงรายงาน PDF");
+        return;
+      }
+      const paper = document.getElementById("a4ReportPaper");
+      paper.innerHTML = buildReportHTML();
       document.getElementById("pdfPreviewModal").style.display = "flex";
     }
 
-    /* บันทึกเป็น PDF ทันทีจากหน้ากระดาษพรีวิว */
-    function downloadPdfFromCurrentPaper() {
-      const paper = document.getElementById("a4ReportPaper");
-      const btn = document.getElementById("btnDownloadPdfDirect");
-      const originalText = btn.innerText;
-      btn.innerText = "⏳ กำลังสร้างไฟล์ PDF...";
-      btn.disabled = true;
-
-      const opt = {
-        margin: [6, 6, 6, 6],
-        filename: `SCG_CPAC_BOQ_Report_${new Date().toISOString().slice(0,10)}.pdf`,
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: {
-          scale: 2,
-          useCORS: true,
-          logging: false
-        },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' },
-        pagebreak: { mode: ['css', 'legacy'] }
-      };
-
-      html2pdf().set(opt).from(paper).save().then(() => {
-        btn.innerText = originalText;
-        btn.disabled = false;
-      }).catch(err => {
-        console.error("html2pdf error:", err);
-        btn.innerText = originalText;
-        btn.disabled = false;
-        alert("ระบบดาวน์โหลดตรงขัดข้องเล็กน้อย จะเปิดหน้าต่างสั่งพิมพ์ของบราวเซอร์แทนเพื่อบันทึกเป็น PDF");
-        window.print();
-      });
-    }
     /* ==========================================================
-       3. ระบบ EXPORT เป็นไฟล์ JSON (Snapshot สำหรับโหลดทำต่อ)
+       3. ระบบสั่งพิมพ์ / บันทึกเป็น PDF ผ่าน Clean Print Window (ไม่ทับซ้อน คมชัด 100%)
+       ========================================================== */
+    function printReportDocument() {
+      if (!lastRawBOQItems || lastRawBOQItems.length === 0) {
+        alert("ไม่มีข้อมูลสำหรับสั่งพิมพ์");
+        return;
+      }
+
+      const reportContent = buildReportHTML();
+      const printWindow = window.open('', '_blank', 'width=1200,height=850');
+      if (!printWindow) {
+        alert("เบราว์เซอร์บล็อกหน้าต่างป๊อปอัป กรุณาอนุญาตป๊อปอัปสำหรับเว็บไซต์นี้");
+        return;
+      }
+
+      printWindow.document.open();
+      printWindow.document.write(`
+        <!DOCTYPE html>
+        <html lang="th">
+        <head>
+          <meta charset="UTF-8">
+          <title>SCG_CPAC_BOQ_Report_${new Date().toISOString().slice(0,10)}</title>
+          <style>
+            @page {
+              size: A4 landscape;
+              margin: 10mm 10mm 10mm 10mm;
+            }
+            body {
+              font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+              color: #0f172a;
+              background: #ffffff;
+              margin: 0;
+              padding: 0;
+              font-size: 11px;
+            }
+            table {
+              width: 100%;
+              border-collapse: collapse;
+              page-break-after: auto;
+            }
+            thead {
+              display: table-header-group;
+            }
+            tr {
+              page-break-inside: avoid;
+              break-inside: avoid;
+            }
+            th, td {
+              border: 1px solid #cbd5e1;
+              padding: 6px 8px;
+            }
+            th {
+              background-color: #f1f5f9 !important;
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
+            }
+          </style>
+        </head>
+        <body>
+          ${reportContent}
+          <script>
+            window.onload = function() {
+              setTimeout(function() {
+                window.focus();
+                window.print();
+              }, 400);
+            };
+          <\/script>
+        </body>
+        </html>
+      `);
+      printWindow.document.close();
+    }
+
+    /* ==========================================================
+       4. ระบบ EXPORT เป็นไฟล์ JSON (Snapshot สำหรับโหลดทำต่อ)
        ========================================================== */
     function exportJSON() {
       if (!lastRawBOQItems || lastRawBOQItems.length === 0) {
         alert("ไม่มีข้อมูลสำหรับส่งออก JSON");
         return;
       }
-      // บันทึกทั้งรายการ BOQ และตัวเลือกการตั้งค่าต่างๆ เก็บไว้ด้วย
       const projectSnapshot = {
         exportDate: new Date().toISOString(),
-        version: "2.5",
+        version: "2.6",
         settings: {
           concreteOption: document.getElementById("concreteOption").value,
           roofOption: document.getElementById("roofOption").value,
@@ -2878,8 +2891,9 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
     }
+
     /* ==========================================================
-       4. ระบบ IMPORT ข้อมูลจากไฟล์ JSON เดิมกลับมาทำงานต่อ
+       5. ระบบ IMPORT ข้อมูลจากไฟล์ JSON เดิมกลับมาทำงานต่อ
        ========================================================== */
     function handleJsonFileImport(event) {
       const file = event.target.files[0];
@@ -2894,7 +2908,6 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
           } else if (imported && Array.isArray(imported.items)) {
             itemsToLoad = imported.items;
 
-            // คืนค่า Dropdowns และการตั้งค่าต่างๆ ให้ตรงกับโปรเจกต์เดิม
             if (imported.settings) {
               const s = imported.settings;
               if (s.concreteOption) document.getElementById("concreteOption").value = s.concreteOption;
@@ -2923,7 +2936,7 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
         } catch (err) {
           alert("ไม่สามารถอ่านไฟล์ JSON ได้ กรุณาตรวจสอบความถูกต้องของไฟล์");
         } finally {
-          event.target.value = ""; // รีเซ็ต input file
+          event.target.value = "";
         }
       };
       reader.readAsText(file);
