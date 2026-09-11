@@ -22,6 +22,13 @@
   <script>
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
   </script>
+
+  <!-- SheetJS CDN สำหรับสร้างไฟล์ Excel (.xlsx) แท้ -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+  <!-- html2pdf.js CDN สำหรับสร้างรายงาน PDF คุณภาพสูง A4 แนวนอน -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
   <style>
     :root {
       --primary: #dc2626; /* SCG Red */
@@ -157,6 +164,8 @@
     .btn-recalc:hover { background: #0369a1; }
     .btn-draw { background: #059669; }
     .btn-draw:hover { background: #047857; }
+    .btn-import { background: #475569; }
+    .btn-import:hover { background: #334155; }
     .btn-view {
       background: #0284c7;
       color: white;
@@ -367,6 +376,32 @@
       line-height: 1.4;
     }
 
+    /* กล่องควบคุม Export & Import */
+    .export-import-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+      margin-top: 16px;
+    }
+    @media (min-width: 640px) {
+      .export-import-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+    @media (min-width: 1024px) {
+      .export-import-grid {
+        grid-template-columns: 1.2fr 1.2fr 1fr 1fr;
+      }
+    }
+    .btn-export-excel { background: #16a34a; }
+    .btn-export-excel:hover { background: #15803d; }
+    .btn-export-pdf { background: #dc2626; }
+    .btn-export-pdf:hover { background: #b91c1c; }
+    .btn-export-json { background: #9333ea; }
+    .btn-export-json:hover { background: #7e22ce; }
+    .btn-import-json { background: #475569; }
+    .btn-import-json:hover { background: #334155; }
+
     /* Modal */
     .modal {
       display: none;
@@ -417,7 +452,7 @@
     .canvas-wrapper {
       position: relative;
       overflow: hidden;
-      background: #334155; /* ปรับพื้นหลังรอบนอกให้ดูสบายตา */
+      background: #334155;
       border-radius: 8px;
       flex: 1;
       min-height: 350px;
@@ -718,6 +753,9 @@
     <label for="specFile">3. รายการประกอบแบบ/สเปก (ถ้ามี):</label>
     <input type="file" id="specFile" accept="image/*,application/pdf">
 
+    <!-- ซ่อน input file สำหรับกดนำเข้า JSON -->
+    <input type="file" id="jsonFileInput" accept=".json" style="display: none;" onchange="handleJsonFileImport(event)">
+
     <!-- กล่องใส่ข้อความสั่งให้ AI ประเมินพื้นที่เจาะจง -->
     <div class="custom-prompt-container">
       <label for="customInstructionPrompt" style="color: #c2410c; margin-bottom: 4px;">
@@ -740,6 +778,7 @@
       <button id="processBtn" onclick="processDocuments()">เริ่มวิเคราะห์และ Cross-Check 3D (แยกแสดงผลทีละหน้าอัตโนมัติ)</button>
       <button id="drawBtn" class="btn-draw" onclick="openManualDrawModal(null)" disabled>🎯 สร้างรายการใหม่ด้วย Precision Geometry Tool</button>
       <button id="recalcBtn" class="btn-recalc" onclick="recalculateWithNewSpecs()" disabled>🔄 คำนวณใหม่ตามสเปกที่เลือก</button>
+      <button type="button" class="btn-import" onclick="document.getElementById('jsonFileInput').click()">📂 นำเข้าโปรเจกต์เดิม (Import JSON)</button>
     </div>
     <div id="status" class="status-text"></div>
   </div>
@@ -750,7 +789,7 @@
       <h3 style="margin: 0;">รายการประเมินปริมาณงานและสินค้า SCG & คอนกรีต CPAC (แยกแถวรายหน้า)</h3>
       <span style="font-size: 12px; color: #64748b;">💡 แต่ละแถวผูกกับหน้าที่พบโดยตรง กด "ดู/แก้ไขในแบบ" เพื่อกระโดดไปหน้านั้นได้ทันที</span>
     </div>
-    <div class="table-container">
+    <div class="table-container" id="boqPrintArea">
       <table id="boqTable">
         <thead>
           <tr>
@@ -764,14 +803,21 @@
             <th>ความมั่นใจ</th>
             <th>หมายเหตุและวิธีคำนวณ</th>
             <th>🔍 การ Cross-Check & ที่มาปริมาณ</th>
-            <th style="text-align: center;">ตำแหน่ง & แก้ไขในแบบ</th>
-            <th style="text-align: center;">จัดการ</th>
+            <th class="no-print" style="text-align: center;">ตำแหน่ง & แก้ไขในแบบ</th>
+            <th class="no-print" style="text-align: center;">จัดการ</th>
           </tr>
         </thead>
         <tbody id="boqBody"></tbody>
       </table>
     </div>
-    <button style="margin-top: 16px; background: #16a34a; width: 100%;" onclick="exportCSV()">Export เป็น Excel (CSV)</button>
+
+    <!-- แผงปุ่ม Export / Import 4 ปุ่มหลัก -->
+    <div class="export-import-grid">
+      <button type="button" class="btn-export-excel" onclick="exportExcel()">📊 Export เป็น Excel (.xlsx แท้)</button>
+      <button type="button" class="btn-export-pdf" onclick="exportPDF()">📄 Export เป็นรายงาน PDF (A4 แนวนอน)</button>
+      <button type="button" class="btn-export-json" onclick="exportJSON()">💾 บันทึกโปรเจกต์ (Export JSON)</button>
+      <button type="button" class="btn-import-json" onclick="document.getElementById('jsonFileInput').click()">📂 นำเข้าโปรเจกต์ (Import JSON)</button>
+    </div>
   </div>
 
   <!-- In-Place Drawing & Calibration Modal พร้อม Auto-Edge Pan -->
@@ -1259,32 +1305,28 @@
       }
     }
 
-    // ==========================================================
-    // แก้ไข getPageImage: บังคับถมสีขาวบริสุทธิ์ (#FFFFFF) รองพื้น
-    // เพื่อแก้ปัญหาแบบแปลนบางหน้ากลายเป็นสีดำมืดสนิท
-    // ==========================================================
+    // ฟังก์ชัน getPageImage ถมสีขาวบริสุทธิ์ (#FFFFFF) ป้องกันหน้าแปลนดำ
     async function getPageImage(pageNum) {
       if (pdfDocumentInstance) {
         const pageIndex = Math.min(Math.max(1, pageNum || 1), pdfDocumentInstance.numPages);
         const page = await pdfDocumentInstance.getPage(pageIndex);
         const viewport = page.getViewport({ scale: 2.0 });
         const canvas = document.createElement("canvas");
-        const ctx = canvas.getContext("2d", { alpha: false }); // ปิด Alpha Channel เพื่อบังคับพื้นทึบ
+        const ctx = canvas.getContext("2d", { alpha: false });
         canvas.width = viewport.width;
         canvas.height = viewport.height;
 
-        // ถมกระดาษสีขาวบริสุทธิ์เต็มพื้นที่ก่อนเรนเดอร์ PDF
         ctx.fillStyle = "#ffffff";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
         await page.render({ 
           canvasContext: ctx, 
           viewport: viewport,
-          background: 'rgb(255, 255, 255)' // บังคับให้ PDF.js ใช้พื้นขาว
+          background: 'rgb(255, 255, 255)'
         }).promise;
 
         const img = new Image();
-        img.src = canvas.toDataURL("image/jpeg", 0.95); // แปลงเป็น JPEG เพื่อการันตีพื้นหลังขาวสนิท
+        img.src = canvas.toDataURL("image/jpeg", 0.95);
         await img.decode();
         return { image: img, page: pageIndex, total: pdfDocumentInstance.numPages };
       } else if (singleImageInstance) {
@@ -1764,9 +1806,6 @@
       }
     }
 
-    // ==========================================================
-    // ปรับปรุง redrawCanvas: รองพื้นสีขาว และลดความทึบของเลเยอร์ Dim
-    // ==========================================================
     function redrawCanvas() {
       if (!currentDrawPageImg) return;
       const canvas = document.getElementById("drawCanvas");
@@ -1774,11 +1813,11 @@
       canvas.width = currentDrawPageImg.width;
       canvas.height = currentDrawPageImg.height;
 
-      // 1. ถมพื้นหลังขาวบริสุทธิ์ก่อนวาดรูปเสมอ
+      // ถมพื้นหลังขาวบริสุทธิ์ก่อนวาดรูปเสมอ
       ctx.fillStyle = "#ffffff";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      // 2. วาดภาพแบบแปลน
+      // วาดภาพแบบแปลน
       ctx.drawImage(currentDrawPageImg, 0, 0);
 
       const cat = document.getElementById("drawCategorySelect").value;
@@ -1820,7 +1859,7 @@
         ctx.restore();
       }
 
-      // 3. ฉากหลัง Dimming ปรับให้สลัวเพียงเล็กน้อย (alpha: 0.15) ไม่ให้ภาพดำมืด
+      // ฉากหลัง Dimming ปรับให้สลัวเพียงเล็กน้อย (alpha: 0.15)
       if (measuredShapes.length > 0 || measuredLines.length > 0 || currentDragBox || currentPolygonPoints.length > 0) {
         ctx.fillStyle = "rgba(15, 23, 42, 0.15)";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -1892,7 +1931,6 @@
           ctx.fillText(polyLabel, firstPt.x + 8, badgeY + 19);
 
         } else if (shape.type === 'rect') {
-          // ดึงภาพเดิมมาแสดงตรงพื้นที่กรอบเพื่อให้ชัดเจน
           ctx.drawImage(currentDrawPageImg, shape.x, shape.y, shape.w, shape.h, shape.x, shape.y, shape.w, shape.h);
           ctx.strokeStyle = isRoofRelated ? "#ef4444" : "#10b981";
           ctx.lineWidth = 5;
@@ -2733,10 +2771,10 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
             <div class="audit-text">${item.verification_method || "คำนวณตามพื้นที่/ความยาวที่ปรากฏในแบบ"}</div>
             ${crossCheckBadge}
           </td>
-          <td style="text-align: center;">
+          <td class="no-print" style="text-align: center;">
             <button class="btn-view" onclick="openInPlaceEditor('${item._id}')">🔍 ดู/แก้ไขในแบบ (หน้า ${pageNum})</button>
           </td>
-          <td style="text-align: center;">
+          <td class="no-print" style="text-align: center;">
             <button class="btn-delete" title="ลบรายการนี้ออก" onclick="deleteBOQItem('${item._id}')">🗑️ ลบ</button>
           </td>
         `;
@@ -2836,26 +2874,242 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
       }
     };
 
-    function exportCSV() {
-      if (!lastRawBOQItems || lastRawBOQItems.length === 0) return;
-      let csvContent = "\uFEFFหมวดงาน,หน้าที่พบ,รหัสอ้างอิง,รายการงาน,ปริมาณสุทธิ,สถานะการแก้ไข,สินค้า SCG/CPAC,ประมาณการสั่งซื้อจริง,ความมั่นใจ (%),หมายเหตุการคำนวณ,วิธีตรวจสอบที่มาปริมาณ,คำอธิบายตำแหน่ง\n";
-      lastRawBOQItems.forEach(row => {
+    /* ==========================================================
+       1. ระบบ EXPORT เป็น EXCEL (.xlsx แท้ ไม่เพี้ยน)
+       ========================================================== */
+    function exportExcel() {
+      if (!lastRawBOQItems || lastRawBOQItems.length === 0) {
+        alert("ไม่มีข้อมูลสำหรับส่งออก Excel");
+        return;
+      }
+
+      const excelData = lastRawBOQItems.map(row => {
         const page = (row.source_location && row.source_location.page_number) ? row.source_location.page_number : "-";
         const desc = (row.source_location && row.source_location.location_description) ? row.source_location.location_description : "-";
-        const audit = row.verification_method ? row.verification_method.replace(/"/g, '""') : "-";
-        const conf = row.confidence_score || "-";
         const modifiedStatus = row.is_manual_modified ? "แก้ไขในแบบแล้ว" : "คำนวณอัตโนมัติ";
-        const cleanEstimate = (row.order_estimate || "-").replace(/[\r\n]+/g, " | ");
-        csvContent += `"${row.category}","หน้า ${page}","${row.code_ref}","${row.item_name}","${row.net_quantity}","${modifiedStatus}","${row.scg_product}","${cleanEstimate}","${conf}","${row.calculation_note}","${audit}","${desc}"\n`;
+        const cleanEstimate = (row.order_estimate || "-").replace(/^[-•*]\s*/gm, '').replace(/\r?\n/g, " | ");
+
+        return {
+          "หมวดงาน": row.category || "-",
+          "หน้าที่พบ": `หน้า ${page}`,
+          "รหัสอ้างอิง": row.code_ref || "-",
+          "รายการงานตามแบบ": row.item_name || "-",
+          "ปริมาณสุทธิ": row.net_quantity || "-",
+          "สถานะ": modifiedStatus,
+          "สินค้า SCG / CPAC ที่แนะนำ": row.scg_product || "-",
+          "ประมาณการสั่งซื้อจริง (พร้อมแพ็กเกจระบบ)": cleanEstimate,
+          "ความมั่นใจ (%)": row.confidence_score || "-",
+          "หมายเหตุและสูตรคำนวณ": row.calculation_note || "-",
+          "การ Cross-Check และที่มาปริมาณ": row.verification_method || "-",
+          "คำอธิบายตำแหน่งในแบบ": desc
+        };
       });
-      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+
+      const worksheet = XLSX.utils.json_to_sheet(excelData);
+
+      // ปรับความกว้างคอลัมน์อัตโนมัติ (Auto column width)
+      const colWidths = [
+        { wch: 16 }, // หมวดงาน
+        { wch: 10 }, // หน้าที่พบ
+        { wch: 12 }, // รหัสอ้างอิง
+        { wch: 32 }, // รายการงาน
+        { wch: 14 }, // ปริมาณสุทธิ
+        { wch: 16 }, // สถานะ
+        { wch: 35 }, // สินค้า SCG/CPAC
+        { wch: 45 }, // สั่งซื้อจริง
+        { wch: 14 }, // ความมั่นใจ
+        { wch: 35 }, // หมายเหตุ
+        { wch: 40 }, // Cross-Check
+        { wch: 30 }  // ตำแหน่ง
+      ];
+      worksheet['!cols'] = colWidths;
+
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "SCG_BOQ");
+
+      const fileName = `SCG_CPAC_BOQ_${new Date().toISOString().slice(0,10)}.xlsx`;
+      XLSX.writeFile(workbook, fileName);
+    }
+
+    /* ==========================================================
+       2. ระบบ EXPORT เป็นรายงาน PDF (A4 แนวนอน พร้อมจัดหน้า)
+       ========================================================== */
+    function exportPDF() {
+      if (!lastRawBOQItems || lastRawBOQItems.length === 0) {
+        alert("ไม่มีข้อมูลสำหรับส่งออก PDF");
+        return;
+      }
+
+      // สร้างหน้ากระดาษจำลองสำหรับพิมพ์รายงาน PDF
+      const printContainer = document.createElement("div");
+      printContainer.style.padding = "16px";
+      printContainer.style.fontFamily = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+      printContainer.style.color = "#0f172a";
+
+      const headerHTML = `
+        <div style="border-bottom: 2px solid #dc2626; padding-bottom: 8px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: flex-end;">
+          <div>
+            <h2 style="margin: 0; color: #dc2626; font-size: 20px;">รายงานถอดแบบและประมาณการสั่งซื้อสินค้า SCG & คอนกรีต CPAC</h2>
+            <div style="font-size: 11px; color: #64748b; margin-top: 4px;">สรุปรายการแยกตามหน้าแปลนก่อสร้างจริง พร้อมระบบตรวจสอบ Cross-Check 3D</div>
+          </div>
+          <div style="text-align: right; font-size: 11px; color: #475569;">
+            <div>วันที่ออกรายงาน: ${new Date().toLocaleDateString('th-TH')}</div>
+            <div>จำนวนรายการทั้งหมด: ${lastRawBOQItems.length} รายการ</div>
+          </div>
+        </div>
+      `;
+
+      let rowsHTML = "";
+      lastRawBOQItems.forEach((row, i) => {
+        const page = (row.source_location && row.source_location.page_number) ? row.source_location.page_number : "-";
+        const cleanEstimate = (row.order_estimate || "-")
+          .split(/\r?\n/)
+          .map(s => s.trim().replace(/^[-•*]\s*/, ''))
+          .filter(s => s.length > 0)
+          .map(s => `• ${s}`)
+          .join("<br>");
+
+        rowsHTML += `
+          <tr style="border-bottom: 1px solid #e2e8f0; font-size: 10px; background: ${i % 2 === 0 ? '#ffffff' : '#f8fafc'};">
+            <td style="padding: 6px 8px; font-weight: bold; color: #b91c1c;">${row.category || "-"}</td>
+            <td style="padding: 6px 8px; text-align: center; font-weight: bold;">หน้า ${page}</td>
+            <td style="padding: 6px 8px; font-weight: bold;">${row.item_name || "-"}</td>
+            <td style="padding: 6px 8px; font-weight: bold; color: #0284c7;">${row.net_quantity || "-"}</td>
+            <td style="padding: 6px 8px; font-weight: bold; color: #b91c1c;">${row.scg_product || "-"}</td>
+            <td style="padding: 6px 8px; line-height: 1.35;">${cleanEstimate}</td>
+            <td style="padding: 6px 8px; color: #475569; line-height: 1.3;">${row.calculation_note || "-"}</td>
+            <td style="padding: 6px 8px; color: #0369a1; font-size: 9px; line-height: 1.3;">${row.verification_method || "-"}</td>
+          </tr>
+        `;
+      });
+
+      const tableHTML = `
+        <table style="width: 100%; border-collapse: collapse; text-align: left;">
+          <thead>
+            <tr style="background: #f1f5f9; border-bottom: 2px solid #cbd5e1; font-size: 11px;">
+              <th style="padding: 8px;">หมวดงาน</th>
+              <th style="padding: 8px; text-align: center;">หน้า</th>
+              <th style="padding: 8px;">รายการงานตามแบบ</th>
+              <th style="padding: 8px;">ปริมาณสุทธิ</th>
+              <th style="padding: 8px;">สินค้าแนะนำ</th>
+              <th style="padding: 8px;">ประมาณการสั่งซื้อจริง</th>
+              <th style="padding: 8px;">หมายเหตุ/สูตรคำนวณ</th>
+              <th style="padding: 8px;">ที่มาการ Cross-Check</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rowsHTML}
+          </tbody>
+        </table>
+      `;
+
+      printContainer.innerHTML = headerHTML + tableHTML;
+
+      const opt = {
+        margin: [8, 8, 8, 8],
+        filename: `SCG_CPAC_BOQ_Report_${new Date().toISOString().slice(0,10)}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
+      };
+
+      html2pdf().set(opt).from(printContainer).save();
+    }
+
+    /* ==========================================================
+       3. ระบบ EXPORT เป็นไฟล์ JSON (Snapshot สำหรับโหลดทำต่อ)
+       ========================================================== */
+    function exportJSON() {
+      if (!lastRawBOQItems || lastRawBOQItems.length === 0) {
+        alert("ไม่มีข้อมูลสำหรับส่งออก JSON");
+        return;
+      }
+
+      // บันทึกทั้งรายการ BOQ และตัวเลือกการตั้งค่าต่างๆ เก็บไว้ด้วย
+      const projectSnapshot = {
+        exportDate: new Date().toISOString(),
+        version: "2.5",
+        settings: {
+          concreteOption: document.getElementById("concreteOption").value,
+          roofOption: document.getElementById("roofOption").value,
+          roofSlopeDeg: document.getElementById("roofSlopeDeg").value,
+          ceilingInsulationOption: document.getElementById("ceilingInsulationOption").value,
+          roofInsulationOption: document.getElementById("roofInsulationOption").value,
+          wallOption: document.getElementById("wallOption").value,
+          floorOption: document.getElementById("floorOption").value,
+          ceilingOption: document.getElementById("ceilingOption").value,
+          woodOption: document.getElementById("woodOption").value,
+          customInstructionPrompt: document.getElementById("customInstructionPrompt").value
+        },
+        items: lastRawBOQItems
+      };
+
+      const jsonString = JSON.stringify(projectSnapshot, null, 2);
+      const blob = new Blob([jsonString], { type: "application/json" });
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
-      link.setAttribute("href", url);
-      link.setAttribute("download", `SCG_CPAC_BOQ_${new Date().toISOString().slice(0,10)}.csv`);
+      link.href = url;
+      link.download = `SCG_BOQ_Project_${new Date().toISOString().slice(0,10)}.json`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }
+
+    /* ==========================================================
+       4. ระบบ IMPORT ข้อมูลจากไฟล์ JSON เดิมกลับมาทำงานต่อ
+       ========================================================== */
+    function handleJsonFileImport(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const imported = JSON.parse(e.target.result);
+          let itemsToLoad = [];
+
+          if (Array.isArray(imported)) {
+            itemsToLoad = imported;
+          } else if (imported && Array.isArray(imported.items)) {
+            itemsToLoad = imported.items;
+            
+            // คืนค่า Dropdowns และการตั้งค่าต่างๆ ให้ตรงกับโปรเจกต์เดิม
+            if (imported.settings) {
+              const s = imported.settings;
+              if (s.concreteOption) document.getElementById("concreteOption").value = s.concreteOption;
+              if (s.roofOption) document.getElementById("roofOption").value = s.roofOption;
+              if (s.roofSlopeDeg) document.getElementById("roofSlopeDeg").value = s.roofSlopeDeg;
+              if (s.ceilingInsulationOption) document.getElementById("ceilingInsulationOption").value = s.ceilingInsulationOption;
+              if (s.roofInsulationOption) document.getElementById("roofInsulationOption").value = s.roofInsulationOption;
+              if (s.wallOption) document.getElementById("wallOption").value = s.wallOption;
+              if (s.floorOption) document.getElementById("floorOption").value = s.floorOption;
+              if (s.ceilingOption) document.getElementById("ceilingOption").value = s.ceilingOption;
+              if (s.woodOption) document.getElementById("woodOption").value = s.woodOption;
+              if (s.customInstructionPrompt) document.getElementById("customInstructionPrompt").value = s.customInstructionPrompt;
+              setupSlopeFactorListener();
+            }
+          } else {
+            throw new Error("โครงสร้างไฟล์ JSON ไม่ถูกต้อง");
+          }
+
+          itemsToLoad.forEach((item, idx) => {
+            if (!item._id) item._id = "item_" + Date.now() + "_" + idx;
+          });
+
+          lastRawBOQItems = itemsToLoad;
+          document.getElementById("recalcBtn").disabled = false;
+          renderBOQTable(lastRawBOQItems);
+
+          document.getElementById("status").innerText = `✅ นำเข้าข้อมูลโปรเจกต์เดิมสำเร็จแล้ว (${lastRawBOQItems.length} รายการ)`;
+          alert(`นำเข้าข้อมูลเรียบร้อยแล้ว (${lastRawBOQItems.length} รายการ)\nคุณสามารถตรวจเช็กและเริ่มแก้ไขหรือวัดขนาดต่อได้ทันที`);
+        } catch (err) {
+          alert("ไม่สามารถอ่านไฟล์ JSON ได้ กรุณาตรวจสอบความถูกต้องของไฟล์");
+        } finally {
+          event.target.value = ""; // รีเซ็ต input file
+        }
+      };
+      reader.readAsText(file);
     }
   </script>
 </body>
