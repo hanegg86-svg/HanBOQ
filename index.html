@@ -158,6 +158,8 @@
     .btn-recalc:hover { background: #0369a1; }
     .btn-draw { background: #059669; }
     .btn-draw:hover { background: #047857; }
+    .btn-custom-add { background: #d97706; }
+    .btn-custom-add:hover { background: #b45309; }
     .btn-import { background: #475569; }
     .btn-import:hover { background: #334155; }
     .btn-view {
@@ -646,6 +648,16 @@
       flex-wrap: wrap;
       gap: 10px;
     }
+
+    /* Custom Item Dialog Modal */
+    .custom-item-modal-content {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      width: 94%;
+      max-width: 600px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+    }
   </style>
 </head>
 <body>
@@ -773,9 +785,12 @@
     <input type="file" id="jsonFileInput" accept=".json" style="display: none;" onchange="handleJsonFileImport(event)">
     <!-- กล่องใส่ข้อความสั่งให้ AI ประเมินพื้นที่เจาะจง -->
     <div class="custom-prompt-container">
-      <label for="customInstructionPrompt" style="color: #c2410c; margin-bottom: 4px;">
-        💬 คำสั่งเฉพาะเจาะจงสำหรับ AI (สั่งโฟกัสกรอบสี จุด หรือเงื่อนไขพิเศษในแบบ):
-      </label>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+        <label for="customInstructionPrompt" style="color: #c2410c; margin-bottom: 0;">
+          💬 คำสั่งเฉพาะเจาะจงสำหรับ AI (สั่งโฟกัสกรอบสี จุด หรือเงื่อนไขพิเศษในแบบ):
+        </label>
+        <button type="button" class="btn-custom-add" style="padding: 5px 12px; font-size: 13px; flex: none;" onclick="openCustomItemModal()">➕ เพิ่มรายการเฉพาะเจาะจงลงในตาราง</button>
+      </div>
       <textarea id="customInstructionPrompt" placeholder="เช่น: หน้านี้มีทั้งแปลนพื้นและแปลนหลังคา ให้ถอดทั้ง 2 ส่วนแยกรายการกันให้ครบถ้วน"></textarea>
 
       <div style="font-size: 12px; color: #7c2d12; font-weight: 600;">⚡ ปุ่มคำสั่งด่วน (คลิกเพื่อเติมข้อความ):</div>
@@ -792,6 +807,7 @@
     <div class="btn-group">
       <button id="processBtn" onclick="processDocuments()">เริ่มวิเคราะห์และ Cross-Check 3D (สแกนครบทุกผังในหน้าเดียว)</button>
       <button id="drawBtn" class="btn-draw" onclick="openManualDrawModal(null)" disabled>🎯 สร้างรายการใหม่ด้วย Precision Geometry Tool</button>
+      <button type="button" class="btn-custom-add" onclick="openCustomItemModal()">➕ เพิ่มบรรทัดสินค้าเฉพาะเจาะจง</button>
       <button id="recalcBtn" class="btn-recalc" onclick="recalculateWithNewSpecs()" disabled>🔄 คำนวณใหม่ตามสเปกที่เลือก</button>
       <button type="button" class="btn-import" onclick="document.getElementById('jsonFileInput').click()">📂 นำเข้าโปรเจกต์เดิม (Import JSON)</button>
     </div>
@@ -799,9 +815,12 @@
   </div>
   <!-- ตาราง BOQ -->
   <div class="card" id="resultCard" style="display: none;">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-      <h3 style="margin: 0;">รายการประเมินปริมาณงานและสินค้า SCG & คอนกรีต CPAC (แยกแถวรายผัง/หมวดงาน)</h3>
-      <span style="font-size: 12px; color: #64748b;">💡 แต่ละแถวจะโฟกัสตำแหน่งผังจริงในแบบ กด "ดู/แก้ไขในแบบ" เพื่อกระโดดไปกรอบผังนั้นได้ทันที</span>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 8px;">
+      <div>
+        <h3 style="margin: 0;">รายการประเมินปริมาณงานและสินค้า SCG & คอนกรีต CPAC (แยกแถวรายผัง/หมวดงาน)</h3>
+        <span style="font-size: 12px; color: #64748b;">💡 แต่ละแถวจะโฟกัสตำแหน่งผังจริงในแบบ กด "ดู/แก้ไขในแบบ" เพื่อกระโดดไปกรอบผังนั้นได้ทันที</span>
+      </div>
+      <button type="button" class="btn-custom-add" style="padding: 6px 14px; font-size: 13px; flex: none;" onclick="openCustomItemModal()">➕ เพิ่มรายการเฉพาะเจาะจงใหม่</button>
     </div>
     <div class="table-container" id="boqPrintArea">
       <table id="boqTable">
@@ -833,7 +852,43 @@
     </div>
   </div>
 
-  <!-- Modal พรีวิวเอกสารตีกรอบหน้ากระดาษ A4 แนวนอน -->
+  <!-- Modal สำหรับเพิ่มรายการเฉพาะเจาะจง (Add Custom Item Dialog) -->
+  <div id="customItemModal" class="modal">
+    <div class="custom-item-modal-content">
+      <div class="modal-header">
+        <div class="modal-title">➕ ระบุข้อความเพื่อเพิ่มรายการสินค้าเฉพาะเจาะจง</div>
+        <span class="close-btn" onclick="closeModal('customItemModal')">&times;</span>
+      </div>
+      <div style="margin-top: 10px;">
+        <label for="customItemPageSelect">อ้างอิงกับแบบแปลนหน้า:</label>
+        <select id="customItemPageSelect"></select>
+
+        <label for="customItemCategorySelect">หมวดงาน:</label>
+        <select id="customItemCategorySelect">
+          <option value="งานหลังคา">งานหลังคา</option>
+          <option value="งานสันหลังคา/ตะเข้สัน (SCG Dry Tech)">งานสันหลังคา/ตะเข้สัน (SCG Dry Tech)</option>
+          <option value="งานฉนวนใต้หลังคา (SCG FSO)">งานฉนวนใต้หลังคา (SCG FSO)</option>
+          <option value="งานฉนวนปูเหนือฝ้า (STAY COOL)">งานฉนวนปูเหนือฝ้า (STAY COOL)</option>
+          <option value="งานโครงสร้างและคอนกรีต CPAC">งานโครงสร้างและคอนกรีต CPAC</option>
+          <option value="งานฝ้าเพดาน">งานฝ้าเพดาน</option>
+          <option value="งานผนัง">งานผนัง</option>
+          <option value="งานพื้น">งานพื้น</option>
+          <option value="งานไม้สังเคราะห์/ตกแต่ง">งานไม้สังเคราะห์/ตกแต่ง</option>
+        </select>
+
+        <label for="customItemTextInput">ระบุรายละเอียดสินค้า / พื้นที่ / ความต้องการเฉพาะเจาะจง:</label>
+        <textarea id="customItemTextInput" style="min-height: 90px;" placeholder="เช่น: สั่งเพิ่มไม้เชิงชาย SCG Smartwood 2in1 ความยาวรอบชายคา 48 เมตร พร้อมสกรูยิงไม้"></textarea>
+
+        <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 10px;">
+          <button type="button" style="background: #64748b; flex: none; padding: 8px 16px;" onclick="closeModal('customItemModal')">ยกเลิก</button>
+          <button type="button" id="btnSubmitCustomItem" class="btn-custom-add" style="flex: none; padding: 8px 20px;" onclick="submitCustomItemRow()">⚡ สั่ง AI คำนวณและเพิ่มลงในตาราง</button>
+        </div>
+        <div id="customItemStatus" style="font-size: 13px; color: #d97706; margin-top: 8px; font-weight: 500;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal พรีวิวกระดาษ A4 แนวนอน -->
   <div id="pdfPreviewModal" class="modal">
     <div class="pdf-preview-modal-content">
       <div class="pdf-preview-toolbar">
@@ -1741,7 +1796,7 @@
         ctx.lineTo(calibrationLine.x2, calibrationLine.y2);
         ctx.stroke();
         const midX = (calibrationLine.x1 + calibrationLine.x2) / 2;
-        const midY = (calibrationLine.y1 + calibrationLine.y2) / 2;
+        const midY = (calibrationLine.x1 + calibrationLine.x2) / 2;
         ctx.fillStyle = "#8b5cf6";
         ctx.fillRect(midX - 50, midY - 26, 100, 24);
         ctx.fillStyle = "#ffffff";
@@ -2301,6 +2356,115 @@
     }
 
     /* ==========================================================
+       ระบบเพิ่มรายการเฉพาะเจาะจง (CUSTOM ITEM ROW GENERATION)
+       ========================================================== */
+    function openCustomItemModal() {
+      const pageSelect = document.getElementById("customItemPageSelect");
+      pageSelect.innerHTML = "";
+      const totalPages = detectedTotalPages || (pdfDocumentInstance ? pdfDocumentInstance.numPages : 1);
+      for (let i = 1; i <= totalPages; i++) {
+        const opt = document.createElement("option");
+        opt.value = i;
+        opt.innerText = `หน้า ${i}`;
+        pageSelect.appendChild(opt);
+      }
+      document.getElementById("customItemTextInput").value = "";
+      document.getElementById("customItemStatus").innerText = "";
+      document.getElementById("customItemModal").style.display = "flex";
+    }
+
+    async function submitCustomItemRow() {
+      const apiKey = document.getElementById("apiKey").value.trim();
+      const instructionText = document.getElementById("customItemTextInput").value.trim();
+      const pageNum = parseInt(document.getElementById("customItemPageSelect").value) || 1;
+      const category = document.getElementById("customItemCategorySelect").value;
+      const statusElem = document.getElementById("customItemStatus");
+      const submitBtn = document.getElementById("btnSubmitCustomItem");
+
+      if (!apiKey) {
+        alert("กรุณากรอกและบันทึก Gemini API Key ก่อน");
+        return;
+      }
+      if (!instructionText) {
+        alert("กรุณาระบุรายละเอียดหรือความต้องการเฉพาะเจาะจง");
+        return;
+      }
+
+      submitBtn.disabled = true;
+      statusElem.innerText = "กำลังวิเคราะห์คำสั่งเฉพาะเจาะจง และแตกสเปกสินค้า SCG/CPAC ...";
+
+      const promptText = `
+คุณเป็น Chief Quantity Surveyor (QS) ประจำเครือ SCG และ CPAC
+ผู้ใช้ต้องการเพิ่มรายการสินค้าหรือปริมาณงานลงในตาราง BOQ จากคำสั่งเฉพาะเจาะจงดังต่อไปนี้:
+"""
+หมวดงาน: ${category}
+คำสั่งเฉพาะเจาะจง: ${instructionText}
+อ้างอิงหน้าแปลน: หน้า ${pageNum}
+"""
+
+หน้าที่ของคุณ:
+1. สกัดชื่อรายการงาน (item_name), ปริมาณสุทธิพร้อมหน่วย (net_quantity), และสินค้า SCG หรือ CPAC ที่เหมาะสมที่สุด (scg_product)
+2. คำนวณประมาณการสั่งซื้อจริง (order_estimate) แตกรายการอุปกรณ์และสินค้าเสริมเป็นบรรทัดใหม่ด้วยเครื่องหมายขีด (- ) ทุกบรรทัด
+3. ระบุสูตรการคำนวณและเผื่อเศษใน calculation_note
+4. อธิบายที่มาใน verification_method โดยระบุชัดเจนว่าเป็นรายการที่สั่งเพิ่มเฉพาะเจาะจง (Custom Instruction) สำหรับหน้า ${pageNum}
+
+ตอบกลับมาเป็น JSON Object ตัวเดียวเท่านั้น (ห้ามใส่เครื่องหมาย markdown อื่นนอก JSON):
+{
+  "category": "${category}",
+  "code_ref": "Custom",
+  "item_name": "ชื่อรายการงาน (เช่น ไม้เชิงชาย SCG Smartwood 2in1 รอบชายคา)",
+  "net_quantity": "ปริมาณพร้อมหน่วย (เช่น 48.00 ม. หรือ 120.00 ตร.ม.)",
+  "scg_product": "ชื่อสินค้า SCG หรือ CPAC ที่แนะนำ",
+  "order_estimate": "- สินค้าหลัก 1 ...\\n- อุปกรณ์ยึด/เสริม 2 ...",
+  "confidence_score": 99,
+  "calculation_note": "สูตรคำนวณและสัดส่วนเผื่อเศษ",
+  "verification_method": "[รายการสั่งเพิ่มเฉพาะเจาะจง หน้า ${pageNum}]: ${instructionText}",
+  "source_location": {
+    "page_number": ${pageNum},
+    "box_2d": [100, 100, 900, 900],
+    "location_description": "รายการสั่งเพิ่มเฉพาะเจาะจงสำหรับแปลนหน้า ${pageNum}"
+  }
+}
+`;
+
+      try {
+        const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key=${apiKey}`;
+        const response = await fetch(endpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: promptText }] }],
+            generationConfig: { responseMimeType: "application/json" }
+          })
+        });
+        if (!response.ok) throw new Error("API Connection Error");
+        const data = await response.json();
+        const rawContent = data.candidates[0].content.parts[0].text;
+        const newItem = JSON.parse(rawContent);
+
+        newItem._id = "item_" + Date.now() + "_" + Math.floor(Math.random() * 10000);
+        newItem.is_manual_modified = true;
+
+        lastRawBOQItems.push(newItem);
+        lastRawBOQItems.sort((a, b) => {
+          const pA = (a.source_location && a.source_location.page_number) ? a.source_location.page_number : 1;
+          const pB = (b.source_location && b.source_location.page_number) ? b.source_location.page_number : 1;
+          return pA - pB;
+        });
+
+        renderBOQTable(lastRawBOQItems);
+        statusElem.innerText = "✅ เพิ่มรายการเฉพาะเจาะจงลงในตารางเรียบร้อยแล้ว!";
+        setTimeout(() => {
+          closeModal("customItemModal");
+        }, 900);
+      } catch (err) {
+        statusElem.innerText = "เกิดข้อผิดพลาดในการประมวลผล กรุณาลองใหม่อีกครั้ง";
+      } finally {
+        submitBtn.disabled = false;
+      }
+    }
+
+    /* ==========================================================
        ระบบประมวลผลอัตโนมัติ CROSS-CHECK 3D & MULTI-DRAWING SCAN
        ========================================================== */
     async function processDocuments() {
@@ -2832,7 +2996,7 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
       }
       const projectSnapshot = {
         exportDate: new Date().toISOString(),
-        version: "2.7",
+        version: "2.8",
         settings: {
           concreteOption: document.getElementById("concreteOption").value,
           roofOption: document.getElementById("roofOption").value,
