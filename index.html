@@ -258,7 +258,6 @@
       font-weight: 600;
     }
 
-    /* สไตล์กล่องแยกรายการสินค้าสั่งซื้อจริงเป็นแต่ละบรรทัด */
     .order-bundle-list {
       display: flex;
       flex-direction: column;
@@ -290,7 +289,6 @@
       word-break: break-word;
     }
 
-    /* กล่องคำสั่งพิเศษสำหรับ AI */
     .custom-prompt-container {
       background: #fff7ed;
       border: 1px solid #fed7aa;
@@ -419,7 +417,7 @@
     .canvas-wrapper {
       position: relative;
       overflow: hidden;
-      background: #1e293b;
+      background: #334155; /* ปรับพื้นหลังรอบนอกให้ดูสบายตา */
       border-radius: 8px;
       flex: 1;
       min-height: 350px;
@@ -432,6 +430,7 @@
       left: 0;
       top: 0;
       cursor: crosshair;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.25);
     }
 
     .floating-zoom-bar {
@@ -1260,18 +1259,32 @@
       }
     }
 
+    // ==========================================================
+    // แก้ไข getPageImage: บังคับถมสีขาวบริสุทธิ์ (#FFFFFF) รองพื้น
+    // เพื่อแก้ปัญหาแบบแปลนบางหน้ากลายเป็นสีดำมืดสนิท
+    // ==========================================================
     async function getPageImage(pageNum) {
       if (pdfDocumentInstance) {
         const pageIndex = Math.min(Math.max(1, pageNum || 1), pdfDocumentInstance.numPages);
         const page = await pdfDocumentInstance.getPage(pageIndex);
         const viewport = page.getViewport({ scale: 2.0 });
         const canvas = document.createElement("canvas");
-        const ctx = canvas.getContext("2d");
+        const ctx = canvas.getContext("2d", { alpha: false }); // ปิด Alpha Channel เพื่อบังคับพื้นทึบ
         canvas.width = viewport.width;
         canvas.height = viewport.height;
-        await page.render({ canvasContext: ctx, viewport: viewport }).promise;
+
+        // ถมกระดาษสีขาวบริสุทธิ์เต็มพื้นที่ก่อนเรนเดอร์ PDF
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        await page.render({ 
+          canvasContext: ctx, 
+          viewport: viewport,
+          background: 'rgb(255, 255, 255)' // บังคับให้ PDF.js ใช้พื้นขาว
+        }).promise;
+
         const img = new Image();
-        img.src = canvas.toDataURL();
+        img.src = canvas.toDataURL("image/jpeg", 0.95); // แปลงเป็น JPEG เพื่อการันตีพื้นหลังขาวสนิท
         await img.decode();
         return { image: img, page: pageIndex, total: pdfDocumentInstance.numPages };
       } else if (singleImageInstance) {
@@ -1751,12 +1764,21 @@
       }
     }
 
+    // ==========================================================
+    // ปรับปรุง redrawCanvas: รองพื้นสีขาว และลดความทึบของเลเยอร์ Dim
+    // ==========================================================
     function redrawCanvas() {
       if (!currentDrawPageImg) return;
       const canvas = document.getElementById("drawCanvas");
       const ctx = canvas.getContext("2d");
       canvas.width = currentDrawPageImg.width;
       canvas.height = currentDrawPageImg.height;
+
+      // 1. ถมพื้นหลังขาวบริสุทธิ์ก่อนวาดรูปเสมอ
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // 2. วาดภาพแบบแปลน
       ctx.drawImage(currentDrawPageImg, 0, 0);
 
       const cat = document.getElementById("drawCategorySelect").value;
@@ -1798,9 +1820,9 @@
         ctx.restore();
       }
 
-      // ฉากหลังโปร่งแสง
+      // 3. ฉากหลัง Dimming ปรับให้สลัวเพียงเล็กน้อย (alpha: 0.15) ไม่ให้ภาพดำมืด
       if (measuredShapes.length > 0 || measuredLines.length > 0 || currentDragBox || currentPolygonPoints.length > 0) {
-        ctx.fillStyle = "rgba(0, 0, 0, 0.4)";
+        ctx.fillStyle = "rgba(15, 23, 42, 0.15)";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
       }
 
@@ -1870,6 +1892,7 @@
           ctx.fillText(polyLabel, firstPt.x + 8, badgeY + 19);
 
         } else if (shape.type === 'rect') {
+          // ดึงภาพเดิมมาแสดงตรงพื้นที่กรอบเพื่อให้ชัดเจน
           ctx.drawImage(currentDrawPageImg, shape.x, shape.y, shape.w, shape.h, shape.x, shape.y, shape.w, shape.h);
           ctx.strokeStyle = isRoofRelated ? "#ef4444" : "#10b981";
           ctx.lineWidth = 5;
