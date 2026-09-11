@@ -852,7 +852,7 @@
     </div>
   </div>
 
-  <!-- Modal สำหรับเพิ่มรายการเฉพาะเจาะจง (Add Custom Item Dialog) -->
+  <!-- Modal สำหรับเพิ่มรายการเฉพาะเจาะจง (Add Custom Item Dialog พร้อมตัวเลือกสแกนทุกหน้า) -->
   <div id="customItemModal" class="modal">
     <div class="custom-item-modal-content">
       <div class="modal-header">
@@ -860,7 +860,7 @@
         <span class="close-btn" onclick="closeModal('customItemModal')">&times;</span>
       </div>
       <div style="margin-top: 10px;">
-        <label for="customItemPageSelect">อ้างอิงกับแบบแปลนหน้า:</label>
+        <label for="customItemPageSelect">อ้างอิงกับแบบแปลนหน้า (หรือเลือกสแกนหาจากทุกหน้า):</label>
         <select id="customItemPageSelect"></select>
 
         <label for="customItemCategorySelect">หมวดงาน:</label>
@@ -877,7 +877,7 @@
         </select>
 
         <label for="customItemTextInput">ระบุรายละเอียดสินค้า / พื้นที่ / ความต้องการเฉพาะเจาะจง:</label>
-        <textarea id="customItemTextInput" style="min-height: 90px;" placeholder="เช่น: สั่งเพิ่มไม้เชิงชาย SCG Smartwood 2in1 ความยาวรอบชายคา 48 เมตร พร้อมสกรูยิงไม้"></textarea>
+        <textarea id="customItemTextInput" style="min-height: 90px;" placeholder="เช่น: สั่งเพิ่มไม้เชิงชาย SCG Smartwood 2in1 ความยาวรอบชายคา 48 เมตร หรือ ตรวจนับจุดเสาทุกต้น"></textarea>
 
         <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 10px;">
           <button type="button" style="background: #64748b; flex: none; padding: 8px 16px;" onclick="closeModal('customItemModal')">ยกเลิก</button>
@@ -1124,6 +1124,18 @@
     let panStartY = 0;
     let isSpacePressed = false;
     let isShiftPressed = false;
+
+    // ฟังก์ชันช่วยแกะ JSON ป้องกันกรณี AI ใส่ markdown ```json ... ``` กำกับมาด้วย
+    function cleanAndParseJSON(rawText) {
+      if (!rawText) throw new Error("Empty response");
+      let cleaned = rawText.trim();
+      const match = cleaned.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+      if (match) {
+        cleaned = match[1].trim();
+      }
+      return JSON.parse(cleaned);
+    }
+
     document.addEventListener("DOMContentLoaded", () => {
       const savedKey = localStorage.getItem("GEMINI_API_KEY");
       if (savedKey) {
@@ -1586,7 +1598,7 @@
       const targetItem = lastRawBOQItems.find(it => it._id === itemId);
       if (!targetItem) return;
       const loc = targetItem.source_location || {};
-      const targetPage = loc.page_number || 1;
+      const targetPage = (loc.page_number && loc.page_number !== "all") ? loc.page_number : 1;
       const modalTitle = document.getElementById("drawModalHeaderTitle");
       modalTitle.innerText = `🔍 ตำแหน่งในแบบ (หน้า ${targetPage}) & แก้ไขรายการ: "${targetItem.item_name}"`;
       const select = document.getElementById("drawPageSelect");
@@ -1796,7 +1808,7 @@
         ctx.lineTo(calibrationLine.x2, calibrationLine.y2);
         ctx.stroke();
         const midX = (calibrationLine.x1 + calibrationLine.x2) / 2;
-        const midY = (calibrationLine.x1 + calibrationLine.x2) / 2;
+        const midY = (calibrationLine.x1 + calibrationLine.y2) / 2;
         ctx.fillStyle = "#8b5cf6";
         ctx.fillRect(midX - 50, midY - 26, 100, 24);
         ctx.fillStyle = "#ffffff";
@@ -2272,24 +2284,23 @@
         }
       }
       const promptText = `
-คุณเป็น Quantity Surveyor (QS) ประจำเครือ SCG และ CPAC
-ผู้ใช้ได้วัดปริมาณงานจากแบบแปลนก่อสร้างจริง ได้ผลลัพธ์ดังนี้:
-- หมวดงาน: "${category}"
-- สินค้า SCG / CPAC: "${chosenProduct}"
-- ปริมาณสุทธิ: ${chosenValue.toFixed(2)} ${chosenUnit}
-- รายละเอียดการวัด: ${auditSummary}
-- สัดส่วนเผื่อเศษตามทรงหลังคา: เผื่อ ${wasteFactor}
-หน้าที่ของคุณ:
-1. คำนวณจำนวนสั่งซื้อจริง (order_estimate) ให้เหมาะสมกับหน่วยของสินค้า พร้อมแตกแพ็กเกจระบบครบวงจร (Complete System Bundle)
-   [สำคัญ]: ให้จัดรูปแบบข้อความโดยแยกแต่ละรายการสินค้าและอุปกรณ์เสริมขึ้นบรรทัดใหม่ โดยใส่เครื่องหมายขีดคั่นหน้า (- ) ทุกบรรทัด เช่น:
-   - แผ่นหลังคา ... (จำนวนและหน่วย)
-   - ฉนวนใต้หลังคา SCG FSO ... (จำนวนและหน่วย)
-   - แผ่นรองใต้สันหลังคา SCG Dry Tech ... (จำนวนและหน่วย)
-2. สรุปสูตรคำนวณและสัดส่วนเผื่อเศษใน calculation_note
-ส่งผลลัพธ์เป็น JSON Object ตัวเดียว:
+### Task:
+Calculate purchase bundle estimate (order_estimate) and calculation note for an on-site QS measurement.
+
+### Inputs:
+- Category: "${category}"
+- Recommended Product: "${chosenProduct}"
+- Net Quantity: ${chosenValue.toFixed(2)} ${chosenUnit}
+- Measurement Breakdown: ${auditSummary}
+- Roof Waste Margin: ${wasteFactor}
+
+### Requirements:
+1. In "order_estimate", list all main items and system bundle accessories. Each item must start on a new line with "- "
+2. State the calculation formula and waste factor in "calculation_note"
+3. Return a clean JSON Object:
 {
-  "order_estimate": "- รายการสินค้า 1 ...\\n- รายการอุปกรณ์ 2 ...",
-  "calculation_note": "สูตรคำนวณและสัดส่วนเผื่อเศษที่ใช้"
+  "order_estimate": "- Item 1\\n- Item 2",
+  "calculation_note": "Formula & waste details"
 }
 `;
       try {
@@ -2298,6 +2309,9 @@
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
+            system_instruction: {
+              parts: [{ text: "You are an expert Quantity Surveyor (QS) for SCG & CPAC construction materials. Always output pure valid JSON." }]
+            },
             contents: [{ parts: [{ text: promptText }] }],
             generationConfig: { responseMimeType: "application/json" }
           })
@@ -2305,7 +2319,7 @@
         if (!response.ok) throw new Error("API Connection Error");
         const data = await response.json();
         const rawContent = data.candidates[0].content.parts[0].text;
-        const result = JSON.parse(rawContent);
+        const result = cleanAndParseJSON(rawContent);
         if (editingItemId) {
           const item = lastRawBOQItems.find(it => it._id === editingItemId);
           if (item) {
@@ -2357,11 +2371,21 @@
 
     /* ==========================================================
        ระบบเพิ่มรายการเฉพาะเจาะจง (CUSTOM ITEM ROW GENERATION)
+       ใช้โมเดล gemini-3.5-flash-lite พร้อม Prompt Modularization
        ========================================================== */
     function openCustomItemModal() {
       const pageSelect = document.getElementById("customItemPageSelect");
       pageSelect.innerHTML = "";
+
       const totalPages = detectedTotalPages || (pdfDocumentInstance ? pdfDocumentInstance.numPages : 1);
+
+      // เพิ่มตัวเลือก "สแกนตรวจหาจากทุกหน้า" เป็นตัวเลือกแรก
+      const allOpt = document.createElement("option");
+      allOpt.value = "all";
+      allOpt.innerText = `📑 สแกนตรวจหาจากทุกหน้า (สแกนแบบแปลนหน้า 1 ถึง ${totalPages} ทั้งหมด)`;
+      pageSelect.appendChild(allOpt);
+
+      // เพิ่มตัวเลือกรายหน้า
       for (let i = 1; i <= totalPages; i++) {
         const opt = document.createElement("option");
         opt.value = i;
@@ -2376,10 +2400,13 @@
     async function submitCustomItemRow() {
       const apiKey = document.getElementById("apiKey").value.trim();
       const instructionText = document.getElementById("customItemTextInput").value.trim();
-      const pageNum = parseInt(document.getElementById("customItemPageSelect").value) || 1;
+      const selectedPageVal = document.getElementById("customItemPageSelect").value;
+      const isAllPages = (selectedPageVal === "all");
+      const pageNum = isAllPages ? 1 : (parseInt(selectedPageVal) || 1);
       const category = document.getElementById("customItemCategorySelect").value;
       const statusElem = document.getElementById("customItemStatus");
       const submitBtn = document.getElementById("btnSubmitCustomItem");
+      const planFile = document.getElementById("planFile").files[0];
 
       if (!apiKey) {
         alert("กรุณากรอกและบันทึก Gemini API Key ก่อน");
@@ -2391,31 +2418,79 @@
       }
 
       submitBtn.disabled = true;
-      statusElem.innerText = "กำลังวิเคราะห์คำสั่งเฉพาะเจาะจง และแตกสเปกสินค้า SCG/CPAC ...";
+      if (isAllPages) {
+        statusElem.innerText = `กำลังสแกนค้นหาจากเอกสารแบบแปลนครบทุกหน้า (หน้า 1 ถึง ${detectedTotalPages}) ...`;
+      } else {
+        statusElem.innerText = `กำลังวิเคราะห์คำสั่งเฉพาะเจาะจงสำหรับหน้า ${pageNum} ...`;
+      }
 
-      const promptText = `
-คุณเป็น Chief Quantity Surveyor (QS) ประจำเครือ SCG และ CPAC
-ผู้ใช้ต้องการเพิ่มรายการสินค้าหรือปริมาณงานลงในตาราง BOQ จากคำสั่งเฉพาะเจาะจงดังต่อไปนี้:
+      try {
+        const parts = [];
+        if (planFile) {
+          const planPart = await fileToGenerativePart(planFile);
+          parts.push(planPart);
+        }
+
+        let promptText = "";
+        if (isAllPages) {
+          promptText = `
+### Scope & Task:
+You are an expert SCG & CPAC Quantity Surveyor.
+Scan all pages (1 to ${detectedTotalPages}) of the uploaded drawings to extract items matching this specific user directive:
+"""
+หมวดงาน: ${category}
+คำสั่งเฉพาะเจาะจง: ${instructionText}
+โหมดการทำงาน: สแกนตรวจหาและคำนวณจากแบบแปลนทุกหน้า
+"""
+
+### Rules:
+1. If the item appears on multiple pages, create a separate JSON item for each page (specify source_location.page_number accurately 1 to ${detectedTotalPages}).
+2. If it is a global combined requirement, return 1 item with page_number = 1.
+3. In "order_estimate", format each item/bundle accessory starting on a new line with "- ".
+4. Provide estimated box_2d [ymin, xmin, ymax, xmax] (0-1000 scale) for the location found on that page.
+5. Return ONLY a valid JSON Array:
+[
+  {
+    "category": "${category}",
+    "code_ref": "Custom-All",
+    "item_name": "ชื่อรายการงานตามแบบแปลน (ระบุตำแหน่ง/ชั้น/ผัง)",
+    "net_quantity": "ปริมาณพร้อมหน่วย",
+    "scg_product": "ชื่อสินค้า SCG หรือ CPAC ที่แนะนำ",
+    "order_estimate": "- สินค้าหลัก 1\\n- อุปกรณ์เสริม 2",
+    "confidence_score": 99,
+    "calculation_note": "สูตรคำนวณและสัดส่วนเผื่อเศษ",
+    "verification_method": "[สแกนพบจากทุกหน้า - หน้า {page}]: ${instructionText}",
+    "source_location": {
+      "page_number": 1,
+      "box_2d": [100, 100, 900, 900],
+      "location_description": "ตำแหน่งที่ตรวจพบบนหน้านั้น"
+    }
+  }
+]
+`;
+        } else {
+          promptText = `
+### Scope & Task:
+You are an expert SCG & CPAC Quantity Surveyor.
+Add a specific custom line item to the BOQ for page ${pageNum} based on this user directive:
 """
 หมวดงาน: ${category}
 คำสั่งเฉพาะเจาะจง: ${instructionText}
 อ้างอิงหน้าแปลน: หน้า ${pageNum}
 """
 
-หน้าที่ของคุณ:
-1. สกัดชื่อรายการงาน (item_name), ปริมาณสุทธิพร้อมหน่วย (net_quantity), และสินค้า SCG หรือ CPAC ที่เหมาะสมที่สุด (scg_product)
-2. คำนวณประมาณการสั่งซื้อจริง (order_estimate) แตกรายการอุปกรณ์และสินค้าเสริมเป็นบรรทัดใหม่ด้วยเครื่องหมายขีด (- ) ทุกบรรทัด
-3. ระบุสูตรการคำนวณและเผื่อเศษใน calculation_note
-4. อธิบายที่มาใน verification_method โดยระบุชัดเจนว่าเป็นรายการที่สั่งเพิ่มเฉพาะเจาะจง (Custom Instruction) สำหรับหน้า ${pageNum}
-
-ตอบกลับมาเป็น JSON Object ตัวเดียวเท่านั้น (ห้ามใส่เครื่องหมาย markdown อื่นนอก JSON):
+### Rules:
+1. Extract item_name, net_quantity (with unit), and the best matching SCG/CPAC product.
+2. In "order_estimate", break down the purchase bundle and required accessories with each item starting on a new line with "- ".
+3. Explain calculation in "calculation_note" and cite "[รายการสั่งเพิ่มเฉพาะเจาะจง หน้า ${pageNum}]" in verification_method.
+4. Return ONLY a valid JSON Object:
 {
   "category": "${category}",
   "code_ref": "Custom",
-  "item_name": "ชื่อรายการงาน (เช่น ไม้เชิงชาย SCG Smartwood 2in1 รอบชายคา)",
-  "net_quantity": "ปริมาณพร้อมหน่วย (เช่น 48.00 ม. หรือ 120.00 ตร.ม.)",
+  "item_name": "ชื่อรายการงาน",
+  "net_quantity": "ปริมาณพร้อมหน่วย",
   "scg_product": "ชื่อสินค้า SCG หรือ CPAC ที่แนะนำ",
-  "order_estimate": "- สินค้าหลัก 1 ...\\n- อุปกรณ์ยึด/เสริม 2 ...",
+  "order_estimate": "- สินค้าหลัก 1\\n- อุปกรณ์เสริม 2",
   "confidence_score": 99,
   "calculation_note": "สูตรคำนวณและสัดส่วนเผื่อเศษ",
   "verification_method": "[รายการสั่งเพิ่มเฉพาะเจาะจง หน้า ${pageNum}]: ${instructionText}",
@@ -2426,26 +2501,45 @@
   }
 }
 `;
+        }
 
-      try {
+        parts.unshift({ text: promptText });
+
         const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key=${apiKey}`;
         const response = await fetch(endpoint, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            contents: [{ parts: [{ text: promptText }] }],
-            generationConfig: { responseMimeType: "application/json" }
+            system_instruction: {
+              parts: [{
+                text: "You are a professional Quantity Surveyor (QS) for SCG & CPAC building materials. Always return clean, parseable JSON without commentary."
+              }]
+            },
+            contents: [{ parts: parts }],
+            generationConfig: {
+              responseMimeType: "application/json"
+            }
           })
         });
+
         if (!response.ok) throw new Error("API Connection Error");
         const data = await response.json();
         const rawContent = data.candidates[0].content.parts[0].text;
-        const newItem = JSON.parse(rawContent);
+        const parsedResult = cleanAndParseJSON(rawContent);
 
-        newItem._id = "item_" + Date.now() + "_" + Math.floor(Math.random() * 10000);
-        newItem.is_manual_modified = true;
+        let itemsToAdd = [];
+        if (Array.isArray(parsedResult)) {
+          itemsToAdd = parsedResult;
+        } else if (parsedResult && typeof parsedResult === 'object') {
+          itemsToAdd = [parsedResult];
+        }
 
-        lastRawBOQItems.push(newItem);
+        itemsToAdd.forEach((item, idx) => {
+          item._id = "item_" + Date.now() + "_" + idx + "_" + Math.floor(Math.random() * 1000);
+          item.is_manual_modified = true;
+          lastRawBOQItems.push(item);
+        });
+
         lastRawBOQItems.sort((a, b) => {
           const pA = (a.source_location && a.source_location.page_number) ? a.source_location.page_number : 1;
           const pB = (b.source_location && b.source_location.page_number) ? b.source_location.page_number : 1;
@@ -2453,7 +2547,7 @@
         });
 
         renderBOQTable(lastRawBOQItems);
-        statusElem.innerText = "✅ เพิ่มรายการเฉพาะเจาะจงลงในตารางเรียบร้อยแล้ว!";
+        statusElem.innerText = `✅ เพิ่มรายการเฉพาะเจาะจง (${itemsToAdd.length} รายการ) ลงในตารางเรียบร้อยแล้ว!`;
         setTimeout(() => {
           closeModal("customItemModal");
         }, 900);
@@ -2466,6 +2560,7 @@
 
     /* ==========================================================
        ระบบประมวลผลอัตโนมัติ CROSS-CHECK 3D & MULTI-DRAWING SCAN
+       ใช้โมเดล gemini-3.5-flash-lite
        ========================================================== */
     async function processDocuments() {
       const apiKey = document.getElementById("apiKey").value.trim();
@@ -2511,77 +2606,76 @@
           const specPart = await fileToGenerativePart(specFile);
           parts.push(specPart);
         }
-        statusDiv.innerText = `Gemini กำลังสแกนทุกผัง (ทั้งแปลนพื้น แปลนหลังคา และรูปตัด) ในเอกสารทั้งหมด ${detectedTotalPages} หน้า...`;
-        let customPromptSection = "";
+        statusDiv.innerText = `Gemini 3.5 Flash Lite กำลังสแกนทุกผังในเอกสารทั้งหมด ${detectedTotalPages} หน้า...`;
+
+        let customDirective = "";
         if (customInstruction) {
-          customPromptSection = `
-[คำสั่งพิเศษที่มีลำดับความสำคัญสูงสุดจากผู้ใช้งาน (USER PRIORITY DIRECTIVE)]:
-"""
-${customInstruction}
-"""
-* ให้ปฏิบัติตามคำสั่งข้างต้นนี้อย่างเคร่งครัด
-`;
+          customDirective = `\n### User Priority Directive:\n"""\n${customInstruction}\n"""\n`;
         }
+
         const promptText = `
-คุณเป็น Chief Quantity Surveyor (QS) ระดับสูงประจำเครือ SCG และ CPAC
-หน้าที่ของคุณคือการวิเคราะห์แบบแปลนก่อสร้าง พร้อมทำ [Cross-Check ตรวจสอบความสอดคล้อง 3 มิติ (Plan ↔ Section ↔ Elevation)]
-[กฎเหล็กสำคัญที่สุด: ตรวจสแกนครบทุกผังในแต่ละหน้า (MULTI-DRAWING / MULTI-ZONE SCAN)]:
-ในแผ่นกระดาษแปลนก่อสร้าง 1 แผ่น (หรือ 1 หน้า) มักมีหลายผังย่อยจัดวางอยู่ร่วมกัน เช่น:
-- โซนที่ 1: แปลนพื้น (Floor Plan)
-- โซนที่ 2: แปลนหลังคา (Roof Plan)
-- โซนที่ 3: แบบขยาย หรือ รูปด้าน/รูปตัด
-** ข้อกำหนดเด็ดขาด **:
-1. หากในหน้าใดมีทั้ง "แปลนพื้น" และ "แปลนหลังคา" (หรือผังย่อยหลายอันในแผ่นเดียวกัน) คุณต้องถอดปริมาณงาน "แยกออกเป็นคนละรายการ/คนละแถวใน JSON Array อย่างครบถ้วน" ห้ามข้ามงานหลังคาหรือเลือกถอดแค่งานพื้นเด็ดขาด!
-2. ในฟิลด์ item_name ต้องระบุผังหรือส่วนงานให้ชัดเจน เช่น:
-   - "งานโครงสร้างพื้นและแผ่นพื้น CPAC Hollow Core (แปลนพื้น)"
-   - "งานมุงหลังคาและฉนวนกันความร้อน (แปลนหลังคา)"
-   - "งานผนังก่อและฉาบ (แปลนพื้น)"
-3. ในฟิลด์ source_location.box_2d [ymin, xmin, ymax, xmax] (สเกล 0-1000): ต้องระบุกรอบพิกัดของผังนั้นๆ ให้ถูกต้อง เช่น งานหลังคาให้ตีกรอบเฉพาะโซนแปลนหลังคา ไม่ใช่คลุมทั้งหน้า
-4. หากเอกสารมีหลายหน้า ให้สแกนครบทุกหน้าตั้งแต่หน้า 1 ถึง ${detectedTotalPages}
-${customPromptSection}
-[สเปกวัสดุที่ผู้ใช้เลือก]:
-1. คอนกรีต/โครงสร้าง CPAC: "${concreteChoice}" (หากพบงานพื้นโครงสร้าง ให้แปลงเป็น CPAC Hollow Core + Topping หนา 5 ซม. + ตะแกรง Wire Mesh 4 มม. @ 20 ซม.)
-2. งานหลังคา: สเปก "${roofChoice}" (ต้องนำพื้นที่ราบมาหารด้วย cos(${slopeDeg}°) ก่อนคิดปริมาณสั่งซื้อกระเบื้อง/แผ่นหลังคา)
-3. ฉนวนปูเหนือฝ้า: "${ceilingInsChoice}" (SCG STAY COOL อิงพื้นที่ราบฝ้าเพดาน ม้วนละ 2.40 ตร.ม. เผื่อ 5%)
-4. ฉนวนใต้หลังคา: "${roofInsChoice}" (SCG FSO อิงพื้นที่ลาดเอียงหลังคา)
-5. หากพบแนวสันหลังคา/ตะเข้สัน: ให้คิดระบบครอบแห้ง SCG Dry Tech System (ม้วนละ 3 ม.) พ่วงกับกระเบื้องครอบ
-6. สเปกผนัง: "${wallChoice}", พื้น: "${floorChoice}", ฝ้า: "${ceilingChoice}", ไม้สังเคราะห์: "${woodChoice}"
-[ข้อกำหนดรูปแบบการตอบ order_estimate]:
-ให้แตกรายการสินค้าและอุปกรณ์เสริมเป็นแต่ละบรรทัด โดยขึ้นต้นด้วยเครื่องหมายขีด (- ) ทุกบรรทัด ห้ามเขียนติดเป็นก้อนยาวเด็ดขาด
-ส่งคำตอบกลับมาเป็น JSON Array เท่านั้น:
+### Task:
+Analyze architectural and structural drawings across all ${detectedTotalPages} pages, performing a 3D Cross-Check (Plan ↔ Section ↔ Elevation) to generate an exact Quantity Surveying BOQ for SCG and CPAC products.
+
+### Multi-Drawing Rule (MANDATORY):
+- If a single page/sheet contains multiple plans (e.g. Floor Plan + Roof Plan), you MUST extract them as separate individual rows.
+- Never omit roof or floor structures when they co-exist on the same page.
+- "source_location.box_2d" must tightly bound each individual drawing zone [ymin, xmin, ymax, xmax] (0-1000 scale).
+${customDirective}
+### Selected Material Specifications:
+1. Concrete & Structure CPAC: "${concreteChoice}" (If hollow core: specify CPAC Hollow Core + 5cm Topping + Wire Mesh 4mm @ 20cm).
+2. Roof: "${roofChoice}" (Convert flat area to sloped area by dividing with cos(${slopeDeg}°)).
+3. Ceiling Insulation: "${ceilingInsChoice}" (SCG STAY COOL on flat ceiling, 2.40 m²/roll, 5% waste).
+4. Under-roof Insulation: "${roofInsChoice}" (SCG FSO following sloped roof area).
+5. Ridge/Hip: If ridges exist, include SCG Dry Tech System (3m/roll) + ridge tiles.
+6. Wall: "${wallChoice}", Floor: "${floorChoice}", Ceiling: "${ceilingChoice}", Smartwood: "${woodChoice}".
+
+### Output Format:
+In "order_estimate", format each item and accessory starting on a new line with "- ".
+Return ONLY a valid JSON Array with elements having these exact keys:
 [
   {
-    "category": "หมวดงาน (เช่น งานโครงสร้างและคอนกรีต CPAC, งานหลังคา, งานฉนวนใต้หลังคา (SCG FSO), งานผนัง)",
-    "code_ref": "รหัสสัญลักษณ์บนแบบ หรือ -",
-    "item_name": "ชื่อรายการงานตามแบบแปลน (ระบุผังชัดเจน เช่น แปลนพื้น หรือ แปลนหลังคา)",
-    "net_quantity": "ปริมาณสุทธิ (ระบุ ตร.ม., ม., หรือ คิว)",
-    "scg_product": "ชื่อสินค้า SCG หรือ CPAC ที่แนะนำ/ทดแทน",
-    "order_estimate": "- สินค้าหลัก 1 ...\\n- อุปกรณ์เสริม 2 ...",
+    "category": "string",
+    "code_ref": "string",
+    "item_name": "string",
+    "net_quantity": "string",
+    "scg_product": "string",
+    "order_estimate": "string",
     "confidence_score": 98,
-    "calculation_note": "สูตรคำนวณเฉพาะรายการนี้ และสัดส่วนเผื่อเศษ",
-    "verification_method": "สรุปผลการตรวจสอบ ที่มาตัวเลข และระบุโซนผังที่ตรวจพบบนหน้านั้น",
+    "calculation_note": "string",
+    "verification_method": "string",
     "source_location": {
       "page_number": 1,
       "box_2d": [ymin, xmin, ymax, xmax],
-      "location_description": "คำอธิบายตำแหน่งโซนผังบนหน้านี้"
+      "location_description": "string"
     }
   }
 ]
 `;
+
         parts.unshift({ text: promptText });
+
         const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key=${apiKey}`;
         const response = await fetch(endpoint, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
+            system_instruction: {
+              parts: [{
+                text: "You are the Chief Quantity Surveyor (QS) for SCG and CPAC. Provide rigorous, pure JSON BOQ outputs without markdown wrappings."
+              }]
+            },
             contents: [{ parts: parts }],
-            generationConfig: { responseMimeType: "application/json" }
+            generationConfig: {
+              responseMimeType: "application/json"
+            }
           })
         });
+
         if (!response.ok) throw new Error("API Connection Error");
         const data = await response.json();
         const rawContent = data.candidates[0].content.parts[0].text;
-        const boqItems = JSON.parse(rawContent);
+        const boqItems = cleanAndParseJSON(rawContent);
         boqItems.sort((a, b) => {
           const pA = (a.source_location && a.source_location.page_number) ? a.source_location.page_number : 1;
           const pB = (b.source_location && b.source_location.page_number) ? b.source_location.page_number : 1;
@@ -2600,6 +2694,7 @@ ${customPromptSection}
         btn.disabled = false;
       }
     }
+
     async function recalculateWithNewSpecs() {
       if (!lastRawBOQItems || lastRawBOQItems.length === 0) {
         alert("กรุณาวิเคราะห์แบบแปลนก่อนอย่างน้อยหนึ่งครั้ง");
@@ -2613,36 +2708,51 @@ ${customPromptSection}
       statusDiv.innerText = "กำลังคำนวณปริมาณสินค้าใหม่ตามสเปกที่เลือก...";
       try {
         const promptText = `
-คุณเป็น Quantity Surveyor ประจำ SCG และ CPAC
-นี่คือรายการปริมาณงานเดิม:
-${JSON.stringify(lastRawBOQItems, null, 2)}
-ผู้ใช้ต้องการเปลี่ยนสเปกวัสดุใหม่ดังนี้:
-- หลังคา: "${document.getElementById("roofOption").value}" (ความชัน ${slopeDeg} องศา)
-- ฉนวนปูเหนือฝ้า: "${document.getElementById("ceilingInsulationOption").value}"
-- ฉนวนใต้หลังคา: "${document.getElementById("roofInsulationOption").value}"
-- คอนกรีตและโครงสร้าง CPAC: "${document.getElementById("concreteOption").value}"
-- ผนัง: "${document.getElementById("wallOption").value}"
-- พื้น: "${document.getElementById("floorOption").value}"
-- ฝ้า: "${document.getElementById("ceilingOption").value}"
-- ไม้สังเคราะห์: "${document.getElementById("woodOption").value}"
-[สำคัญมาก]:
-1. ต้องคงรายการเดิมทุกแถว (ทั้งงานพื้น งานหลังคา และงานอื่นๆ)
-2. ในฟิลด์ order_estimate ให้จัดรูปแบบแยกแต่ละรายการสินค้าขึ้นบรรทัดใหม่ด้วยเครื่องหมายขีด (- ) ทุกบรรทัด
-ส่งผลลัพธ์กลับมาเป็น JSON Array เท่านั้น
+### Task:
+Recalculate SCG & CPAC product specifications and order quantities for the existing BOQ items based on newly selected materials.
+
+### Existing Items:
+${JSON.stringify(lastRawBOQItems.map(it => ({
+  _id: it._id,
+  category: it.category,
+  item_name: it.item_name,
+  net_quantity: it.net_quantity,
+  source_location: it.source_location
+})), null, 2)}
+
+### New Target Specs:
+- Roof: "${document.getElementById("roofOption").value}" (Slope: ${slopeDeg} deg)
+- Ceiling Insulation: "${document.getElementById("ceilingInsulationOption").value}"
+- Under-roof Insulation: "${document.getElementById("roofInsulationOption").value}"
+- Concrete/Structure CPAC: "${document.getElementById("concreteOption").value}"
+- Wall: "${document.getElementById("wallOption").value}"
+- Floor: "${document.getElementById("floorOption").value}"
+- Ceiling: "${document.getElementById("ceilingOption").value}"
+- Smartwood: "${document.getElementById("woodOption").value}"
+
+### Requirements:
+1. Maintain all existing rows and IDs.
+2. In "order_estimate", format each item and accessory starting on a new line with "- ".
+3. Return ONLY a valid JSON Array.
 `;
         const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key=${apiKey}`;
         const response = await fetch(endpoint, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
+            system_instruction: {
+              parts: [{ text: "You are an expert SCG & CPAC Quantity Surveyor updating BOQ specifications. Return only valid JSON array." }]
+            },
             contents: [{ parts: [{ text: promptText }] }],
-            generationConfig: { responseMimeType: "application/json" }
+            generationConfig: {
+              responseMimeType: "application/json"
+            }
           })
         });
         if (!response.ok) throw new Error("Recalculate Error");
         const data = await response.json();
         const rawContent = data.candidates[0].content.parts[0].text;
-        const updatedItems = JSON.parse(rawContent);
+        const updatedItems = cleanAndParseJSON(rawContent);
         updatedItems.forEach((item, idx) => {
           item._id = (lastRawBOQItems[idx] && lastRawBOQItems[idx]._id) ? lastRawBOQItems[idx]._id : "item_" + Date.now() + "_" + idx;
         });
@@ -2655,6 +2765,7 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
         recalcBtn.disabled = false;
       }
     }
+
     function renderBOQTable(items) {
       const tbody = document.getElementById("boqBody");
       tbody.innerHTML = "";
@@ -2996,7 +3107,7 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
       }
       const projectSnapshot = {
         exportDate: new Date().toISOString(),
-        version: "2.8",
+        version: "3.5-lite",
         settings: {
           concreteOption: document.getElementById("concreteOption").value,
           roofOption: document.getElementById("roofOption").value,
