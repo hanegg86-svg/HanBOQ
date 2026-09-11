@@ -12,10 +12,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="SCG BOQ">
   
-  <!-- ลิงก์ไฟล์ manifest.json สำหรับติดตั้งแอปบนหน้าจอมือถือและ PC -->
   <link rel="manifest" href="manifest.json">
-  
-  <!-- ไอคอนแอป (ใช้ไฟล์ icon.png) -->
   <link rel="icon" type="image/png" sizes="192x192" href="icon.png">
   <link rel="icon" type="image/png" sizes="512x512" href="icon.png">
   <link rel="apple-touch-icon" href="icon.png">
@@ -221,6 +218,21 @@
     .badge-mep { background: #dcfce7; color: #166534; }
     .badge-other { background: #f1f5f9; color: #475569; }
     
+    .page-indicator-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      background: #eff6ff;
+      color: #1d4ed8;
+      border: 1px solid #bfdbfe;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 700;
+      white-space: nowrap;
+      margin-bottom: 4px;
+    }
+
     .confidence-badge {
       display: inline-flex;
       align-items: center;
@@ -588,7 +600,7 @@
   
   <!-- เลือกวัสดุและอัปโหลดเอกสาร -->
   <div class="card">
-    <label>เลือกสเปกหรือวัสดุทดแทน (ระบบรองรับ Multi-Page Scan, Auto-Edge Panning, OSNAP, Ortho Lock และ Cross-Check 3D):</label>
+    <label>เลือกสเปกหรือวัสดุทดแทน (ระบบรองรับ Multi-Page Scan แยกหน้า, Auto-Edge Panning, OSNAP, Ortho Lock และ Cross-Check 3D):</label>
     <div class="grid-options">
       <!-- 1. คอนกรีตและแผ่นพื้นโครงสร้าง CPAC -->
       <div>
@@ -719,14 +731,14 @@
         <span class="prompt-chip" onclick="applyQuickPrompt('วัดพื้นที่หลังคาตามกรอบสีแดงในแบบ')">🎯 วัดตามกรอบสีแดง</span>
         <span class="prompt-chip" onclick="applyQuickPrompt('วัดพื้นที่ตามเส้นประ/กรอบไฮไลต์สีน้ำเงินในแบบ')">🔷 วัดตามกรอบสีน้ำเงิน</span>
         <span class="prompt-chip" onclick="applyQuickPrompt('ถอดแบบและคำนวณเฉพาะงานหลังคาและฉนวนกันความร้อน')">🏠 เน้นเฉพาะงานหลังคา & ฉนวน</span>
-        <span class="prompt-chip" onclick="applyQuickPrompt('ถอดแบบเฉพาะงานโครงสร้างคอนกรีตและแผ่นพื้น CPAC Hollow Core ทุกชั้น')">🏢 เน้นโครงสร้าง CPAC ทุกชั้น</span>
-        <span class="prompt-chip" onclick="applyQuickPrompt('สแกนและถอดปริมาณงานทุกหน้าของเอกสารให้ครบถ้วน ห้ามข้ามหน้าใดหน้าหนึ่ง')">📑 สแกนและถอดแบบครบทุกหน้า</span>
+        <span class="prompt-chip" onclick="applyQuickPrompt('ถอดแบบเฉพาะงานโครงสร้างคอนกรีตและแผ่นพื้น CPAC Hollow Core แยกแสดงทีละชั้น')">🏢 เน้นโครงสร้าง CPAC แยกแต่ละชั้น</span>
+        <span class="prompt-chip" onclick="applyQuickPrompt('สแกนและถอดปริมาณงานทุกหน้าของเอกสารให้ครบถ้วน ห้ามรวมสินค้าข้ามหน้ากัน')">📑 สแกนแยกแสดงผลทีละหน้า</span>
         <span class="prompt-chip" style="background: #f1f5f9; color: #475569; border-color: #cbd5e1;" onclick="clearQuickPrompt()">ล้างคำสั่ง</span>
       </div>
     </div>
     
     <div class="btn-group">
-      <button id="processBtn" onclick="processDocuments()">เริ่มวิเคราะห์และ Cross-Check 3D (สแกนครบทุกหน้าอัตโนมัติ)</button>
+      <button id="processBtn" onclick="processDocuments()">เริ่มวิเคราะห์และ Cross-Check 3D (แยกแสดงผลทีละหน้าอัตโนมัติ)</button>
       <button id="drawBtn" class="btn-draw" onclick="openManualDrawModal(null)" disabled>🎯 สร้างรายการใหม่ด้วย Precision Geometry Tool</button>
       <button id="recalcBtn" class="btn-recalc" onclick="recalculateWithNewSpecs()" disabled>🔄 คำนวณใหม่ตามสเปกที่เลือก</button>
     </div>
@@ -736,22 +748,23 @@
   <!-- ตาราง BOQ -->
   <div class="card" id="resultCard" style="display: none;">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-      <h3 style="margin: 0;">รายการประเมินปริมาณงานและสินค้า SCG & คอนกรีต CPAC</h3>
-      <span style="font-size: 12px; color: #64748b;">💡 รายการสินค้าและอุปกรณ์เสริมถูกจัดแยกบรรทัดให้อ่านง่ายและตรวจเช็กยอดสั่งซื้อได้ทันที</span>
+      <h3 style="margin: 0;">รายการประเมินปริมาณงานและสินค้า SCG & คอนกรีต CPAC (แยกแถวรายหน้า)</h3>
+      <span style="font-size: 12px; color: #64748b;">💡 แต่ละแถวผูกกับหน้าที่พบโดยตรง กด "ดู/แก้ไขในแบบ" เพื่อกระโดดไปหน้านั้นได้ทันที</span>
     </div>
     <div class="table-container">
       <table id="boqTable">
         <thead>
           <tr>
             <th>หมวดงาน</th>
+            <th>หน้าที่พบ</th>
             <th>รหัสอ้างอิง</th>
-            <th>รายการงานตามแบบ</th>
+            <th>รายการงานตามแบบ (แยกชั้น/โซน)</th>
             <th>ปริมาณสุทธิ (แก้ไขได้)</th>
             <th>สินค้า SCG / CPAC ที่แนะนำ</th>
             <th>ประมาณการสั่งซื้อจริง (พร้อมแพ็กเกจระบบ)</th>
             <th>ความมั่นใจ</th>
             <th>หมายเหตุและวิธีคำนวณ</th>
-            <th>🔍 การ Cross-Check & ที่มาปริมาณ (รายหน้า)</th>
+            <th>🔍 การ Cross-Check & ที่มาปริมาณ</th>
             <th style="text-align: center;">ตำแหน่ง & แก้ไขในแบบ</th>
             <th style="text-align: center;">จัดการ</th>
           </tr>
@@ -980,27 +993,20 @@
     let startX = 0, startY = 0;
     let currentDragBox = null;
     let currentDragLine = null;
-    
-    // Polygon points in progress
     let currentPolygonPoints = [];
     let currentMousePos = { x: 0, y: 0 };
-
-    // Snapping & Ortho Variables
     let activeSnappedPoint = null;
     const SNAP_RADIUS = 15;
 
-    // ตัวแปร Auto-Edge Panning
     let autoPanAnimationId = null;
     let autoPanVelocity = { x: 0, y: 0 };
     let lastClientMousePos = { x: 0, y: 0 };
     const EDGE_PAN_THRESHOLD = 45;
     const EDGE_PAN_SPEED = 0.35;
 
-    // เก็บรายการวัดแบบ Multi-Zone
     let measuredShapes = [];
     let measuredLines = [];
 
-    // ตัวแปร Viewport Zoom & Pan
     let zoomScale = 1.0;
     let panOffsetX = 0;
     let panOffsetY = 0;
@@ -1274,9 +1280,6 @@
       return null;
     }
 
-    /* ==========================================================
-       ระบบควบคุม ZOOM & PAN
-       ========================================================== */
     function updateTransform() {
       const canvas = document.getElementById("drawCanvas");
       canvas.style.transformOrigin = "0 0";
@@ -1330,9 +1333,6 @@
       return getCanvasCoordsFromClient(e.clientX, e.clientY);
     }
 
-    /* ==========================================================
-       MAGNETIC OBJECT SNAP (OSNAP) & ORTHO LOCK ALGORITHMS
-       ========================================================== */
     function findMagneticSnapPoint(targetPos) {
       let closestPt = null;
       let minDist = SNAP_RADIUS / zoomScale;
@@ -1382,9 +1382,6 @@
       };
     }
 
-    /* ==========================================================
-       AUTO-EDGE PANNING (เลื่อนแบบแปลนอัตโนมัติเมื่อชิดขอบจอ)
-       ========================================================== */
     function updateActiveMeasurementShape() {
       const rawCoords = getCanvasCoordsFromClient(lastClientMousePos.x, lastClientMousePos.y);
       currentMousePos = rawCoords;
@@ -1424,7 +1421,6 @@
 
     function startAutoPanLoop() {
       if (autoPanAnimationId !== null) return;
-
       const loop = () => {
         if (autoPanVelocity.x !== 0 || autoPanVelocity.y !== 0) {
           panOffsetX += autoPanVelocity.x;
@@ -1483,9 +1479,6 @@
       }
     }
 
-    /* ==========================================================
-       คำนวณพื้นที่และเส้นรอบรูป POLYGON (SHOELACE FORMULA)
-       ========================================================== */
     function calculatePolygonMetrics(points, ppm) {
       if (!points || points.length < 3 || !ppm) return { flatAreaM: 0, perimeterM: 0 };
       
@@ -1509,9 +1502,6 @@
       return { flatAreaM, perimeterM: periSum };
     }
 
-    /* ==========================================================
-       ฟังก์ชันจัดรูปแบบรายการสินค้าสั่งซื้อจริงเป็นแต่ละบรรทัด (MULTI-LINE PARSER)
-       ========================================================== */
     function formatOrderEstimateHTML(text) {
       if (!text) return "-";
 
@@ -1541,9 +1531,6 @@
       return html;
     }
 
-    /* ==========================================================
-       เปิด MODAL ดูตำแหน่ง & แก้ไขรายการ (IN-PLACE)
-       ========================================================== */
     async function openInPlaceEditor(itemId) {
       if (!currentUploadedFile) {
         alert("กรุณาเลือกไฟล์แบบแปลนก่อน");
@@ -1554,11 +1541,11 @@
       const targetItem = lastRawBOQItems.find(it => it._id === itemId);
       if (!targetItem) return;
 
-      const modalTitle = document.getElementById("drawModalHeaderTitle");
-      modalTitle.innerText = `🔍 ตำแหน่งในแบบ & แก้ไขรายการ: "${targetItem.item_name}"`;
-
       const loc = targetItem.source_location || {};
       const targetPage = loc.page_number || 1;
+
+      const modalTitle = document.getElementById("drawModalHeaderTitle");
+      modalTitle.innerText = `🔍 ตำแหน่งในแบบ (หน้า ${targetPage}) & แก้ไขรายการ: "${targetItem.item_name}"`;
 
       const select = document.getElementById("drawPageSelect");
       select.innerHTML = "";
@@ -1599,7 +1586,7 @@
       }
 
       document.getElementById("drawModal").style.display = "flex";
-      document.getElementById("drawStatus").innerText = `กำลังโหลดตำแหน่งเดิมของ "${targetItem.item_name}"... (ลากเมาส์ชิดขอบจอเพื่อเลื่อนแบบอัตโนมัติ)`;
+      document.getElementById("drawStatus").innerText = `กำลังเปิดแปลนหน้า ${targetPage} ของรายการ "${targetItem.item_name}"...`;
 
       await loadDrawCanvasPage(targetPage);
 
@@ -2291,12 +2278,12 @@
         chosenValue = measuredLines.reduce((sum, l) => sum + (l.lengthM || 0), 0);
         chosenUnit = "ม.";
         let parts = measuredLines.map((l, i) => `เส้น #${i+1} (${l.lengthM.toFixed(2)} ม.)`);
-        auditSummary = `[วัดความยาวแนวเส้น]: ${parts.join(" + ")} = รวมความยาวสุทธิ ${chosenValue.toFixed(2)} เมตร`;
+        auditSummary = `[วัดความยาวแนวเส้น หน้า ${pageNum}]: ${parts.join(" + ")} = รวมความยาวสุทธิ ${chosenValue.toFixed(2)} เมตร`;
       } else if (mType === "perimeter") {
         chosenValue = measuredShapes.reduce((sum, b) => sum + (b.perimeterM || 0), 0);
         chosenUnit = "ม.";
         let parts = measuredShapes.map((b, i) => `#${i+1} [${b.type === 'polygon' ? 'Polygon' : 'สี่เหลี่ยม'} = ${b.perimeterM.toFixed(2)} ม.]`);
-        auditSummary = `[คิดเส้นรอบรูปอาคาร/แนวสัน]: ${parts.join(" + ")} = รวมความยาว ${chosenValue.toFixed(2)} เมตร`;
+        auditSummary = `[คิดเส้นรอบรูปอาคาร/แนวสัน หน้า ${pageNum}]: ${parts.join(" + ")} = รวมความยาว ${chosenValue.toFixed(2)} เมตร`;
       } else {
         chosenValue = isRoofRelated 
           ? measuredShapes.reduce((sum, b) => sum + (b.slopeAreaM || 0), 0)
@@ -2308,8 +2295,8 @@
             : `รูป #${i+1} (${b.type === 'polygon' ? 'Polygon' : 'สี่เหลี่ยม'} ${b.flatAreaM.toFixed(2)} ม.²)`;
         });
         auditSummary = isRoofRelated 
-          ? `[คำนวณ Slope ${slopeDeg}° | ทรง${roofShape === 'hip' ? 'ปั้นหยา' : 'จั่ว'}]: ${parts.join(" + ")} = รวมพื้นที่ลาดเอียงสุทธิ ${chosenValue.toFixed(2)} ตร.ม.`
-          : `${parts.join(" + ")} = รวมสุทธิ ${chosenValue.toFixed(2)} ตร.ม.`;
+          ? `[หน้า ${pageNum} | คำนวณ Slope ${slopeDeg}° | ทรง${roofShape === 'hip' ? 'ปั้นหยา' : 'จั่ว'}]: ${parts.join(" + ")} = รวมพื้นที่ลาดเอียงสุทธิ ${chosenValue.toFixed(2)} ตร.ม.`
+          : `[หน้า ${pageNum}]: ${parts.join(" + ")} = รวมสุทธิ ${chosenValue.toFixed(2)} ตร.ม.`;
       }
 
       const statusElem = document.getElementById("drawStatus");
@@ -2393,13 +2380,13 @@
               location_description: `วัดขนาดด้วย Geometry/Polygon Tool และเลือกสินค้า "${chosenProduct}" บนหน้า ${pageNum}`
             };
           }
-          statusElem.innerText = `✅ อัปเดตรายการ "${item ? item.item_name : ''}" ทับแถวเดิมสำเร็จ!`;
+          statusElem.innerText = `✅ อัปเดตรายการ "${item ? item.item_name : ''}" บนหน้า ${pageNum} สำเร็จ!`;
         } else {
           const newItem = {
             _id: "item_" + Date.now() + "_" + Math.floor(Math.random() * 10000),
             category: category,
             code_ref: `Geometry (${chosenUnit})`,
-            item_name: `วัดปริมาณในแบบ (${category})`,
+            item_name: `วัดปริมาณในแบบ (${category} - หน้า ${pageNum})`,
             net_quantity: `${chosenValue.toFixed(2)} ${chosenUnit}`,
             scg_product: chosenProduct,
             order_estimate: result.order_estimate,
@@ -2414,7 +2401,7 @@
             }
           };
           lastRawBOQItems.push(newItem);
-          statusElem.innerText = `✅ เพิ่มรายการใหม่ลงในตาราง BOQ สำเร็จ!`;
+          statusElem.innerText = `✅ เพิ่มรายการใหม่ของหน้า ${pageNum} ลงในตาราง BOQ สำเร็จ!`;
         }
 
         renderBOQTable(lastRawBOQItems);
@@ -2427,7 +2414,7 @@
     }
 
     /* ==========================================================
-       ระบบประมวลผลอัตโนมัติ CROSS-CHECK 3D + MULTI-PAGE SCAN
+       ระบบประมวลผลอัตโนมัติ CROSS-CHECK 3D (แยก 1 หน้า = 1 บรรทัด)
        ========================================================== */
     async function processDocuments() {
       const apiKey = document.getElementById("apiKey").value.trim();
@@ -2483,7 +2470,7 @@
           parts.push(specPart);
         }
 
-        statusDiv.innerText = `Gemini กำลังสแกนเอกสารแปลนทั้งหมด ${detectedTotalPages} หน้า และทำ Cross-Check 3D...`;
+        statusDiv.innerText = `Gemini กำลังสแกนเอกสารแปลนทั้งหมด ${detectedTotalPages} หน้า และแยกผลลัพธ์เป็นรายหน้า...`;
 
         let customPromptSection = "";
         if (customInstruction) {
@@ -2500,20 +2487,18 @@ ${customInstruction}
 คุณเป็น Quantity Surveyor (QS) ระดับสูงประจำเครือ SCG และ CPAC
 หน้าที่ของคุณคือการวิเคราะห์แบบแปลนก่อสร้าง พร้อมทำ [Cross-Check ตรวจสอบความสอดคล้อง 3 มิติ (Plan ↔ Section ↔ Elevation)]
 
-[คำสั่งบังคับสแกนหลายหน้าอย่างละเอียด (CRITICAL MULTI-PAGE SCAN DIRECTIVE)]:
+[กฎเหล็กสำคัญที่สุด: แยกแสดงผลเป็น 1 หน้า = 1 รายการ (STRICT PER-PAGE LINE ITEMIZATION)]:
 เอกสารแบบแปลนที่แนบมานี้มีจำนวนทั้งหมด ${detectedTotalPages} หน้า:
-1. คุณต้องตรวจสอบและอ่านแปลน "ครบทุกหน้าตั้งแต่หน้า 1 ถึงหน้า ${detectedTotalPages}" ห้ามอ่านเฉพาะหน้าแรก หรือหยุดแค่หน้าที่เจอก่อนเป็นอันขาด!
-2. หากแบบแปลนมีหลายชั้นหรือหลายส่วน (เช่น หน้า 2 แปลนชั้น 1, หน้า 3 แปลนชั้น 2, หน้า 4 แปลนหลังคา):
-   - คุณต้องถอดปริมาณงานของทุกๆ ชั้น / ทุกๆ ส่วนออกมาให้ครบถ้วน
-   - ระบุเลขหน้าที่พบจริงในฟิลด์ "source_location.page_number" ให้ตรงกับหน้าที่พบรายการนั้นจริงๆ
-3. [กรณีสินค้าเดียวกันพบในหลายหน้า] เช่น แผ่นพื้น CPAC Hollow Core พบทั้งชั้น 1 (หน้า 2) และชั้น 2 (หน้า 3):
-   - สามารถแยกรายการเป็นแต่ละชั้น หรือรวมรายการทั้งโครงการเข้าด้วยกัน
-   - ในฟิลด์ verification_method ต้องแจกแจงที่มาอย่างละเอียด เช่น: "[หน้า 2 (ชั้น 1)]: 140 ตร.ม. + [หน้า 3 (ชั้น 2)]: 160 ตร.ม. = รวมพื้นที่สุทธิ 300 ตร.ม."
-   - ยอดสั่งซื้อจริง (order_estimate) ต้องคิดจากยอดรวมสุทธิทั้งโครงการ เพื่อให้สัดส่วนเผื่อเศษและแพ็กเกจระบบคำนวณได้อย่างถูกต้อง
+1. คุณต้องตรวจสอบและอ่านแปลน "ครบทุกหน้าตั้งแต่หน้า 1 ถึงหน้า ${detectedTotalPages}"
+2. [ห้ามรวมสินค้าข้ามหน้าเด็ดขาด]: หากพบสินค้าเดียวกัน (เช่น แผ่นพื้น CPAC Hollow Core, ฉนวน STAY COOL หรือผนัง Q-CON) ในหลายหน้า (เช่น ชั้น 1 พบที่หน้า 2, ชั้น 2 พบที่หน้า 3):
+   - "ต้องแยกออกเป็นคนละรายการ (คนละแถวใน JSON Array)" ห้ามบวกรวมกันเป็นบรรทัดเดียวเด็ดขาด!
+   - ในฟิลด์ item_name ให้ระบุชื่อชั้นหรือโซนกำกับไว้เสมอ เช่น "แผ่นพื้นสำเร็จรูป CPAC Hollow Core (ชั้น 1)", "แผ่นพื้นสำเร็จรูป CPAC Hollow Core (ชั้น 2)"
+   - ในฟิลด์ source_location.page_number ต้องระบุเลขหน้าจริงที่พบรายการนั้นอย่างแม่นยำ (เช่น รายการของชั้น 1 ระบุ 2, รายการของชั้น 2 ระบุ 3)
+   - การคำนวณ order_estimate ให้คำนวณเฉพาะยอดของหน้านั้นๆ แยกเป็นอิสระ เพื่อให้ผู้ใช้สามารถตรวจสอบและแก้ไขเฉพาะหน้านั้นได้
 ${customPromptSection}
 
 [แนวทาง Cross-Check 3D เพื่อความแม่นยำสูงสุด]:
-1. หากมีไฟล์รูปตัด (Section): ให้ตรวจสอบระดับความสูงพื้นถึงใต้ท้องคาน (Clear Height) หรือความสูงพื้นถึงฝ้าจริง ห้ามเดา 2.8 หรือ 3.0 เมตร และนำความสูงจริงนี้มาคูณกับความยาวผนังที่ถอดได้จาก Floor Plan เพื่อคำนวณพื้นที่ผนังก่ออิฐ Q-CON หรือแผ่นสมาร์ทบอร์ด
+1. หากมีไฟล์รูปตัด (Section): ให้ตรวจสอบระดับความสูงพื้นถึงใต้ท้องคาน (Clear Height) หรือความสูงพื้นถึงฝ้าจริง ห้ามเดา 2.8 หรือ 3.0 เมตร และนำความสูงจริงนี้มาคูณกับความยาวผนังที่ถอดได้จาก Floor Plan ของแต่ละชั้น
 2. หากมีไฟล์รูปด้าน (Elevation): ให้ตรวจสอบองศาความชันหลังคาจริง หากในรูปด้านระบุ Slope ต่างจากค่าเริ่มต้น (${slopeDeg}°) ให้อิงตามรูปด้านจริงและบันทึกในหมายเหตุ
 3. งานคอนกรีต/โครงสร้าง CPAC: "${concreteChoice}" (หากพบงานพื้นโครงสร้าง ให้แปลงเป็น CPAC Hollow Core + Topping หนา 5 ซม. + ตะแกรง Wire Mesh 4 มม. @ 20 ซม.)
 4. งานหลังคา: สเปก "${roofChoice}" (Top View ต้องนำพื้นที่ราบมาหารด้วย cos(องศาหลังคา) ก่อนคิดสินค้า)
@@ -2530,17 +2515,17 @@ ${customPromptSection}
   {
     "category": "หมวดงาน",
     "code_ref": "รหัสสัญลักษณ์บนแบบ หรือ -",
-    "item_name": "ชื่อรายการงานตามแบบแปลน (ระบุชั้นด้วยหากมีหลายชั้น)",
-    "net_quantity": "ปริมาณสุทธิ (ระบุ ตร.ม., ม., หรือ คิว)",
+    "item_name": "ชื่อรายการงานตามแบบแปลน (ต้องระบุชั้น/ส่วน เช่น ชั้น 1 หรือ ชั้น 2)",
+    "net_quantity": "ปริมาณสุทธิเฉพาะของหน้านั้น (ระบุ ตร.ม., ม., หรือ คิว)",
     "scg_product": "ชื่อสินค้า SCG หรือ CPAC ที่แนะนำ/ทดแทน",
     "order_estimate": "- สินค้าหลัก 1 ...\\n- อุปกรณ์เสริม 2 ...",
     "confidence_score": 98,
-    "calculation_note": "สูตรคำนวณ และสัดส่วนเผื่อเศษ",
-    "verification_method": "สรุปผลการตรวจสอบ แจกแจงยอดสุทธิของแต่ละหน้า (เช่น [หน้า 2]: ... + [หน้า 3]: ... = รวม ...)",
+    "calculation_note": "สูตรคำนวณเฉพาะของหน้านี้ และสัดส่วนเผื่อเศษ",
+    "verification_method": "สรุปผลการตรวจสอบเฉพาะของหน้านี้ และที่มาตัวเลขอย่างละเอียด",
     "source_location": {
-      "page_number": 1,
+      "page_number": 2,
       "box_2d": [100, 100, 500, 500],
-      "location_description": "คำอธิบายตำแหน่งและหน้าที่พบ"
+      "location_description": "คำอธิบายตำแหน่งบนหน้านี้"
     }
   }
 ]
@@ -2562,6 +2547,13 @@ ${customPromptSection}
         const rawContent = data.candidates[0].content.parts[0].text;
         const boqItems = JSON.parse(rawContent);
 
+        // เรียงลำดับรายการตามเลขหน้า (Page 1 -> 2 -> 3 ...)
+        boqItems.sort((a, b) => {
+          const pA = (a.source_location && a.source_location.page_number) ? a.source_location.page_number : 1;
+          const pB = (b.source_location && b.source_location.page_number) ? b.source_location.page_number : 1;
+          return pA - pB;
+        });
+
         boqItems.forEach((item, idx) => {
           item._id = "item_" + Date.now() + "_" + idx;
         });
@@ -2569,7 +2561,7 @@ ${customPromptSection}
         lastRawBOQItems = boqItems;
         recalcBtn.disabled = false;
         renderBOQTable(lastRawBOQItems);
-        statusDiv.innerText = `ประมวลผลสำเร็จเรียบร้อย! (สแกนและดึงข้อมูลครบถ้วนจากทั้งหมด ${detectedTotalPages} หน้า)`;
+        statusDiv.innerText = `ประมวลผลสำเร็จเรียบร้อย! แยกแสดงผลเป็น ${boqItems.length} รายการตามหน้าแปลนจริง`;
       } catch (err) {
         statusDiv.innerText = "เกิดข้อผิดพลาดในการประมวลผล กรุณาลองใหม่อีกครั้ง";
       } finally {
@@ -2588,25 +2580,27 @@ ${customPromptSection}
       const slopeDeg = document.getElementById("roofSlopeDeg").value;
 
       recalcBtn.disabled = true;
-      statusDiv.innerText = "กำลังคำนวณปริมาณสินค้าใหม่ตามสเปกที่เลือก...";
+      statusDiv.innerText = "กำลังคำนวณปริมาณสินค้าใหม่ตามสเปกที่เลือก (คงการแยกรายหน้าเดิม)...";
 
       try {
         const promptText = `
 คุณเป็น Quantity Surveyor ประจำ SCG และ CPAC
-นี่คือรายการปริมาณงานเดิมที่ผ่านการ Cross-Check แล้ว:
+นี่คือรายการปริมาณงานเดิมที่แยกรายหน้าไว้แล้ว:
 ${JSON.stringify(lastRawBOQItems, null, 2)}
 
 ผู้ใช้ต้องการเปลี่ยนสเปกวัสดุใหม่ดังนี้:
 - หลังคา: "${document.getElementById("roofOption").value}" (ความชัน ${slopeDeg} องศา)
-- ฉนวนปูเหนือฝ้า: "${document.getElementById("ceilingInsulationOption").value}" (SCG STAY COOL อิงพื้นที่ราบฝ้าเพดาน)
-- ฉนวนใต้หลังคา: "${document.getElementById("roofInsulationOption").value}" (SCG FSO อิงพื้นที่ลาดเอียงหลังคา)
-- คอนกรีตและโครงสร้าง CPAC: "${document.getElementById("concreteOption").value}" (Hollow Core + Topping 5 ซม. + Wire Mesh)
+- ฉนวนปูเหนือฝ้า: "${document.getElementById("ceilingInsulationOption").value}"
+- ฉนวนใต้หลังคา: "${document.getElementById("roofInsulationOption").value}"
+- คอนกรีตและโครงสร้าง CPAC: "${document.getElementById("concreteOption").value}"
 - ผนัง: "${document.getElementById("wallOption").value}"
 - พื้น: "${document.getElementById("floorOption").value}"
 - ฝ้า: "${document.getElementById("ceilingOption").value}"
 - ไม้สังเคราะห์: "${document.getElementById("woodOption").value}"
 
-[สำคัญมาก]: ในฟิลด์ order_estimate ให้จัดรูปแบบแยกแต่ละรายการสินค้าขึ้นบรรทัดใหม่ด้วยเครื่องหมายขีด (- ) ทุกบรรทัด ห้ามเขียนติดกัน
+[สำคัญมาก]: 
+1. ต้องคงการแยกรายหน้าเดิม ห้ามยุบรวมรายการข้ามหน้ากันเป็นอันขาด
+2. ในฟิลด์ order_estimate ให้จัดรูปแบบแยกแต่ละรายการสินค้าขึ้นบรรทัดใหม่ด้วยเครื่องหมายขีด (- ) ทุกบรรทัด
 ส่งผลลัพธ์กลับมาเป็น JSON Array เท่านั้น
 `;
         const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key=${apiKey}`;
@@ -2673,10 +2667,12 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
           confIcon = "🟡";
         }
 
-        const loc = item.source_location;
-        const pageLabel = loc && loc.page_number ? `หน้า ${loc.page_number}` : "";
+        const loc = item.source_location || {};
+        const pageNum = loc.page_number || 1;
+        const pageBadge = `<span class="page-indicator-badge">📄 หน้า ${pageNum}</span>`;
+
         const isModified = item.is_manual_modified ? "modified" : "";
-        const manualBadge = item.is_manual_modified ? `<span class="manual-badge">📐 สเกล/แก้ไขแล้ว</span>` : "";
+        const manualBadge = item.is_manual_modified ? `<span class="manual-badge">📐 แก้ไขแล้ว</span>` : "";
 
         const hasCrossCheck = (item.verification_method || "").toLowerCase().includes("section") || 
                               (item.verification_method || "").includes("รูปตัด") || 
@@ -2689,8 +2685,11 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
         row.id = `boq-row-${item._id}`;
         row.innerHTML = `
           <td><span class="${badgeClass}">${item.category || "-"}</span></td>
+          <td style="text-align: center;">${pageBadge}</td>
           <td>${item.code_ref || "-"}</td>
-          <td>${item.item_name || "-"}</td>
+          <td>
+            <div style="font-weight: 600; color: #0f172a;">${item.item_name || "-"}</div>
+          </td>
           <td>
             <div class="edit-qty-wrapper">
               <input type="text" class="input-qty ${isModified}" id="qty-input-${item._id}" value="${item.net_quantity || ""}" onchange="updateNetQuantity('${item._id}', this.value)">
@@ -2712,7 +2711,7 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
             ${crossCheckBadge}
           </td>
           <td style="text-align: center;">
-            <button class="btn-view" onclick="openInPlaceEditor('${item._id}')">🔍 ดู/แก้ไขในแบบ ${pageLabel}</button>
+            <button class="btn-view" onclick="openInPlaceEditor('${item._id}')">🔍 ดู/แก้ไขในแบบ (หน้า ${pageNum})</button>
           </td>
           <td style="text-align: center;">
             <button class="btn-delete" title="ลบรายการนี้ออก" onclick="deleteBOQItem('${item._id}')">🗑️ ลบ</button>
@@ -2816,7 +2815,7 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
 
     function exportCSV() {
       if (!lastRawBOQItems || lastRawBOQItems.length === 0) return;
-      let csvContent = "\uFEFFหมวดงาน,รหัสอ้างอิง,รายการงาน,ปริมาณสุทธิ,สถานะการแก้ไข,สินค้า SCG/CPAC,ประมาณการสั่งซื้อจริง,ความมั่นใจ (%),หมายเหตุการคำนวณ,วิธีตรวจสอบที่มาปริมาณ,หน้าที่พบ,คำอธิบายตำแหน่ง\n";
+      let csvContent = "\uFEFFหมวดงาน,หน้าที่พบ,รหัสอ้างอิง,รายการงาน,ปริมาณสุทธิ,สถานะการแก้ไข,สินค้า SCG/CPAC,ประมาณการสั่งซื้อจริง,ความมั่นใจ (%),หมายเหตุการคำนวณ,วิธีตรวจสอบที่มาปริมาณ,คำอธิบายตำแหน่ง\n";
       lastRawBOQItems.forEach(row => {
         const page = (row.source_location && row.source_location.page_number) ? row.source_location.page_number : "-";
         const desc = (row.source_location && row.source_location.location_description) ? row.source_location.location_description : "-";
@@ -2824,7 +2823,7 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
         const conf = row.confidence_score || "-";
         const modifiedStatus = row.is_manual_modified ? "แก้ไขในแบบแล้ว" : "คำนวณอัตโนมัติ";
         const cleanEstimate = (row.order_estimate || "-").replace(/[\r\n]+/g, " | ");
-        csvContent += `"${row.category}","${row.code_ref}","${row.item_name}","${row.net_quantity}","${modifiedStatus}","${row.scg_product}","${cleanEstimate}","${conf}","${row.calculation_note}","${audit}","${page}","${desc}"\n`;
+        csvContent += `"${row.category}","หน้า ${page}","${row.code_ref}","${row.item_name}","${row.net_quantity}","${modifiedStatus}","${row.scg_product}","${cleanEstimate}","${conf}","${row.calculation_note}","${audit}","${desc}"\n`;
       });
       const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
       const url = URL.createObjectURL(blob);
