@@ -693,13 +693,13 @@
 
   <!-- เลือกวัสดุและอัปโหลดเอกสาร -->
   <div class="card">
-    <label>เลือกสเปกหรือวัสดุทดแทน (ระบบรองรับ Multi-Drawing ในหน้าเดียว, แยกหน้าอัตโนมัติ, Auto-Edge Panning, OSNAP, Ortho Lock และ Cross-Check 3D):</label>
+    <label>เลือกสเปกหรือวัสดุทดแทน (ระบบรองรับ Multi-Drawing ในหน้าเดียว, Symbol Legend Mapping, แยกหน้าอัตโนมัติ, Auto-Edge Panning, OSNAP, Ortho Lock และ Cross-Check 3D):</label>
     <div class="grid-options">
       <!-- 1. คอนกรีตและแผ่นพื้นโครงสร้าง CPAC -->
       <div>
         <label for="concreteOption" style="color: #0f172a;">🏢 1. หมวดงานคอนกรีตและโครงสร้าง CPAC:</label>
         <select id="concreteOption">
-          <option value="auto">คำนวณตามแบบระบุ (Default)</option>
+          <option value="auto">คำนวณตามแบบระบุ / สัญลักษณ์ (Default)</option>
           <option value="cpac_hollowcore_10">แผ่นพื้น CPAC Hollow Core หนา 10 ซม. + Topping 5 ซม. + Wire Mesh</option>
           <option value="cpac_hollowcore_8">แผ่นพื้น CPAC Hollow Core หนา 8 ซม. + Topping 5 ซม. + Wire Mesh</option>
           <option value="cpac_hollowcore_12">แผ่นพื้น CPAC Hollow Core หนา 12 ซม. (สแปนยาว)</option>
@@ -713,7 +713,7 @@
       <div>
         <label for="roofOption">2. หมวดงานหลังคา:</label>
         <select id="roofOption" onchange="autoAdjustDefaultSlope()">
-          <option value="auto">คำนวณตามแบบระบุ (Default)</option>
+          <option value="auto">คำนวณตามแบบระบุ / สัญลักษณ์ (Default)</option>
           <option value="metal_lumax">SCG Roof Metal Sheet ลอน LumaX (ขั้นต่ำ 0.3° สไตล์โมเดิร์น)</option>
           <option value="scg_prestige">หลังคาคอนกรีตแผ่นเรียบ SCG Prestige (ขั้นต่ำ 25° + ระบบครอบแห้ง Dry Tech)</option>
           <option value="scg_neustile">หลังคาคอนกรีตแผ่นเรียบ SCG Neustile (ขั้นต่ำ 22° + ระบบครอบแห้ง Dry Tech)</option>
@@ -737,7 +737,7 @@
       <div>
         <label for="ceilingInsulationOption" style="color: #c2410c;">🏠 3. ฉนวนปูเหนือฝ้าเพดาน (STAY COOL):</label>
         <select id="ceilingInsulationOption">
-          <option value="auto">คำนวณตามแบบระบุ (Default)</option>
+          <option value="auto">คำนวณตามแบบระบุ / สัญลักษณ์ (Default)</option>
           <option value="staycool_75">ฉนวนเหนือฝ้า SCG STAY COOL หนา 75 มม. (3") หุ้มฟอยล์รอบด้าน</option>
           <option value="staycool_150">ฉนวนเหนือฝ้า SCG STAY COOL หนา 150 มม. (6") กันร้อนสูงสุด</option>
           <option value="none">ไม่ติดตั้งฉนวนเหนือฝ้า</option>
@@ -747,7 +747,7 @@
       <div>
         <label for="roofInsulationOption" style="color: #b91c1c;">🛡️ 4. ฉนวนใต้หลังคา (SCG FSO) & สะท้อนความร้อน:</label>
         <select id="roofInsulationOption">
-          <option value="auto">คำนวณตามแบบระบุ (Default)</option>
+          <option value="auto">คำนวณตามแบบระบุ / สัญลักษณ์ (Default)</option>
           <option value="scg_fso">ฉนวนใยแก้วใต้หลังคา SCG FSO (ติดฟอยล์โรงงาน บุใต้ Metal Sheet/แป)</option>
           <option value="radiant_barrier">แผ่นสะท้อนความร้อน SCG Radiant Barrier ใต้แปหลังคา</option>
           <option value="none">ไม่ติดตั้งฉนวนใต้หลังคา</option>
@@ -757,7 +757,7 @@
       <div>
         <label for="wallOption">5. หมวดงานผนัง:</label>
         <select id="wallOption">
-          <option value="auto">คำนวณตามแบบระบุ (Default)</option>
+          <option value="auto">คำนวณตามแบบระบุ / สัญลักษณ์ (Default)</option>
           <option value="qcon">ก่ออิฐมวลเบา Q-CON + ปูนฉาบเสือมอร์ตาร์</option>
           <option value="smartboard_wall">ผนังเบา สมาร์ทบอร์ด SCG หนา 8-10 มม. + โครง C-Stud</option>
           <option value="smartwood_siding">ผนังตกแต่ง ไม้ฝา SCG Smartwood (ลายไม้สัก)</option>
@@ -768,7 +768,7 @@
       <div>
         <label for="floorOption">6. หมวดงานพื้นสถาปัตย์/ตกแต่ง:</label>
         <select id="floorOption">
-          <option value="auto">คำนวณตามแบบระบุ (Default)</option>
+          <option value="auto">คำนวณตามแบบระบุ / สัญลักษณ์ (Default)</option>
           <option value="cotto_tile">กระเบื้อง COTTO + ปูนกาวเสือ</option>
           <option value="smartwood_floor">ไม้พื้นสังเคราะห์ SCG Smartwood / D-COR</option>
           <option value="smartboard_floor">แผ่นพื้นสมาร์ทบอร์ด SCG หนา 16-20 มม.</option>
@@ -778,7 +778,7 @@
       <div>
         <label for="ceilingOption">7. หมวดงานฝ้าเพดาน:</label>
         <select id="ceilingOption">
-          <option value="auto">คำนวณตามแบบระบุ (Default)</option>
+          <option value="auto">คำนวณตามแบบระบุ / สัญลักษณ์ (Default)</option>
           <option value="smartboard_ceiling">ฝ้าสมาร์ทบอร์ด SCG ขอบเรียบ หนา 3.5-4 มม. + โครงฝ้า</option>
           <option value="smartboard_vent">ฝ้าชายคา สมาร์ทบอร์ด SCG รุ่นมีรูระบายอากาศ (ลดร้อน)</option>
           <option value="gypsum_ceiling">แผ่นยิปซัม SCG ตราช้าง ขอบลาด หนา 9 มม. + โครงพลัสไลน์</option>
@@ -788,7 +788,7 @@
       <div>
         <label for="woodOption">8. หมวดไม้ตกแต่ง Smartwood:</label>
         <select id="woodOption">
-          <option value="auto">คำนวณตามแบบระบุ (Default)</option>
+          <option value="auto">คำนวณตามแบบระบุ / สัญลักษณ์ (Default)</option>
           <option value="smartwood_eaves">ไม้เชิงชาย SCG Smartwood 2 in 1 (ตามแนวชายคา)</option>
           <option value="smartwood_lath">ไม้ระแนงบังแดด / ตกแต่ง SCG Smartwood 3"</option>
           <option value="smartwood_fence">ไม้รั้วสังเคราะห์ SCG Smartwood</option>
@@ -800,7 +800,7 @@
 
     <label for="sectionFile" style="color: #0369a1;">📐 2. แบบรูปตัด / รูปด้าน (Section & Elevation - สำหรับตรวจสอบความสูงผนัง & Slope 3D):</label>
     <input type="file" id="sectionFile" accept="image/*,application/pdf">
-    <label for="specFile">3. รายการประกอบแบบ/สเปก (ถ้ามี):</label>
+    <label for="specFile">3. รายการประกอบแบบ/สเปก / ตารางสัญลักษณ์ Schedule (ถ้ามี):</label>
     <input type="file" id="specFile" accept="image/*,application/pdf">
     <!-- ซ่อน input file สำหรับกดนำเข้า JSON -->
     <input type="file" id="jsonFileInput" accept=".json" style="display: none;" onchange="handleJsonFileImport(event)">
@@ -812,14 +812,13 @@
         </label>
         <button type="button" class="btn-custom-add" style="padding: 5px 12px; font-size: 13px; flex: none;" onclick="openCustomItemModal()">➕ เพิ่มรายการเฉพาะเจาะจงลงในตาราง</button>
       </div>
-      <textarea id="customInstructionPrompt" placeholder="เช่น: หน้านี้มีทั้งแปลนพื้นและแปลนหลังคา ให้ถอดทั้ง 2 ส่วนแยกรายการกันให้ครบถ้วน"></textarea>
+      <textarea id="customInstructionPrompt" placeholder="เช่น: หน้านี้มีทั้งแปลนพื้นและแปลนหลังคา ให้ถอดทั้ง 2 ส่วนแยกรายการกัน หรือ ตรวจสอบสัญลักษณ์ผนัง △1 และ △5 ตามตารางรายการประกอบแบบ"></textarea>
 
       <div style="font-size: 12px; color: #7c2d12; font-weight: 600;">⚡ ปุ่มคำสั่งด่วน (คลิกเพื่อเติมข้อความ):</div>
       <div class="prompt-chip-group">
         <span class="prompt-chip" onclick="applyQuickPrompt('สแกนแยกทั้งแปลนพื้นและแปลนหลังคาที่อยู่ในหน้าเดียวกันให้ครบทุกหมวดงาน')">📑 สแกนทั้งพื้น & หลังคาในหน้าเดียว</span>
+        <span class="prompt-chip" onclick="applyQuickPrompt('ให้อ่านและจับคู่สัญลักษณ์ผนัง (เช่น △1, △5, △11) และสัญลักษณ์พื้น (เช่น F1, F2, HC) ตามตารางรายการวัสดุประกอบแบบ (Schedule Legend) ให้ครบถ้วน')">📐 จับคู่สัญลักษณ์ △ และ Schedule</span>
         <span class="prompt-chip" onclick="applyQuickPrompt('วัดพื้นที่หลังคาตามกรอบสีแดงในแบบ')">🎯 วัดตามกรอบสีแดง</span>
-        <span class="prompt-chip" onclick="applyQuickPrompt('วัดพื้นที่ตามเส้นประ/กรอบไฮไลต์สีน้ำเงินในแบบ')">🔷 วัดตามกรอบสีน้ำเงิน</span>
-        <span class="prompt-chip" onclick="applyQuickPrompt('ถอดแบบและคำนวณเฉพาะงานหลังคาและฉนวนกันความร้อน')">🏠 เน้นเฉพาะงานหลังคา & ฉนวน</span>
         <span class="prompt-chip" onclick="applyQuickPrompt('ถอดแบบเฉพาะงานโครงสร้างคอนกรีตและแผ่นพื้น CPAC Hollow Core แยกแสดงทีละชั้น')">🏢 เน้นโครงสร้าง CPAC</span>
         <span class="prompt-chip" style="background: #f1f5f9; color: #475569; border-color: #cbd5e1;" onclick="clearQuickPrompt()">ล้างคำสั่ง</span>
       </div>
@@ -849,7 +848,7 @@
           <tr>
             <th>หมวดงาน</th>
             <th>หน้าที่พบ</th>
-            <th>รหัสอ้างอิง</th>
+            <th>รหัสอ้างอิง / สัญลักษณ์</th>
             <th>รายการงานตามแบบ (แยกชั้น/ผัง/โซน)</th>
             <th>ปริมาณสุทธิ (แก้ไขได้)</th>
             <th>สินค้า SCG / CPAC ที่แนะนำ</th>
@@ -915,7 +914,7 @@
         </select>
 
         <label for="customItemTextInput">ระบุรายละเอียดสินค้า / พื้นที่ / ความต้องการเฉพาะเจาะจง:</label>
-        <textarea id="customItemTextInput" style="min-height: 95px;" placeholder="เช่น: สแกนถอดแบบผนังก่ออิฐมวลเบา Q-CON และผนังเบาสมาร์ทบอร์ด SCG ทุกห้อง ทุกชั้น"></textarea>
+        <textarea id="customItemTextInput" style="min-height: 95px;" placeholder="เช่น: สแกนถอดแบบผนังตามสัญลักษณ์ △1 (อิฐมวลเบา Q-CON) และ △5 ทุกห้อง ทุกชั้นตามตารางรายการประกอบแบบ"></textarea>
 
         <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 10px;">
           <button type="button" style="background: #64748b; flex: none; padding: 8px 16px;" onclick="closeModal('customItemModal')">ยกเลิก</button>
@@ -1846,7 +1845,7 @@
         ctx.lineTo(calibrationLine.x2, calibrationLine.y2);
         ctx.stroke();
         const midX = (calibrationLine.x1 + calibrationLine.x2) / 2;
-        const midY = (calibrationLine.x1 + calibrationLine.x2) / 2;
+        const midY = (calibrationLine.x1 + calibrationLine.y2) / 2;
         ctx.fillStyle = "#8b5cf6";
         ctx.fillRect(midX - 50, midY - 26, 100, 24);
         ctx.fillStyle = "#ffffff";
@@ -2410,6 +2409,7 @@ Calculate purchase bundle estimate (order_estimate) and calculation note for an 
     /* ==========================================================
        ระบบเพิ่มรายการเฉพาะเจาะจง (CUSTOM ITEM ROW GENERATION)
        ใช้โมเดล gemini-3.5-flash-lite พร้อมตัวเลือกสแกนทุกหน้า
+       และรองรับการจับคู่สัญลักษณ์ Schedule Legend
        ========================================================== */
     function toggleCustomScopeMode() {
       const isSingle = document.getElementById("scopeSinglePageRadio").checked;
@@ -2449,6 +2449,7 @@ Calculate purchase bundle estimate (order_estimate) and calculation note for an 
       const statusElem = document.getElementById("customItemStatus");
       const submitBtn = document.getElementById("btnSubmitCustomItem");
       const planFile = document.getElementById("planFile").files[0];
+      const specFile = document.getElementById("specFile").files[0];
 
       if (!apiKey) {
         alert("กรุณากรอกและบันทึก Gemini API Key ก่อน");
@@ -2461,7 +2462,7 @@ Calculate purchase bundle estimate (order_estimate) and calculation note for an 
 
       submitBtn.disabled = true;
       if (isAllPages) {
-        statusElem.innerText = `Gemini 3.5 Flash Lite กำลังสแกนหา "${category}" จากแบบแปลนครบทุกหน้า (หน้า 1 ถึง ${detectedTotalPages}) ...`;
+        statusElem.innerText = `Gemini 3.5 Flash Lite กำลังสแกนหา "${category}" และจับคู่สัญลักษณ์ Schedule จากแบบแปลนครบทุกหน้า (หน้า 1 ถึง ${detectedTotalPages}) ...`;
       } else {
         statusElem.innerText = `กำลังวิเคราะห์คำสั่งเฉพาะเจาะจงสำหรับหน้า ${pageNum} ...`;
       }
@@ -2471,6 +2472,10 @@ Calculate purchase bundle estimate (order_estimate) and calculation note for an 
         if (planFile) {
           const planPart = await fileToGenerativePart(planFile);
           parts.push(planPart);
+        }
+        if (specFile) {
+          const specPart = await fileToGenerativePart(specFile);
+          parts.push(specPart);
         }
 
         let promptText = "";
@@ -2485,8 +2490,14 @@ Scan all pages (1 to ${detectedTotalPages}) of the uploaded architectural drawin
 โหมดการทำงาน: สแกนตรวจหาและคำนวณจากแบบแปลนทุกหน้า
 """
 
+### Symbol & Schedule Legend Mapping Rule:
+- Search for symbol legends/schedules (e.g., Wall types: △1, △5, △11, Floor types: F1, F2, HC, Roof types).
+- Match every symbol on the floor plan lines with its definition in the schedule (e.g., △1 = Q-CON Lightweight Block 7.5cm + plaster 10cm).
+- Put the symbol identifier (e.g., "△1", "△5", "F1") into "code_ref".
+- If no symbol exists, fallback to standard extraction as normal.
+
 ### Rules (MANDATORY):
-1. Scan across all pages. For every floor/zone where this category is found, create a separate JSON item in the array.
+1. Scan across all pages. For every floor/zone where this category/symbol is found, create a separate JSON item in the array.
 2. In "source_location.page_number", specify the exact page number (1 to ${detectedTotalPages}) where that particular item was identified.
 3. In "order_estimate", break down the purchase package and system bundle with each item starting on a new line with "- ".
 4. Provide estimated box_2d [ymin, xmin, ymax, xmax] (0-1000 scale) for the location found on that page.
@@ -2494,8 +2505,8 @@ Scan all pages (1 to ${detectedTotalPages}) of the uploaded architectural drawin
 [
   {
     "category": "${category}",
-    "code_ref": "string",
-    "item_name": "ชื่อรายการงานตามแบบแปลน (ระบุชั้น/ห้อง/โซน)",
+    "code_ref": "string (e.g. △1, △5, W1)",
+    "item_name": "ชื่อรายการงานตามแบบแปลน/ตารางสัญลักษณ์ (ระบุชั้น/ห้อง/โซน)",
     "net_quantity": "ปริมาณพร้อมหน่วย เช่น 120.50 ตร.ม.",
     "scg_product": "ชื่อสินค้า SCG หรือ CPAC ที่แนะนำ",
     "order_estimate": "- รายการสินค้าหลัก 1\\n- อุปกรณ์ระบบ 2",
@@ -2521,6 +2532,10 @@ Add a specific custom line item to the BOQ for page ${pageNum} based on this use
 อ้างอิงหน้าแปลน: หน้า ${pageNum}
 """
 
+### Symbol & Schedule Legend Mapping Rule:
+- Search for symbol legends/schedules (e.g., △1, △5, F1, F2).
+- Match symbol on the drawing with the schedule description and put the symbol identifier in "code_ref".
+
 ### Rules:
 1. Extract item_name, net_quantity (with unit), and the best matching SCG/CPAC product.
 2. In "order_estimate", break down the purchase bundle and required accessories with each item starting on a new line with "- ".
@@ -2528,7 +2543,7 @@ Add a specific custom line item to the BOQ for page ${pageNum} based on this use
 4. Return ONLY a valid JSON Object:
 {
   "category": "${category}",
-  "code_ref": "Custom",
+  "code_ref": "string (e.g. △1, Custom)",
   "item_name": "ชื่อรายการงาน",
   "net_quantity": "ปริมาณพร้อมหน่วย",
   "scg_product": "ชื่อสินค้า SCG หรือ CPAC ที่แนะนำ",
@@ -2602,7 +2617,7 @@ Add a specific custom line item to the BOQ for page ${pageNum} based on this use
 
     /* ==========================================================
        ระบบประมวลผลอัตโนมัติ CROSS-CHECK 3D & MULTI-DRAWING SCAN
-       ใช้โมเดล gemini-3.5-flash-lite
+       ใช้โมเดล gemini-3.5-flash-lite พร้อม Symbol & Schedule Mapping
        ========================================================== */
     async function processDocuments() {
       const apiKey = document.getElementById("apiKey").value.trim();
@@ -2645,10 +2660,11 @@ Add a specific custom line item to the BOQ for page ${pageNum} based on this use
           parts.push(secPart);
         }
         if (specFile) {
+          statusDiv.innerText = "กำลังอ่านรายการประกอบแบบ / ตารางสัญลักษณ์ Schedule ...";
           const specPart = await fileToGenerativePart(specFile);
           parts.push(specPart);
         }
-        statusDiv.innerText = `Gemini 3.5 Flash Lite กำลังสแกนทุกผังในเอกสารทั้งหมด ${detectedTotalPages} หน้า...`;
+        statusDiv.innerText = `Gemini 3.5 Flash Lite กำลังสแกนทุกผังและจับคู่สัญลักษณ์ Schedule ในเอกสารทั้งหมด ${detectedTotalPages} หน้า...`;
 
         let customDirective = "";
         if (customInstruction) {
@@ -2663,8 +2679,17 @@ Analyze architectural and structural drawings across all ${detectedTotalPages} p
 - If a single page/sheet contains multiple plans (e.g. Floor Plan + Roof Plan), you MUST extract them as separate individual rows.
 - Never omit roof or floor structures when they co-exist on the same page.
 - "source_location.box_2d" must tightly bound each individual drawing zone [ymin, xmin, ymax, xmax] (0-1000 scale).
+
+### Symbol & Schedule Legend Mapping Rule:
+- Actively detect Schedule Tables / Material Legends (e.g. "รายการวัสดุผนัง", "รายการวัสดุพื้น", "Door/Window Schedule") which may exist alongside plans or in the specifications.
+- When lines or zones on the floor plan contain symbols (e.g. Triangle △1, △5, △11, Circle ○, Square □, F1, F2, HC):
+  1. Map the symbol to its full description in the schedule table (e.g. △1 = "ผนังก่ออิฐมวลเบา Q-CON ขนาด 7.50 ซม. ฉาบปูนเรียบ หนา 10 ซม.").
+  2. Put the symbol code (e.g. "△1", "△5", "F1") into "code_ref".
+  3. Extract item_name using the specification defined in the schedule.
+  4. Select the matching SCG/CPAC product (e.g. Q-CON Lightweight Block + Mortar, CPAC Ready-mix, Smartwood).
+- Fallback: If no symbol/legend exists, extract items based on plan labels and selected material options as normal.
 ${customDirective}
-### Selected Material Specifications:
+### Selected Material Specifications (Used as reference or fallback):
 1. Concrete & Structure CPAC: "${concreteChoice}" (If hollow core: specify CPAC Hollow Core + 5cm Topping + Wire Mesh 4mm @ 20cm).
 2. Roof: "${roofChoice}" (Convert flat area to sloped area by dividing with cos(${slopeDeg}°)).
 3. Ceiling Insulation: "${ceilingInsChoice}" (SCG STAY COOL on flat ceiling, 2.40 m²/roll, 5% waste).
@@ -2678,7 +2703,7 @@ Return ONLY a valid JSON Array with elements having these exact keys:
 [
   {
     "category": "string",
-    "code_ref": "string",
+    "code_ref": "string (e.g. △1, △5, F1, or plan ref)",
     "item_name": "string",
     "net_quantity": "string",
     "scg_product": "string",
@@ -2729,7 +2754,7 @@ Return ONLY a valid JSON Array with elements having these exact keys:
         lastRawBOQItems = boqItems;
         recalcBtn.disabled = false;
         renderBOQTable(lastRawBOQItems);
-        statusDiv.innerText = `ประมวลผลสำเร็จเรียบร้อย! ถอดปริมาณงานได้ทั้งหมด ${boqItems.length} รายการ (ครอบคลุมทั้งแปลนพื้นและหลังคา)`;
+        statusDiv.innerText = `ประมวลผลสำเร็จเรียบร้อย! ถอดปริมาณงานได้ทั้งหมด ${boqItems.length} รายการ (ครอบคลุมทั้งแปลนพื้น หลังคา และสัญลักษณ์ Schedule)`;
       } catch (err) {
         statusDiv.innerText = "เกิดข้อผิดพลาดในการประมวลผล กรุณาลองใหม่อีกครั้ง";
       } finally {
@@ -2757,6 +2782,7 @@ Recalculate SCG & CPAC product specifications and order quantities for the exist
 ${JSON.stringify(lastRawBOQItems.map(it => ({
   _id: it._id,
   category: it.category,
+  code_ref: it.code_ref,
   item_name: it.item_name,
   net_quantity: it.net_quantity,
   source_location: it.source_location
@@ -2853,7 +2879,7 @@ ${JSON.stringify(lastRawBOQItems.map(it => ({
         row.innerHTML = `
           <td><span class="${badgeClass}">${item.category || "-"}</span></td>
           <td style="text-align: center;">${pageBadge}</td>
-          <td>${item.code_ref || "-"}</td>
+          <td style="font-weight: 700; color: #0284c7;">${item.code_ref || "-"}</td>
           <td>
             <div style="font-weight: 600; color: #0f172a;">${item.item_name || "-"}</div>
           </td>
@@ -2982,7 +3008,7 @@ ${JSON.stringify(lastRawBOQItems.map(it => ({
         return {
           "หมวดงาน": row.category || "-",
           "หน้าที่พบ": `หน้า ${page}`,
-          "รหัสอ้างอิง": row.code_ref || "-",
+          "รหัสอ้างอิง/สัญลักษณ์": row.code_ref || "-",
           "รายการงานตามแบบ": row.item_name || "-",
           "ปริมาณสุทธิ": row.net_quantity || "-",
           "สถานะ": modifiedStatus,
@@ -2996,7 +3022,7 @@ ${JSON.stringify(lastRawBOQItems.map(it => ({
       });
       const worksheet = XLSX.utils.json_to_sheet(excelData);
       const colWidths = [
-        { wch: 16 }, { wch: 10 }, { wch: 12 }, { wch: 32 },
+        { wch: 16 }, { wch: 10 }, { wch: 16 }, { wch: 32 },
         { wch: 14 }, { wch: 16 }, { wch: 35 }, { wch: 45 },
         { wch: 14 }, { wch: 35 }, { wch: 40 }, { wch: 30 }
       ];
@@ -3011,7 +3037,7 @@ ${JSON.stringify(lastRawBOQItems.map(it => ({
         <div style="border-bottom: 3px solid #dc2626; padding-bottom: 12px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: flex-end;">
           <div>
             <h2 style="margin: 0; color: #dc2626; font-size: 19px; font-weight: bold;">รายงานถอดแบบและประมาณการสั่งซื้อสินค้า SCG & คอนกรีต CPAC</h2>
-            <div style="font-size: 11px; color: #64748b; margin-top: 4px;">สรุปรายการแยกตามหน้าแปลนก่อสร้างจริง พร้อมระบบตรวจสอบ Cross-Check 3D</div>
+            <div style="font-size: 11px; color: #64748b; margin-top: 4px;">สรุปรายการแยกตามหน้าแปลนก่อสร้างจริง พร้อมระบบตรวจสอบ Cross-Check 3D & Symbol Schedule Mapping</div>
           </div>
           <div style="text-align: right; font-size: 11px; color: #475569; line-height: 1.4;">
             <div><strong>วันที่ออกรายงาน:</strong> ${new Date().toLocaleDateString('th-TH')}</div>
@@ -3032,6 +3058,7 @@ ${JSON.stringify(lastRawBOQItems.map(it => ({
           <tr style="border-bottom: 1px solid #cbd5e1; font-size: 10px; background: ${i % 2 === 0 ? '#ffffff' : '#f8fafc'}; page-break-inside: avoid; -webkit-column-break-inside: avoid; break-inside: avoid;">
             <td style="padding: 6px 8px; font-weight: bold; color: #b91c1c; vertical-align: top;">${row.category || "-"}</td>
             <td style="padding: 6px 8px; text-align: center; font-weight: bold; vertical-align: top;">หน้า ${page}</td>
+            <td style="padding: 6px 8px; font-weight: bold; color: #0284c7; vertical-align: top;">${row.code_ref || "-"}</td>
             <td style="padding: 6px 8px; font-weight: bold; vertical-align: top;">${row.item_name || "-"}</td>
             <td style="padding: 6px 8px; font-weight: bold; color: #0284c7; vertical-align: top;">${row.net_quantity || "-"}</td>
             <td style="padding: 6px 8px; font-weight: bold; color: #b91c1c; vertical-align: top;">${row.scg_product || "-"}</td>
@@ -3047,6 +3074,7 @@ ${JSON.stringify(lastRawBOQItems.map(it => ({
             <tr style="background: #f1f5f9; border-bottom: 2px solid #94a3b8; font-size: 11px;">
               <th style="padding: 8px;">หมวดงาน</th>
               <th style="padding: 8px; text-align: center;">หน้า</th>
+              <th style="padding: 8px;">รหัส/สัญลักษณ์</th>
               <th style="padding: 8px;">รายการงานตามแบบ</th>
               <th style="padding: 8px;">ปริมาณสุทธิ</th>
               <th style="padding: 8px;">สินค้าแนะนำ</th>
