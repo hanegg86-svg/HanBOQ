@@ -588,7 +588,7 @@
   
   <!-- เลือกวัสดุและอัปโหลดเอกสาร -->
   <div class="card">
-    <label>เลือกสเปกหรือวัสดุทดแทน (ระบบรองรับ Auto-Edge Panning, OSNAP, Ortho Lock และ Cross-Check 3D):</label>
+    <label>เลือกสเปกหรือวัสดุทดแทน (ระบบรองรับ Multi-Page Scan, Auto-Edge Panning, OSNAP, Ortho Lock และ Cross-Check 3D):</label>
     <div class="grid-options">
       <!-- 1. คอนกรีตและแผ่นพื้นโครงสร้าง CPAC -->
       <div>
@@ -698,7 +698,7 @@
       </div>
     </div>
 
-    <label for="planFile">1. แบบแปลนพื้น (Floor Plan - PDF/รูปภาพ):</label>
+    <label for="planFile">1. แบบแปลนพื้น (Floor Plan - PDF/รูปภาพ หลายหน้าได้):</label>
     <input type="file" id="planFile" accept="image/*,application/pdf" onchange="onFileSelected()">
     
     <label for="sectionFile" style="color: #0369a1;">📐 2. แบบรูปตัด / รูปด้าน (Section & Elevation - สำหรับตรวจสอบความสูงผนัง & Slope 3D):</label>
@@ -712,21 +712,21 @@
       <label for="customInstructionPrompt" style="color: #c2410c; margin-bottom: 4px;">
         💬 คำสั่งเฉพาะเจาะจงสำหรับ AI (สั่งโฟกัสกรอบสี จุด หรือเงื่อนไขพิเศษในแบบ):
       </label>
-      <textarea id="customInstructionPrompt" placeholder="เช่น: วัดพื้นที่หลังคาตามกรอบสีแดงในแบบ, ถอดเฉพาะงานผนังห้องนอน 1, หรือตรวจสอบความสูงคานจากรูปตัด"></textarea>
+      <textarea id="customInstructionPrompt" placeholder="เช่น: วัดพื้นที่หลังคาตามกรอบสีแดงในแบบ, ถอดเฉพาะงานผนังห้องนอน 1, หรือให้สแกนทุกชั้นตั้งแต่หน้า 1 ถึงหน้าสุดท้าย"></textarea>
       
       <div style="font-size: 12px; color: #7c2d12; font-weight: 600;">⚡ ปุ่มคำสั่งด่วน (คลิกเพื่อเติมข้อความ):</div>
       <div class="prompt-chip-group">
         <span class="prompt-chip" onclick="applyQuickPrompt('วัดพื้นที่หลังคาตามกรอบสีแดงในแบบ')">🎯 วัดตามกรอบสีแดง</span>
         <span class="prompt-chip" onclick="applyQuickPrompt('วัดพื้นที่ตามเส้นประ/กรอบไฮไลต์สีน้ำเงินในแบบ')">🔷 วัดตามกรอบสีน้ำเงิน</span>
         <span class="prompt-chip" onclick="applyQuickPrompt('ถอดแบบและคำนวณเฉพาะงานหลังคาและฉนวนกันความร้อน')">🏠 เน้นเฉพาะงานหลังคา & ฉนวน</span>
-        <span class="prompt-chip" onclick="applyQuickPrompt('ถอดแบบเฉพาะงานโครงสร้างคอนกรีตและแผ่นพื้น CPAC Hollow Core')">🏢 เน้นเฉพาะโครงสร้าง CPAC</span>
-        <span class="prompt-chip" onclick="applyQuickPrompt('ช่วยตรวจเช็กความสูงฝ้าและท้องคานจากรูปตัด เพื่อคูณพื้นที่ผนังจริง')">📐 ตรวจสอบความสูงจากรูปตัด</span>
+        <span class="prompt-chip" onclick="applyQuickPrompt('ถอดแบบเฉพาะงานโครงสร้างคอนกรีตและแผ่นพื้น CPAC Hollow Core ทุกชั้น')">🏢 เน้นโครงสร้าง CPAC ทุกชั้น</span>
+        <span class="prompt-chip" onclick="applyQuickPrompt('สแกนและถอดปริมาณงานทุกหน้าของเอกสารให้ครบถ้วน ห้ามข้ามหน้าใดหน้าหนึ่ง')">📑 สแกนและถอดแบบครบทุกหน้า</span>
         <span class="prompt-chip" style="background: #f1f5f9; color: #475569; border-color: #cbd5e1;" onclick="clearQuickPrompt()">ล้างคำสั่ง</span>
       </div>
     </div>
     
     <div class="btn-group">
-      <button id="processBtn" onclick="processDocuments()">เริ่มวิเคราะห์และ Cross-Check 3D (อัตโนมัติทั้งแผ่น)</button>
+      <button id="processBtn" onclick="processDocuments()">เริ่มวิเคราะห์และ Cross-Check 3D (สแกนครบทุกหน้าอัตโนมัติ)</button>
       <button id="drawBtn" class="btn-draw" onclick="openManualDrawModal(null)" disabled>🎯 สร้างรายการใหม่ด้วย Precision Geometry Tool</button>
       <button id="recalcBtn" class="btn-recalc" onclick="recalculateWithNewSpecs()" disabled>🔄 คำนวณใหม่ตามสเปกที่เลือก</button>
     </div>
@@ -751,7 +751,7 @@
             <th>ประมาณการสั่งซื้อจริง (พร้อมแพ็กเกจระบบ)</th>
             <th>ความมั่นใจ</th>
             <th>หมายเหตุและวิธีคำนวณ</th>
-            <th>🔍 การ Cross-Check & ที่มาปริมาณ</th>
+            <th>🔍 การ Cross-Check & ที่มาปริมาณ (รายหน้า)</th>
             <th style="text-align: center;">ตำแหน่ง & แก้ไขในแบบ</th>
             <th style="text-align: center;">จัดการ</th>
           </tr>
@@ -861,6 +861,7 @@
     let pdfDocumentInstance = null;
     let singleImageInstance = null;
     let lastRawBOQItems = [];
+    let detectedTotalPages = 1;
     
     let editingItemId = null;
 
@@ -1235,9 +1236,11 @@
       currentUploadedFile = file;
       pdfDocumentInstance = null;
       singleImageInstance = null;
+      detectedTotalPages = 1;
       if (file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")) {
         const arrayBuffer = await file.arrayBuffer();
         pdfDocumentInstance = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        detectedTotalPages = pdfDocumentInstance.numPages;
       } else {
         const dataUrl = await new Promise(resolve => {
           const r = new FileReader();
@@ -1247,6 +1250,7 @@
         singleImageInstance = new Image();
         singleImageInstance.src = dataUrl;
         await singleImageInstance.decode();
+        detectedTotalPages = 1;
       }
     }
 
@@ -2423,7 +2427,7 @@
     }
 
     /* ==========================================================
-       ระบบประมวลผลอัตโนมัติ CROSS-CHECK 3D + CUSTOM PROMPT
+       ระบบประมวลผลอัตโนมัติ CROSS-CHECK 3D + MULTI-PAGE SCAN
        ========================================================== */
     async function processDocuments() {
       const apiKey = document.getElementById("apiKey").value.trim();
@@ -2458,7 +2462,7 @@
 
       btn.disabled = true;
       recalcBtn.disabled = true;
-      statusDiv.innerText = "กำลังประมวลผลไฟล์และเตรียมระบบ Cross-Check 3D...";
+      statusDiv.innerText = "กำลังประมวลผลไฟล์และตรวจนับจำนวนหน้าทั้งหมด...";
 
       try {
         await loadPlanDocument(planFile);
@@ -2479,7 +2483,7 @@
           parts.push(specPart);
         }
 
-        statusDiv.innerText = "Gemini กำลังอ่านแบบและปฏิบัติตามคำสั่งเฉพาะจุดเพื่อถอดแบบ...";
+        statusDiv.innerText = `Gemini กำลังสแกนเอกสารแปลนทั้งหมด ${detectedTotalPages} หน้า และทำ Cross-Check 3D...`;
 
         let customPromptSection = "";
         if (customInstruction) {
@@ -2488,13 +2492,24 @@
 """
 ${customInstruction}
 """
-* ให้โฟกัสการถอดแบบตามคำสั่งข้างต้นนี้เป็นอันดับ 1 (เช่น หากระบุให้วัดเฉพาะกรอบสีแดง ให้เน้นถอดพื้นที่ที่ล้อมรอบด้วยกรอบสีแดงในแบบแปลน) และระบุใน verification_method ว่าเป็นผลลัพธ์จากคำสั่งพิเศษนี้
+* ให้โฟกัสการถอดแบบตามคำสั่งข้างต้นนี้เป็นอันดับ 1
 `;
         }
 
         const promptText = `
 คุณเป็น Quantity Surveyor (QS) ระดับสูงประจำเครือ SCG และ CPAC
 หน้าที่ของคุณคือการวิเคราะห์แบบแปลนก่อสร้าง พร้อมทำ [Cross-Check ตรวจสอบความสอดคล้อง 3 มิติ (Plan ↔ Section ↔ Elevation)]
+
+[คำสั่งบังคับสแกนหลายหน้าอย่างละเอียด (CRITICAL MULTI-PAGE SCAN DIRECTIVE)]:
+เอกสารแบบแปลนที่แนบมานี้มีจำนวนทั้งหมด ${detectedTotalPages} หน้า:
+1. คุณต้องตรวจสอบและอ่านแปลน "ครบทุกหน้าตั้งแต่หน้า 1 ถึงหน้า ${detectedTotalPages}" ห้ามอ่านเฉพาะหน้าแรก หรือหยุดแค่หน้าที่เจอก่อนเป็นอันขาด!
+2. หากแบบแปลนมีหลายชั้นหรือหลายส่วน (เช่น หน้า 2 แปลนชั้น 1, หน้า 3 แปลนชั้น 2, หน้า 4 แปลนหลังคา):
+   - คุณต้องถอดปริมาณงานของทุกๆ ชั้น / ทุกๆ ส่วนออกมาให้ครบถ้วน
+   - ระบุเลขหน้าที่พบจริงในฟิลด์ "source_location.page_number" ให้ตรงกับหน้าที่พบรายการนั้นจริงๆ
+3. [กรณีสินค้าเดียวกันพบในหลายหน้า] เช่น แผ่นพื้น CPAC Hollow Core พบทั้งชั้น 1 (หน้า 2) และชั้น 2 (หน้า 3):
+   - สามารถแยกรายการเป็นแต่ละชั้น หรือรวมรายการทั้งโครงการเข้าด้วยกัน
+   - ในฟิลด์ verification_method ต้องแจกแจงที่มาอย่างละเอียด เช่น: "[หน้า 2 (ชั้น 1)]: 140 ตร.ม. + [หน้า 3 (ชั้น 2)]: 160 ตร.ม. = รวมพื้นที่สุทธิ 300 ตร.ม."
+   - ยอดสั่งซื้อจริง (order_estimate) ต้องคิดจากยอดรวมสุทธิทั้งโครงการ เพื่อให้สัดส่วนเผื่อเศษและแพ็กเกจระบบคำนวณได้อย่างถูกต้อง
 ${customPromptSection}
 
 [แนวทาง Cross-Check 3D เพื่อความแม่นยำสูงสุด]:
@@ -2508,25 +2523,24 @@ ${customPromptSection}
 8. สเปกผนัง: "${wallChoice}", พื้น: "${floorChoice}", ฝ้า: "${ceilingChoice}", ไม้สังเคราะห์: "${woodChoice}"
 
 [ข้อกำหนดสำคัญมากสำหรับการตอบ order_estimate]:
-ให้แตกรายการสินค้าและอุปกรณ์เสริมเป็นแต่ละบรรทัด โดยขึ้นต้นด้วยเครื่องหมายขีด (- ) ทุกบรรทัด ห้ามเขียนติดเป็นก้อนยาวเด็ดขาด เช่น:
-"- แผ่นหลังคา LumaX: 686.92 ตร.ม. (เผื่อ 5%)\n- ฉนวนใยแก้วใต้หลังคา SCG FSO: 686.92 ตร.ม.\n- ฉนวนปูเหนือฝ้า SCG STAY COOL: 287 ม้วน\n- ไม้เชิงชาย SCG Smartwood 2 in 1: 39 ท่อน"
+ให้แตกรายการสินค้าและอุปกรณ์เสริมเป็นแต่ละบรรทัด โดยขึ้นต้นด้วยเครื่องหมายขีด (- ) ทุกบรรทัด ห้ามเขียนติดเป็นก้อนยาวเด็ดขาด
 
 ส่งคำตอบกลับมาเป็น JSON Array เท่านั้น:
 [
   {
-    "category": "หมวดงาน (เช่น งานหลังคา, งานสันหลังคา/ตะเข้สัน (SCG Dry Tech), งานฉนวนปูเหนือฝ้า (STAY COOL), งานโครงสร้างและคอนกรีต CPAC)",
+    "category": "หมวดงาน",
     "code_ref": "รหัสสัญลักษณ์บนแบบ หรือ -",
-    "item_name": "ชื่อรายการงานตามแบบแปลน",
+    "item_name": "ชื่อรายการงานตามแบบแปลน (ระบุชั้นด้วยหากมีหลายชั้น)",
     "net_quantity": "ปริมาณสุทธิ (ระบุ ตร.ม., ม., หรือ คิว)",
     "scg_product": "ชื่อสินค้า SCG หรือ CPAC ที่แนะนำ/ทดแทน",
     "order_estimate": "- สินค้าหลัก 1 ...\\n- อุปกรณ์เสริม 2 ...",
     "confidence_score": 98,
-    "calculation_note": "สูตรคำนวณ ความสูงที่ Cross-check ได้จากรูปตัด หรือ % เผื่อเศษ",
-    "verification_method": "สรุปผลการ Cross-check แปลนพื้นกับรูปตัด/รูปด้าน และที่มาตัวเลขอย่างละเอียด (รวมถึงการปฏิบัติตามคำสั่งพิเศษ)",
+    "calculation_note": "สูตรคำนวณ และสัดส่วนเผื่อเศษ",
+    "verification_method": "สรุปผลการตรวจสอบ แจกแจงยอดสุทธิของแต่ละหน้า (เช่น [หน้า 2]: ... + [หน้า 3]: ... = รวม ...)",
     "source_location": {
       "page_number": 1,
       "box_2d": [100, 100, 500, 500],
-      "location_description": "คำอธิบายตำแหน่งในแบบ"
+      "location_description": "คำอธิบายตำแหน่งและหน้าที่พบ"
     }
   }
 ]
@@ -2555,7 +2569,7 @@ ${customPromptSection}
         lastRawBOQItems = boqItems;
         recalcBtn.disabled = false;
         renderBOQTable(lastRawBOQItems);
-        statusDiv.innerText = "ประมวลผลและปฏิบัติตามคำสั่งเฉพาะจุดสำเร็จเรียบร้อย!";
+        statusDiv.innerText = `ประมวลผลสำเร็จเรียบร้อย! (สแกนและดึงข้อมูลครบถ้วนจากทั้งหมด ${detectedTotalPages} หน้า)`;
       } catch (err) {
         statusDiv.innerText = "เกิดข้อผิดพลาดในการประมวลผล กรุณาลองใหม่อีกครั้ง";
       } finally {
