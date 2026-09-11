@@ -4,31 +4,27 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>SCG AI BOQ & Concrete Structure Estimator</title>
-  
+
   <!-- Web App Manifest & Mobile Settings -->
   <meta name="theme-color" content="#dc2626">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="SCG BOQ">
-  
+
   <link rel="manifest" href="manifest.json">
   <link rel="icon" type="image/png" sizes="192x192" href="icon.png">
   <link rel="icon" type="image/png" sizes="512x512" href="icon.png">
   <link rel="apple-touch-icon" href="icon.png">
-
   <!-- PDF.js CDN สำหรับเรนเดอร์แบบแปลน PDF หลายหน้า -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script>
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
   </script>
-
   <!-- SheetJS CDN สำหรับสร้างไฟล์ Excel (.xlsx) แท้ -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-
   <!-- html2pdf.js CDN สำหรับสร้างรายงาน PDF คุณภาพสูง A4 แนวนอน -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-
   <style>
     :root {
       --primary: #dc2626; /* SCG Red */
@@ -226,7 +222,7 @@
     .badge-concrete { background: #f1f5f9; color: #0f172a; border: 1px solid #cbd5e1; }
     .badge-mep { background: #dcfce7; color: #166534; }
     .badge-other { background: #f1f5f9; color: #475569; }
-    
+
     .page-indicator-badge {
       display: inline-flex;
       align-items: center;
@@ -241,7 +237,6 @@
       white-space: nowrap;
       margin-bottom: 4px;
     }
-
     .confidence-badge {
       display: inline-flex;
       align-items: center;
@@ -255,7 +250,6 @@
     .conf-high { background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; }
     .conf-med { background: #fef9c3; color: #854d0e; border: 1px solid #fef08a; }
     .conf-low { background: #fee2e2; color: #b91c1c; border: 1px solid #fecaca; }
-
     .cross-check-tag {
       display: inline-block;
       font-size: 10px;
@@ -266,7 +260,6 @@
       margin-top: 3px;
       font-weight: 600;
     }
-
     .order-bundle-list {
       display: flex;
       flex-direction: column;
@@ -297,7 +290,6 @@
       font-weight: 600;
       word-break: break-word;
     }
-
     .custom-prompt-container {
       background: #fff7ed;
       border: 1px solid #fed7aa;
@@ -326,7 +318,6 @@
       background: #fed7aa;
       color: #7c2d12;
     }
-
     .edit-qty-wrapper {
       display: flex;
       flex-direction: column;
@@ -358,7 +349,6 @@
       color: #d97706;
       font-weight: 600;
     }
-
     .status-text {
       font-size: 14px;
       color: #64748b;
@@ -375,7 +365,6 @@
       border-left: 3px solid #0284c7;
       line-height: 1.4;
     }
-
     /* กล่องควบคุม Export & Import */
     .export-import-grid {
       display: grid;
@@ -401,7 +390,6 @@
     .btn-export-json:hover { background: #7e22ce; }
     .btn-import-json { background: #475569; }
     .btn-import-json:hover { background: #334155; }
-
     /* Modal */
     .modal {
       display: none;
@@ -448,7 +436,6 @@
       color: #64748b;
     }
     .close-btn:hover { color: #0f172a; }
-
     .canvas-wrapper {
       position: relative;
       overflow: hidden;
@@ -467,7 +454,6 @@
       cursor: crosshair;
       box-shadow: 0 4px 12px rgba(0,0,0,0.25);
     }
-
     .floating-zoom-bar {
       position: absolute;
       top: 12px;
@@ -501,7 +487,6 @@
       min-width: 48px;
       text-align: center;
     }
-
     .draw-controls {
       display: flex;
       gap: 8px;
@@ -538,7 +523,6 @@
     .btn-mode-poly { background: #2563eb; color: white; }
     .btn-mode-line { background: #d97706; color: white; }
     .btn-mode-pan { background: #475569; color: white; }
-
     .snap-indicator-pill {
       background: #ecfdf5;
       color: #047857;
@@ -551,7 +535,6 @@
       align-items: center;
       gap: 4px;
     }
-
     .scale-info-badge {
       background: #e0e7ff;
       color: #3730a3;
@@ -624,14 +607,14 @@
 </head>
 <body>
   <h2>🏗️ SCG AI BOQ & Concrete Structure Estimator</h2>
-  
+
   <!-- ตั้งค่า API Key -->
   <div class="card">
     <label for="apiKey">Gemini API Key:</label>
     <input type="password" id="apiKey" placeholder="วางรหัส AIzaSy... ที่นี่">
     <button type="button" style="width: 100%;" onclick="saveApiKey()">บันทึก API Key</button>
   </div>
-  
+
   <!-- เลือกวัสดุและอัปโหลดเอกสาร -->
   <div class="card">
     <label>เลือกสเปกหรือวัสดุทดแทน (ระบบรองรับ Multi-Page Scan แยกหน้า, Auto-Edge Panning, OSNAP, Ortho Lock และ Cross-Check 3D):</label>
@@ -650,7 +633,6 @@
           <option value="cpac_waterproof">คอนกรีตกันซึม CPAC (สำหรับห้องน้ำ / ดาดฟ้า)</option>
         </select>
       </div>
-
       <!-- 2. หลังคา + ช่องใส่ Slope พร้อม Auto Default ขั้นต่ำ -->
       <div>
         <label for="roofOption">2. หมวดงานหลังคา:</label>
@@ -675,7 +657,6 @@
           <div id="slopeWarning" class="slope-warning-badge">⚠️ องศาต่ำกว่าเกณฑ์มาตรฐาน SCG เสี่ยงน้ำไหลย้อนซึมเข้าใต้หลังคา</div>
         </div>
       </div>
-
       <!-- 3. ฉนวนปูเหนือฝ้าเพดาน (SCG STAY COOL) -->
       <div>
         <label for="ceilingInsulationOption" style="color: #c2410c;">🏠 3. ฉนวนปูเหนือฝ้าเพดาน (STAY COOL):</label>
@@ -686,7 +667,6 @@
           <option value="none">ไม่ติดตั้งฉนวนเหนือฝ้า</option>
         </select>
       </div>
-
       <!-- 4. ฉนวนใต้หลังคา (SCG FSO) & แผ่นสะท้อนความร้อน -->
       <div>
         <label for="roofInsulationOption" style="color: #b91c1c;">🛡️ 4. ฉนวนใต้หลังคา (SCG FSO) & สะท้อนความร้อน:</label>
@@ -697,7 +677,6 @@
           <option value="none">ไม่ติดตั้งฉนวนใต้หลังคา</option>
         </select>
       </div>
-
       <!-- 5. ผนัง -->
       <div>
         <label for="wallOption">5. หมวดงานผนัง:</label>
@@ -709,7 +688,6 @@
           <option value="clay_brick">ก่ออิฐมอญ/บล็อก + ปูนเสือซีเมนต์ผสม</option>
         </select>
       </div>
-
       <!-- 6. พื้นสถาปัตย์ -->
       <div>
         <label for="floorOption">6. หมวดงานพื้นสถาปัตย์/ตกแต่ง:</label>
@@ -720,7 +698,6 @@
           <option value="smartboard_floor">แผ่นพื้นสมาร์ทบอร์ด SCG หนา 16-20 มม.</option>
         </select>
       </div>
-
       <!-- 7. ฝ้าเพดาน -->
       <div>
         <label for="ceilingOption">7. หมวดงานฝ้าเพดาน:</label>
@@ -731,7 +708,6 @@
           <option value="gypsum_ceiling">แผ่นยิปซัม SCG ตราช้าง ขอบลาด หนา 9 มม. + โครงพลัสไลน์</option>
         </select>
       </div>
-
       <!-- 8. ไม้สังเคราะห์ตกแต่ง Smartwood -->
       <div>
         <label for="woodOption">8. หมวดไม้ตกแต่ง Smartwood:</label>
@@ -743,26 +719,22 @@
         </select>
       </div>
     </div>
-
     <label for="planFile">1. แบบแปลนพื้น (Floor Plan - PDF/รูปภาพ หลายหน้าได้):</label>
     <input type="file" id="planFile" accept="image/*,application/pdf" onchange="onFileSelected()">
-    
+
     <label for="sectionFile" style="color: #0369a1;">📐 2. แบบรูปตัด / รูปด้าน (Section & Elevation - สำหรับตรวจสอบความสูงผนัง & Slope 3D):</label>
     <input type="file" id="sectionFile" accept="image/*,application/pdf">
-
     <label for="specFile">3. รายการประกอบแบบ/สเปก (ถ้ามี):</label>
     <input type="file" id="specFile" accept="image/*,application/pdf">
-
     <!-- ซ่อน input file สำหรับกดนำเข้า JSON -->
     <input type="file" id="jsonFileInput" accept=".json" style="display: none;" onchange="handleJsonFileImport(event)">
-
     <!-- กล่องใส่ข้อความสั่งให้ AI ประเมินพื้นที่เจาะจง -->
     <div class="custom-prompt-container">
       <label for="customInstructionPrompt" style="color: #c2410c; margin-bottom: 4px;">
         💬 คำสั่งเฉพาะเจาะจงสำหรับ AI (สั่งโฟกัสกรอบสี จุด หรือเงื่อนไขพิเศษในแบบ):
       </label>
       <textarea id="customInstructionPrompt" placeholder="เช่น: วัดพื้นที่หลังคาตามกรอบสีแดงในแบบ, ถอดเฉพาะงานผนังห้องนอน 1, หรือให้สแกนทุกชั้นตั้งแต่หน้า 1 ถึงหน้าสุดท้าย"></textarea>
-      
+
       <div style="font-size: 12px; color: #7c2d12; font-weight: 600;">⚡ ปุ่มคำสั่งด่วน (คลิกเพื่อเติมข้อความ):</div>
       <div class="prompt-chip-group">
         <span class="prompt-chip" onclick="applyQuickPrompt('วัดพื้นที่หลังคาตามกรอบสีแดงในแบบ')">🎯 วัดตามกรอบสีแดง</span>
@@ -773,7 +745,7 @@
         <span class="prompt-chip" style="background: #f1f5f9; color: #475569; border-color: #cbd5e1;" onclick="clearQuickPrompt()">ล้างคำสั่ง</span>
       </div>
     </div>
-    
+
     <div class="btn-group">
       <button id="processBtn" onclick="processDocuments()">เริ่มวิเคราะห์และ Cross-Check 3D (แยกแสดงผลทีละหน้าอัตโนมัติ)</button>
       <button id="drawBtn" class="btn-draw" onclick="openManualDrawModal(null)" disabled>🎯 สร้างรายการใหม่ด้วย Precision Geometry Tool</button>
@@ -782,7 +754,6 @@
     </div>
     <div id="status" class="status-text"></div>
   </div>
-
   <!-- ตาราง BOQ -->
   <div class="card" id="resultCard" style="display: none;">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
@@ -810,7 +781,6 @@
         <tbody id="boqBody"></tbody>
       </table>
     </div>
-
     <!-- แผงปุ่ม Export / Import 4 ปุ่มหลัก -->
     <div class="export-import-grid">
       <button type="button" class="btn-export-excel" onclick="exportExcel()">📊 Export เป็น Excel (.xlsx แท้)</button>
@@ -819,7 +789,6 @@
       <button type="button" class="btn-import-json" onclick="document.getElementById('jsonFileInput').click()">📂 นำเข้าโปรเจกต์ (Import JSON)</button>
     </div>
   </div>
-
   <!-- In-Place Drawing & Calibration Modal พร้อม Auto-Edge Pan -->
   <div id="drawModal" class="modal">
     <div class="modal-content">
@@ -827,21 +796,18 @@
         <div class="modal-title" id="drawModalHeaderTitle">📐 ตรวจสอบตำแหน่ง & แก้ไขพื้นที่ในแบบแปลน (Auto-Edge Pan & OSNAP)</div>
         <span class="close-btn" onclick="closeModal('drawModal')">&times;</span>
       </div>
-      
+
       <!-- แถบเมนูด้านบน -->
       <div class="draw-controls">
         <label style="margin: 0;">หน้า:</label>
         <select id="drawPageSelect" onchange="onDrawPageChange()"></select>
-
         <!-- สลับโหมดเครื่องมือ -->
         <button type="button" id="btnModeCalib" class="tool-mode-btn btn-mode-calib" onclick="switchToolMode('calibrate')">📏 1. ตั้งสเกล (1 เส้น)</button>
         <button type="button" id="btnModeArea" class="tool-mode-btn btn-mode-area active" onclick="switchToolMode('area')">🎯 2. สี่เหลี่ยม</button>
         <button type="button" id="btnModePoly" class="tool-mode-btn btn-mode-poly" onclick="switchToolMode('polygon')">🔷 3. หลายเหลี่ยม (Polygon)</button>
         <button type="button" id="btnModeLine" class="tool-mode-btn btn-mode-line" onclick="switchToolMode('line')">📐 4. เส้นวัดความยาว (ม.)</button>
         <button type="button" id="btnModePan" class="tool-mode-btn btn-mode-pan" onclick="switchToolMode('pan')">✋ มือเลื่อนแบบ (Pan)</button>
-
         <span class="snap-indicator-pill" title="ระบบเลื่อนแบบอัตโนมัติเมื่อเมาส์ใกล้ขอบจอ และดูดติดมุมอัตโนมัติ">🚀 ขอบจอเลื่อนเอง & 🧲 ดูดมุม</span>
-
         <!-- ชนิดการวัด -->
         <div class="measure-type-pill">
           <span>ชนิดการวัด:</span>
@@ -850,7 +816,6 @@
             <option value="perimeter">🔄 เส้นรอบรูป (ม.) [สำหรับแนวเชิงชาย/สันหลังคา]</option>
           </select>
         </div>
-
         <!-- Smart Waste Factor ตามทรงหลังคา -->
         <div class="roof-shape-pill" id="roofShapeContainer">
           <span>ทรงหลังคา (% เศษ):</span>
@@ -859,9 +824,7 @@
             <option value="hip">ปั้นหยา / มะนิลา (เผื่อตัดเศษ 10%)</option>
           </select>
         </div>
-
         <span class="scale-info-badge" id="scaleInfoBadge">⚠️ ยังไม่ได้ตั้งสเกล (คลิกปุ่ม 1 เพื่อตั้ง)</span>
-
         <label style="margin: 0;">หมวดงาน:</label>
         <select id="drawCategorySelect" onchange="onCategoryChangedInDrawModal()">
           <option value="งานหลังคา">งานหลังคา</option>
@@ -874,13 +837,11 @@
           <option value="งานพื้น">งานพื้น</option>
           <option value="งานไม้สังเคราะห์/ตกแต่ง">งานไม้สังเคราะห์/ตกแต่ง</option>
         </select>
-
         <!-- เปลี่ยนสินค้า SCG / CPAC ในหมวดนั้นโดยตรง -->
         <div class="product-select-wrapper">
           <span style="font-size: 12px; font-weight: bold; color: #92400e;">🏷️ สินค้า SCG/CPAC:</span>
           <select id="drawProductSelect" onchange="onProductSelectChanged()"></select>
         </div>
-
         <!-- กล่อง Slope ปรับแยกเฉพาะชิ้นงาน -->
         <div id="modalSlopeContainer" class="slope-pill">
           <span>📐 Slope:</span>
@@ -888,15 +849,12 @@
           <span>องศา</span>
           <span id="modalSlopeMinLabel" style="font-size: 11px; opacity: 0.85;">(ขั้นต่ำ: 0.3°)</span>
         </div>
-
         <span class="box-counter" id="boxCounterLabel">เลือกแล้ว 0 รูป (0.00 ตร.ม.)</span>
-
         <!-- ปุ่มบันทึกอัปเดต -->
         <button type="button" class="btn-draw" style="padding: 6px 14px; flex: none;" onclick="saveAndApplyInPlaceMeasurement()">💾 บันทึกอัปเดตรายการนี้</button>
         <button type="button" style="padding: 6px 10px; background: #eab308; color: #000; flex: none;" onclick="undoLastBox()">↩️ ลบรูปล่าสุด</button>
         <button type="button" style="padding: 6px 10px; background: #64748b; flex: none;" onclick="clearAllDrawBoxes()">🗑️ ล้างทั้งหมด</button>
       </div>
-
       <!-- พื้นที่แสดงแบบแปลน -->
       <div class="canvas-wrapper" id="canvasViewport">
         <div class="floating-zoom-bar">
@@ -906,23 +864,19 @@
           <button type="button" title="ขนาด 100%" onclick="resetZoom()">100%</button>
           <button type="button" title="พอดีหน้าจอ" onclick="fitToViewport()">Fit</button>
         </div>
-
         <canvas id="drawCanvas"></canvas>
       </div>
-
       <div id="drawStatus" style="font-size: 13px; color: #0284c7; margin-top: 8px; font-weight: 500; flex-shrink: 0;"></div>
     </div>
   </div>
-
   <script>
     let currentUploadedFile = null;
     let pdfDocumentInstance = null;
     let singleImageInstance = null;
     let lastRawBOQItems = [];
     let detectedTotalPages = 1;
-    
-    let editingItemId = null;
 
+    let editingItemId = null;
     // คำสั่งเฉพาะเจาะจง
     function applyQuickPrompt(text) {
       const promptInput = document.getElementById("customInstructionPrompt");
@@ -932,11 +886,9 @@
         promptInput.value += "\n" + text;
       }
     }
-
     function clearQuickPrompt() {
       document.getElementById("customInstructionPrompt").value = "";
     }
-
     // มาตรฐานความชันขั้นต่ำ
     const SCG_ROOF_MIN_SLOPE = {
       "metal_lumax": 0.3,
@@ -949,7 +901,6 @@
       "scg_prestige": 25,
       "auto": 0.3
     };
-
     function getMinSlopeFromProductName(productName) {
       const p = (productName || "").toLowerCase();
       if (p.includes("lumax") || p.includes("ลูแมกซ์")) return 0.3;
@@ -961,7 +912,6 @@
       if (p.includes("prestige") || p.includes("เพรสทีจ")) return 25;
       return 15;
     }
-
     // แคตตาล็อกสินค้า SCG และ CPAC
     const SCG_PRODUCT_CATALOG = {
       "งานหลังคา": [
@@ -1028,7 +978,6 @@
         "ไม้ระแนงฝ้า SCG Smartwood"
       ]
     };
-
     // ตัวแปร Geometry & Measurement
     let currentDrawPageImg = null;
     let currentToolMode = "area";
@@ -1042,16 +991,13 @@
     let currentMousePos = { x: 0, y: 0 };
     let activeSnappedPoint = null;
     const SNAP_RADIUS = 15;
-
     let autoPanAnimationId = null;
     let autoPanVelocity = { x: 0, y: 0 };
     let lastClientMousePos = { x: 0, y: 0 };
     const EDGE_PAN_THRESHOLD = 45;
     const EDGE_PAN_SPEED = 0.35;
-
     let measuredShapes = [];
     let measuredLines = [];
-
     let zoomScale = 1.0;
     let panOffsetX = 0;
     let panOffsetY = 0;
@@ -1060,7 +1006,6 @@
     let panStartY = 0;
     let isSpacePressed = false;
     let isShiftPressed = false;
-
     document.addEventListener("DOMContentLoaded", () => {
       const savedKey = localStorage.getItem("GEMINI_API_KEY");
       if (savedKey) {
@@ -1069,7 +1014,6 @@
       setupSlopeFactorListener();
       autoAdjustDefaultSlope();
     });
-
     function saveApiKey() {
       const key = document.getElementById("apiKey").value.trim();
       if (key) {
@@ -1077,7 +1021,6 @@
         alert("บันทึก API Key เรียบร้อยแล้ว");
       }
     }
-
     function getSlopeMultiplier(degrees) {
       const deg = parseFloat(degrees) || 0;
       if (deg <= 0) return 1.0;
@@ -1085,20 +1028,18 @@
       const cosVal = Math.cos(radians);
       return cosVal > 0 ? (1.0 / cosVal) : 1.0;
     }
-
     function setupSlopeFactorListener() {
       const input = document.getElementById("roofSlopeDeg");
       const label = document.getElementById("slopeFactorLabel");
       const warning = document.getElementById("slopeWarning");
-      
+
       const updateLabel = () => {
         const roofChoice = document.getElementById("roofOption").value;
         const minDeg = SCG_ROOF_MIN_SLOPE[roofChoice] !== undefined ? SCG_ROOF_MIN_SLOPE[roofChoice] : 0.3;
         const currentDeg = parseFloat(input.value) || 0;
         const mult = getSlopeMultiplier(currentDeg);
-        
-        label.innerText = `(ขั้นต่ำ: ${minDeg}° | ตัวคูณ: ${mult.toFixed(3)})`;
 
+        label.innerText = `(ขั้นต่ำ: ${minDeg}° | ตัวคูณ: ${mult.toFixed(3)})`;
         if (currentDeg < minDeg) {
           warning.style.display = "block";
           warning.innerText = `⚠️ องศา ${currentDeg}° ต่ำกว่าเกณฑ์มาตรฐาน SCG (ขั้นต่ำ ${minDeg}°) เสี่ยงน้ำไหลย้อนซึม`;
@@ -1106,33 +1047,28 @@
           warning.style.display = "none";
         }
       };
-
       input.addEventListener("input", updateLabel);
     }
-
     function autoAdjustDefaultSlope() {
       const roofChoice = document.getElementById("roofOption").value;
       const minDeg = SCG_ROOF_MIN_SLOPE[roofChoice] !== undefined ? SCG_ROOF_MIN_SLOPE[roofChoice] : 0.3;
-      
+
       const slopeInput = document.getElementById("roofSlopeDeg");
       const modalSlopeInput = document.getElementById("modalSlopeDeg");
       const modalMinLabel = document.getElementById("modalSlopeMinLabel");
-
       slopeInput.value = minDeg;
       if (modalSlopeInput) modalSlopeInput.value = minDeg;
       if (modalMinLabel) modalMinLabel.innerText = `(ขั้นต่ำ: ${minDeg}°)`;
-
       const label = document.getElementById("slopeFactorLabel");
       const warning = document.getElementById("slopeWarning");
       const mult = getSlopeMultiplier(minDeg);
       label.innerText = `(ขั้นต่ำ: ${minDeg}° | ตัวคูณ: ${mult.toFixed(3)})`;
       if (warning) warning.style.display = "none";
     }
-
     function populateProductDropdown(category, currentProduct) {
       const select = document.getElementById("drawProductSelect");
       select.innerHTML = "";
-      
+
       let key = "งานหลังคา";
       if (category.includes("สันหลังคา") || category.includes("Dry Tech")) key = "งานสันหลังคา/ตะเข้สัน (SCG Dry Tech)";
       else if (category.includes("ฉนวนใต้หลังคา") || category.includes("FSO")) key = "งานฉนวนใต้หลังคา (SCG FSO)";
@@ -1143,10 +1079,8 @@
       else if (category.includes("ผนัง")) key = "งานผนัง";
       else if (category.includes("พื้น")) key = "งานพื้น";
       else if (category.includes("ฝ้า") || category.includes("เพดาน")) key = "งานฝ้าเพดาน";
-
       const products = SCG_PRODUCT_CATALOG[key] || SCG_PRODUCT_CATALOG["งานหลังคา"];
       let matched = false;
-
       products.forEach(p => {
         const opt = document.createElement("option");
         opt.value = p;
@@ -1157,7 +1091,6 @@
         }
         select.appendChild(opt);
       });
-
       if (!matched && currentProduct) {
         const customOpt = document.createElement("option");
         customOpt.value = currentProduct;
@@ -1165,83 +1098,73 @@
         customOpt.selected = true;
         select.insertBefore(customOpt, select.firstChild);
       }
-
       onProductSelectChanged();
     }
-
     function onProductSelectChanged() {
       const prod = (document.getElementById("drawProductSelect").value || "").toLowerCase();
       const measureSelect = document.getElementById("measureTypeSelect");
       const isLinearProduct = prod.includes("เชิงชาย") || prod.includes("บัว") || prod.includes("ครอบ") || prod.includes("รางน้ำ") || prod.includes("dry tech");
-
       if (isLinearProduct) {
         measureSelect.value = "perimeter";
       }
-
       const cat = document.getElementById("drawCategorySelect").value;
       const isRoofRelated = (cat.includes("หลังคา") || cat.includes("FSO") || cat.includes("Dry Tech"));
       if (isRoofRelated) {
         const minSlope = getMinSlopeFromProductName(prod);
         const modalSlopeInput = document.getElementById("modalSlopeDeg");
         const modalMinLabel = document.getElementById("modalSlopeMinLabel");
-        
+
         modalSlopeInput.value = minSlope;
         if (modalMinLabel) modalMinLabel.innerText = `(ขั้นต่ำ: ${minSlope}°)`;
-        
+
         document.getElementById("roofSlopeDeg").value = minSlope;
         const mult = getSlopeMultiplier(minSlope);
         document.getElementById("slopeFactorLabel").innerText = `(ขั้นต่ำ: ${minSlope}° | ตัวคูณ: ${mult.toFixed(3)})`;
         document.getElementById("slopeWarning").style.display = "none";
-
         measuredShapes.forEach(shape => {
           shape.slopeDeg = minSlope;
           shape.slopeAreaM = shape.flatAreaM * mult;
         });
       }
-
       onMeasureTypeChanged();
     }
-
     function onMeasureTypeChanged() {
       updateBoxCounter();
       redrawCanvas();
     }
-
     function onRoofShapeChanged() {
       updateBoxCounter();
       redrawCanvas();
     }
-
     function onCategoryChangedInDrawModal() {
       const cat = document.getElementById("drawCategorySelect").value;
       const slopeContainer = document.getElementById("modalSlopeContainer");
       const roofShapeContainer = document.getElementById("roofShapeContainer");
       const isRoofRelated = (cat.includes("หลังคา") || cat.includes("FSO") || cat.includes("Dry Tech"));
-      
+
       slopeContainer.style.display = isRoofRelated ? "inline-flex" : "none";
       roofShapeContainer.style.display = cat.includes("หลังคา") ? "inline-flex" : "none";
       populateProductDropdown(cat, null);
     }
-
     function onModalSlopeChanged() {
       const modalSlope = parseFloat(document.getElementById("modalSlopeDeg").value) || 0;
       document.getElementById("roofSlopeDeg").value = modalSlope;
-      
+
       const prod = document.getElementById("drawProductSelect").value;
       const minSlope = getMinSlopeFromProductName(prod);
       const mult = getSlopeMultiplier(modalSlope);
-      
+
       const label = document.getElementById("slopeFactorLabel");
       const warning = document.getElementById("slopeWarning");
       label.innerText = `(ขั้นต่ำ: ${minSlope}° | ตัวคูณ: ${mult.toFixed(3)})`;
-      
+
       if (modalSlope < minSlope) {
         warning.style.display = "block";
         warning.innerText = `⚠️ องศา ${modalSlope}° ต่ำกว่าเกณฑ์มาตรฐาน SCG (ขั้นต่ำ ${minSlope}°)`;
       } else {
         warning.style.display = "none";
       }
-      
+
       const cat = document.getElementById("drawCategorySelect").value;
       const isRoofRelated = (cat.includes("หลังคา") || cat.includes("FSO") || cat.includes("Dry Tech"));
       if (isRoofRelated) {
@@ -1253,7 +1176,6 @@
         redrawCanvas();
       }
     }
-
     async function onFileSelected() {
       const file = document.getElementById("planFile").files[0];
       if (file) {
@@ -1261,7 +1183,6 @@
         document.getElementById("drawBtn").disabled = false;
       }
     }
-
     function fileToGenerativePart(file) {
       return new Promise((resolve, reject) => {
         let mimeType = file.type;
@@ -1282,7 +1203,6 @@
         reader.onerror = error => reject(error);
       });
     }
-
     async function loadPlanDocument(file) {
       currentUploadedFile = file;
       pdfDocumentInstance = null;
@@ -1304,7 +1224,6 @@
         detectedTotalPages = 1;
       }
     }
-
     // ฟังก์ชัน getPageImage ถมสีขาวบริสุทธิ์ (#FFFFFF) ป้องกันหน้าแปลนดำ
     async function getPageImage(pageNum) {
       if (pdfDocumentInstance) {
@@ -1315,16 +1234,13 @@
         const ctx = canvas.getContext("2d", { alpha: false });
         canvas.width = viewport.width;
         canvas.height = viewport.height;
-
         ctx.fillStyle = "#ffffff";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-        await page.render({ 
-          canvasContext: ctx, 
+        await page.render({
+          canvasContext: ctx,
           viewport: viewport,
           background: 'rgb(255, 255, 255)'
         }).promise;
-
         const img = new Image();
         img.src = canvas.toDataURL("image/jpeg", 0.95);
         await img.decode();
@@ -1334,34 +1250,29 @@
       }
       return null;
     }
-
     function updateTransform() {
       const canvas = document.getElementById("drawCanvas");
       canvas.style.transformOrigin = "0 0";
       canvas.style.transform = `translate(${panOffsetX}px, ${panOffsetY}px) scale(${zoomScale})`;
       document.getElementById("zoomLevelDisplay").innerText = `${Math.round(zoomScale * 100)}%`;
     }
-
     function zoomStep(factor) {
       const viewport = document.getElementById("canvasViewport");
       const vRect = viewport.getBoundingClientRect();
       const centerX = vRect.width / 2;
       const centerY = vRect.height / 2;
-
       const newScale = Math.min(Math.max(0.1, zoomScale * factor), 10.0);
       panOffsetX = centerX - (centerX - panOffsetX) * (newScale / zoomScale);
       panOffsetY = centerY - (centerY - panOffsetY) * (newScale / zoomScale);
       zoomScale = newScale;
       updateTransform();
     }
-
     function resetZoom() {
       zoomScale = 1.0;
       panOffsetX = 0;
       panOffsetY = 0;
       updateTransform();
     }
-
     function fitToViewport() {
       if (!currentDrawPageImg) return;
       const viewport = document.getElementById("canvasViewport");
@@ -1373,7 +1284,6 @@
       panOffsetY = (vRect.height - currentDrawPageImg.height * zoomScale) / 2;
       updateTransform();
     }
-
     function getCanvasCoordsFromClient(clientX, clientY) {
       const viewport = document.getElementById("canvasViewport");
       const vRect = viewport.getBoundingClientRect();
@@ -1383,15 +1293,12 @@
       const canvasY = (y - panOffsetY) / zoomScale;
       return { x: canvasX, y: canvasY };
     }
-
     function getCanvasCoords(e) {
       return getCanvasCoordsFromClient(e.clientX, e.clientY);
     }
-
     function findMagneticSnapPoint(targetPos) {
       let closestPt = null;
       let minDist = SNAP_RADIUS / zoomScale;
-
       const checkPoint = (pt) => {
         if (!pt) return;
         const dist = Math.sqrt(Math.pow(targetPos.x - pt.x, 2) + Math.pow(targetPos.y - pt.y, 2));
@@ -1400,9 +1307,7 @@
           closestPt = { x: pt.x, y: pt.y };
         }
       };
-
       currentPolygonPoints.forEach(checkPoint);
-
       measuredShapes.forEach(shape => {
         if (shape.type === 'rect') {
           checkPoint({ x: shape.x, y: shape.y });
@@ -1413,44 +1318,35 @@
           shape.points.forEach(checkPoint);
         }
       });
-
       measuredLines.forEach(l => {
         checkPoint({ x: l.x1, y: l.y1 });
         checkPoint({ x: l.x2, y: l.y2 });
       });
-
       return closestPt;
     }
-
     function applyOrthoLock(baseX, baseY, targetX, targetY) {
       const dx = targetX - baseX;
       const dy = targetY - baseY;
       const dist = Math.sqrt(dx * dx + dy * dy);
       if (dist < 2) return { x: targetX, y: targetY };
-
       let angle = Math.atan2(dy, dx);
       const snapAngle = Math.round(angle / (Math.PI / 4)) * (Math.PI / 4);
-
       return {
         x: baseX + dist * Math.cos(snapAngle),
         y: baseY + dist * Math.sin(snapAngle)
       };
     }
-
     function updateActiveMeasurementShape() {
       const rawCoords = getCanvasCoordsFromClient(lastClientMousePos.x, lastClientMousePos.y);
       currentMousePos = rawCoords;
       activeSnappedPoint = findMagneticSnapPoint(rawCoords);
-
       let effectiveX = activeSnappedPoint ? activeSnappedPoint.x : rawCoords.x;
       let effectiveY = activeSnappedPoint ? activeSnappedPoint.y : rawCoords.y;
-
       if (isShiftPressed && !activeSnappedPoint) {
         const locked = applyOrthoLock(startX, startY, effectiveX, effectiveY);
         effectiveX = locked.x;
         effectiveY = locked.y;
       }
-
       if (isDrawing) {
         if (currentToolMode === "calibrate" || currentToolMode === "line") {
           currentDragLine = { x1: startX, y1: startY, x2: effectiveX, y2: effectiveY };
@@ -1459,7 +1355,6 @@
           let y = Math.min(startY, effectiveY);
           let w = Math.abs(effectiveX - startX);
           let h = Math.abs(effectiveY - startY);
-
           if (isShiftPressed && !activeSnappedPoint) {
             const side = Math.max(w, h);
             w = side;
@@ -1467,13 +1362,11 @@
             x = (effectiveX < startX) ? startX - side : startX;
             y = (effectiveY < startY) ? startY - side : startY;
           }
-
           currentDragBox = { x, y, w, h };
         }
       }
       redrawCanvas();
     }
-
     function startAutoPanLoop() {
       if (autoPanAnimationId !== null) return;
       const loop = () => {
@@ -1487,7 +1380,6 @@
       };
       autoPanAnimationId = requestAnimationFrame(loop);
     }
-
     function stopAutoPanLoop() {
       if (autoPanAnimationId !== null) {
         cancelAnimationFrame(autoPanAnimationId);
@@ -1495,20 +1387,16 @@
       }
       autoPanVelocity = { x: 0, y: 0 };
     }
-
     function checkEdgePanning(clientX, clientY) {
       const isDrawingActive = isDrawing || (currentToolMode === "polygon" && currentPolygonPoints.length > 0);
       if (!isDrawingActive || currentToolMode === "pan") {
         stopAutoPanLoop();
         return;
       }
-
       const viewport = document.getElementById("canvasViewport");
       const vRect = viewport.getBoundingClientRect();
-
       let vx = 0;
       let vy = 0;
-
       if (clientX < vRect.left + EDGE_PAN_THRESHOLD) {
         const dist = (vRect.left + EDGE_PAN_THRESHOLD) - clientX;
         vx = Math.min(30, dist * EDGE_PAN_SPEED + 3);
@@ -1516,7 +1404,6 @@
         const dist = clientX - (vRect.right - EDGE_PAN_THRESHOLD);
         vx = -Math.min(30, dist * EDGE_PAN_SPEED + 3);
       }
-
       if (clientY < vRect.top + EDGE_PAN_THRESHOLD) {
         const dist = (vRect.top + EDGE_PAN_THRESHOLD) - clientY;
         vy = Math.min(30, dist * EDGE_PAN_SPEED + 3);
@@ -1524,52 +1411,40 @@
         const dist = clientY - (vRect.bottom - EDGE_PAN_THRESHOLD);
         vy = -Math.min(30, dist * EDGE_PAN_SPEED + 3);
       }
-
       autoPanVelocity = { x: vx, y: vy };
-
       if (vx !== 0 || vy !== 0) {
         startAutoPanLoop();
       } else {
         stopAutoPanLoop();
       }
     }
-
     function calculatePolygonMetrics(points, ppm) {
       if (!points || points.length < 3 || !ppm) return { flatAreaM: 0, perimeterM: 0 };
-      
+
       let areaSum = 0;
       let periSum = 0;
       const n = points.length;
-
       for (let i = 0; i < n; i++) {
         const p1 = points[i];
         const p2 = points[(i + 1) % n];
-
         areaSum += (p1.x * p2.y) - (p2.x * p1.y);
-
         const dx = (p2.x - p1.x) / ppm;
         const dy = (p2.y - p1.y) / ppm;
         periSum += Math.sqrt(dx * dx + dy * dy);
       }
-
       const pixelArea = Math.abs(areaSum) / 2;
       const flatAreaM = pixelArea / (ppm * ppm);
       return { flatAreaM, perimeterM: periSum };
     }
-
     function formatOrderEstimateHTML(text) {
       if (!text) return "-";
-
       let items = text.split(/(?:\r?\n|(?<=\s|^)[-•]\s+|\s*\[|\s*\]|\s*\|\s*)/g)
                       .map(s => s.trim())
                       .filter(s => s.length > 0 && s !== "-");
-
       if (items.length <= 1 && text.includes(" - ")) {
         items = text.split(/\s+-\s+/).map(s => s.trim()).filter(s => s.length > 0);
       }
-
       if (items.length === 0) return text;
-
       let html = `<div class="order-bundle-list">`;
       items.forEach(item => {
         const cleanItem = item.replace(/^[-•*]\s*/, '').trim();
@@ -1585,23 +1460,18 @@
       html += `</div>`;
       return html;
     }
-
     async function openInPlaceEditor(itemId) {
       if (!currentUploadedFile) {
         alert("กรุณาเลือกไฟล์แบบแปลนก่อน");
         return;
       }
-
       editingItemId = itemId;
       const targetItem = lastRawBOQItems.find(it => it._id === itemId);
       if (!targetItem) return;
-
       const loc = targetItem.source_location || {};
       const targetPage = loc.page_number || 1;
-
       const modalTitle = document.getElementById("drawModalHeaderTitle");
       modalTitle.innerText = `🔍 ตำแหน่งในแบบ (หน้า ${targetPage}) & แก้ไขรายการ: "${targetItem.item_name}"`;
-
       const select = document.getElementById("drawPageSelect");
       select.innerHTML = "";
       const totalPages = pdfDocumentInstance ? pdfDocumentInstance.numPages : 1;
@@ -1612,7 +1482,6 @@
         if (i === targetPage) opt.selected = true;
         select.appendChild(opt);
       }
-
       const catSelect = document.getElementById("drawCategorySelect");
       const cat = targetItem.category || "";
       if (cat.includes("สันหลังคา") || cat.includes("Dry Tech")) catSelect.value = "งานสันหลังคา/ตะเข้สัน (SCG Dry Tech)";
@@ -1624,31 +1493,25 @@
       else if (cat.includes("ผนัง")) catSelect.value = "งานผนัง";
       else if (cat.includes("พื้น")) catSelect.value = "งานพื้น";
       else if (cat.includes("ฝ้า") || cat.includes("เพดาน")) catSelect.value = "งานฝ้าเพดาน";
-      
+
       populateProductDropdown(catSelect.value, targetItem.scg_product);
-      
+
       const isRoofRelated = (catSelect.value.includes("หลังคา") || catSelect.value.includes("FSO") || catSelect.value.includes("Dry Tech"));
       document.getElementById("modalSlopeContainer").style.display = isRoofRelated ? "inline-flex" : "none";
       document.getElementById("roofShapeContainer").style.display = catSelect.value.includes("หลังคา") ? "inline-flex" : "none";
-
       const slopeMatch = (targetItem.verification_method || "").match(/Slope\s*([\d.]+)/i);
       if (slopeMatch) {
         document.getElementById("modalSlopeDeg").value = slopeMatch[1];
       }
-
       if ((targetItem.net_quantity || "").includes("ม.") && !(targetItem.net_quantity || "").includes("ตร.ม.")) {
         document.getElementById("measureTypeSelect").value = "perimeter";
       }
-
       document.getElementById("drawModal").style.display = "flex";
       document.getElementById("drawStatus").innerText = `กำลังเปิดแปลนหน้า ${targetPage} ของรายการ "${targetItem.item_name}"...`;
-
       await loadDrawCanvasPage(targetPage);
-
       measuredShapes = [];
       measuredLines = [];
       currentPolygonPoints = [];
-
       if (loc.box_2d && loc.box_2d.length === 4 && currentDrawPageImg) {
         const box = loc.box_2d;
         const ymin = (box[0] / 1000) * currentDrawPageImg.height;
@@ -1657,12 +1520,10 @@
         const xmax = (box[3] / 1000) * currentDrawPageImg.width;
         const w = xmax - xmin;
         const h = ymax - ymin;
-
         const numMatch = (targetItem.net_quantity || "").match(/[\d,.]+/);
         const origVal = numMatch ? parseFloat(numMatch[0].replace(/,/g, '')) : 0;
         const currentSlopeDeg = parseFloat(document.getElementById("modalSlopeDeg").value) || 0;
         const slopeMultiplier = getSlopeMultiplier(currentSlopeDeg);
-
         measuredShapes.push({
           type: 'rect',
           x: xmin,
@@ -1677,13 +1538,11 @@
           slopeDeg: currentSlopeDeg
         });
       }
-
       updateBoxCounter();
       redrawCanvas();
       setupDrawEvents();
       setTimeout(fitToViewport, 100);
     }
-
     function openManualDrawModal() {
       editingItemId = null;
       document.getElementById("drawModalHeaderTitle").innerText = "📐 สร้างรายการใหม่ด้วย Precision Geometry Tool (Auto-Edge Pan)";
@@ -1706,7 +1565,6 @@
       setupDrawEvents();
       setTimeout(fitToViewport, 100);
     }
-
     async function onDrawPageChange() {
       const pageNum = parseInt(document.getElementById("drawPageSelect").value);
       measuredShapes = [];
@@ -1719,7 +1577,6 @@
       await loadDrawCanvasPage(pageNum);
       setTimeout(fitToViewport, 100);
     }
-
     async function loadDrawCanvasPage(pageNum) {
       const pageResult = await getPageImage(pageNum);
       if (!pageResult) return;
@@ -1728,7 +1585,6 @@
       currentDragLine = null;
       redrawCanvas();
     }
-
     function switchToolMode(mode) {
       currentToolMode = mode;
       document.getElementById("btnModeCalib").classList.toggle("active", mode === "calibrate");
@@ -1736,11 +1592,10 @@
       document.getElementById("btnModePoly").classList.toggle("active", mode === "polygon");
       document.getElementById("btnModeLine").classList.toggle("active", mode === "line");
       document.getElementById("btnModePan").classList.toggle("active", mode === "pan");
-      
+
       const viewport = document.getElementById("canvasViewport");
       const canvas = document.getElementById("drawCanvas");
       const statusElem = document.getElementById("drawStatus");
-
       if (mode === "pan") {
         viewport.style.cursor = "grab";
         canvas.style.cursor = "grab";
@@ -1764,7 +1619,6 @@
       }
       redrawCanvas();
     }
-
     function updateScaleBadge() {
       const badge = document.getElementById("scaleInfoBadge");
       if (pixelsPerMeter) {
@@ -1779,19 +1633,16 @@
         badge.style.borderColor = "#c7d2fe";
       }
     }
-
     function updateBoxCounter() {
       const cat = document.getElementById("drawCategorySelect").value;
       const isRoofRelated = (cat.includes("หลังคา") || cat.includes("FSO") || cat.includes("Dry Tech"));
       const mType = document.getElementById("measureTypeSelect").value;
       const label = document.getElementById("boxCounterLabel");
-
       if (currentToolMode === "line" || measuredLines.length > 0) {
         const totalLineM = measuredLines.reduce((sum, l) => sum + (l.lengthM || 0), 0);
         label.innerText = `วัดแล้ว ${measuredLines.length} เส้น (รวมความยาว: ${totalLineM.toFixed(2)} ม.)`;
         return;
       }
-
       if (mType === "perimeter") {
         const totalPerimeter = measuredShapes.reduce((sum, b) => sum + (b.perimeterM || 0), 0);
         label.innerText = `เลือกแล้ว ${measuredShapes.length} รูป (เส้นรอบรูป: ${totalPerimeter.toFixed(2)} ม.)`;
@@ -1805,27 +1656,22 @@
         }
       }
     }
-
     function redrawCanvas() {
       if (!currentDrawPageImg) return;
       const canvas = document.getElementById("drawCanvas");
       const ctx = canvas.getContext("2d");
       canvas.width = currentDrawPageImg.width;
       canvas.height = currentDrawPageImg.height;
-
       // ถมพื้นหลังขาวบริสุทธิ์ก่อนวาดรูปเสมอ
       ctx.fillStyle = "#ffffff";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
-
       // วาดภาพแบบแปลน
       ctx.drawImage(currentDrawPageImg, 0, 0);
-
       const cat = document.getElementById("drawCategorySelect").value;
       const isRoofRelated = (cat.includes("หลังคา") || cat.includes("FSO") || cat.includes("Dry Tech"));
       const mType = document.getElementById("measureTypeSelect").value;
       const currentSlopeDeg = parseFloat(document.getElementById("modalSlopeDeg").value) || 0;
       const slopeMultiplier = getSlopeMultiplier(currentSlopeDeg);
-
       // วาดเส้น Calibration
       if (calibrationLine) {
         ctx.save();
@@ -1835,7 +1681,6 @@
         ctx.moveTo(calibrationLine.x1, calibrationLine.y1);
         ctx.lineTo(calibrationLine.x2, calibrationLine.y2);
         ctx.stroke();
-
         const midX = (calibrationLine.x1 + calibrationLine.x2) / 2;
         const midY = (calibrationLine.y1 + calibrationLine.y2) / 2;
         ctx.fillStyle = "#8b5cf6";
@@ -1845,7 +1690,6 @@
         ctx.fillText(`📏 ${calibrationLine.meters} ม.`, midX - 35, midY - 9);
         ctx.restore();
       }
-
       // วาดเส้นขณะลาก Calibrate หรือ Line วัดความยาว
       if (currentDragLine) {
         ctx.save();
@@ -1858,13 +1702,11 @@
         ctx.stroke();
         ctx.restore();
       }
-
       // ฉากหลัง Dimming ปรับให้สลัวเพียงเล็กน้อย (alpha: 0.15)
       if (measuredShapes.length > 0 || measuredLines.length > 0 || currentDragBox || currentPolygonPoints.length > 0) {
         ctx.fillStyle = "rgba(15, 23, 42, 0.15)";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
       }
-
       // วาดเส้นวัดความยาวที่บันทึกไว้
       measuredLines.forEach((line) => {
         ctx.save();
@@ -1874,7 +1716,6 @@
         ctx.moveTo(line.x1, line.y1);
         ctx.lineTo(line.x2, line.y2);
         ctx.stroke();
-
         const midX = (line.x1 + line.x2) / 2;
         const midY = (line.y1 + line.y2) / 2;
         ctx.fillStyle = "#f59e0b";
@@ -1884,7 +1725,6 @@
         ctx.fillText(`📏 ${line.lengthM.toFixed(2)} ม.`, midX - 38, midY - 7);
         ctx.restore();
       });
-
       // วาดชิ้นงานทั้งหมดที่บันทึกไว้
       measuredShapes.forEach((shape, idx) => {
         ctx.save();
@@ -1895,13 +1735,11 @@
             else ctx.lineTo(pt.x, pt.y);
           });
           ctx.closePath();
-
           ctx.fillStyle = "rgba(37, 99, 235, 0.25)";
           ctx.fill();
           ctx.strokeStyle = isRoofRelated ? "#ef4444" : "#2563eb";
           ctx.lineWidth = 4;
           ctx.stroke();
-
           shape.points.forEach(pt => {
             ctx.fillStyle = "#ffffff";
             ctx.beginPath();
@@ -1911,7 +1749,6 @@
             ctx.lineWidth = 2;
             ctx.stroke();
           });
-
           const firstPt = shape.points[0];
           let polyLabel = `🔷 #${idx + 1} (Polygon)`;
           if (mType === "perimeter") {
@@ -1921,7 +1758,6 @@
               ? `🔷 #${idx + 1}: ราบ ${shape.flatAreaM.toFixed(1)} ➔ ลาดเอียง (${shape.slopeDeg || currentSlopeDeg}°) = ${shape.slopeAreaM.toFixed(1)} ตร.ม.`
               : `🔷 #${idx + 1}: ${shape.flatAreaM.toFixed(2)} ตร.ม.`;
           }
-
           ctx.fillStyle = isRoofRelated ? "#ef4444" : "#2563eb";
           const badgeY = firstPt.y > 32 ? firstPt.y - 32 : firstPt.y;
           const textWidth = ctx.measureText(polyLabel).width + 24;
@@ -1929,13 +1765,11 @@
           ctx.fillStyle = "#ffffff";
           ctx.font = "bold 13px sans-serif";
           ctx.fillText(polyLabel, firstPt.x + 8, badgeY + 19);
-
         } else if (shape.type === 'rect') {
           ctx.drawImage(currentDrawPageImg, shape.x, shape.y, shape.w, shape.h, shape.x, shape.y, shape.w, shape.h);
           ctx.strokeStyle = isRoofRelated ? "#ef4444" : "#10b981";
           ctx.lineWidth = 5;
           ctx.strokeRect(shape.x, shape.y, shape.w, shape.h);
-
           let badgeLabel = `🎯 #${idx + 1}`;
           if (mType === "perimeter" && shape.perimeterM) {
             badgeLabel = `🔄 #${idx + 1}: เส้นรอบรูป = ${shape.perimeterM.toFixed(2)} ม.`;
@@ -1944,7 +1778,6 @@
               ? `🎯 #${idx + 1}: ราบ ${shape.flatAreaM.toFixed(1)} ➔ ลาดเอียง (${shape.slopeDeg || currentSlopeDeg}°) = ${shape.slopeAreaM.toFixed(1)} ตร.ม.`
               : `🎯 #${idx + 1}: ${shape.flatAreaM.toFixed(2)} ตร.ม.`;
           }
-
           ctx.fillStyle = isRoofRelated ? "#ef4444" : "#10b981";
           const badgeY = shape.y > 32 ? shape.y - 32 : shape.y;
           const textWidth = ctx.measureText(badgeLabel).width + 24;
@@ -1955,7 +1788,6 @@
         }
         ctx.restore();
       });
-
       // วาด Polygon ที่กำลังคลิกต่อจุดอยู่
       if (currentPolygonPoints.length > 0) {
         ctx.save();
@@ -1966,23 +1798,19 @@
           if (i === 0) ctx.moveTo(pt.x, pt.y);
           else ctx.lineTo(pt.x, pt.y);
         });
-
         let endPt = activeSnappedPoint || currentMousePos;
         if (isShiftPressed && currentPolygonPoints.length > 0 && !activeSnappedPoint) {
           const lastPt = currentPolygonPoints[currentPolygonPoints.length - 1];
           endPt = applyOrthoLock(lastPt.x, lastPt.y, currentMousePos.x, currentMousePos.y);
         }
-
         ctx.lineTo(endPt.x, endPt.y);
         ctx.stroke();
-
         currentPolygonPoints.forEach((pt, idx) => {
           ctx.fillStyle = (idx === 0) ? "#ef4444" : "#38bdf8";
           ctx.beginPath();
           ctx.arc(pt.x, pt.y, (idx === 0) ? 8 : 5, 0, Math.PI * 2);
           ctx.fill();
         });
-
         const firstPt = currentPolygonPoints[0];
         if (currentPolygonPoints.length >= 3) {
           ctx.fillStyle = "#facc15";
@@ -1991,19 +1819,17 @@
         }
         ctx.restore();
       }
-
       // วาดสี่เหลี่ยมที่กำลังคลิกลากอยู่
       if (currentDragBox) {
         ctx.drawImage(currentDrawPageImg, currentDragBox.x, currentDragBox.y, currentDragBox.w, currentDragBox.h, currentDragBox.x, currentDragBox.y, currentDragBox.w, currentDragBox.h);
         ctx.strokeStyle = "#38bdf8";
         ctx.lineWidth = 4;
         ctx.strokeRect(currentDragBox.x, currentDragBox.y, currentDragBox.w, currentDragBox.h);
-
         if (pixelsPerMeter) {
           const wM = currentDragBox.w / pixelsPerMeter;
           const hM = currentDragBox.h / pixelsPerMeter;
           ctx.fillStyle = "#0284c7";
-          
+
           let dragLabel = "";
           if (mType === "perimeter") {
             const peri = 2 * (wM + hM);
@@ -2016,14 +1842,13 @@
               dragLabel = `📐 ราบ ${flatM.toFixed(1)} ➔ ลาดเอียง (${currentSlopeDeg}°) = ${slopeM.toFixed(1)} ตร.ม.`;
             }
           }
-          
+
           ctx.fillRect(currentDragBox.x, currentDragBox.y - 26, Math.max(220, ctx.measureText(dragLabel).width + 20), 24);
           ctx.fillStyle = "#ffffff";
           ctx.font = "bold 13px sans-serif";
           ctx.fillText(dragLabel, currentDragBox.x + 6, currentDragBox.y - 8);
         }
       }
-
       // วาด Snap Target Highlight (วงแหวนสีเขียวมะนาว OSNAP)
       if (activeSnappedPoint) {
         ctx.save();
@@ -2032,40 +1857,32 @@
         ctx.beginPath();
         ctx.arc(activeSnappedPoint.x, activeSnappedPoint.y, 10, 0, Math.PI * 2);
         ctx.stroke();
-
         ctx.fillStyle = "rgba(16, 185, 129, 0.4)";
         ctx.beginPath();
         ctx.arc(activeSnappedPoint.x, activeSnappedPoint.y, 6, 0, Math.PI * 2);
         ctx.fill();
-
         ctx.fillStyle = "#10b981";
         ctx.font = "bold 11px sans-serif";
         ctx.fillText("🧲 SNAP", activeSnappedPoint.x + 14, activeSnappedPoint.y + 4);
         ctx.restore();
       }
     }
-
     function setupDrawEvents() {
       const viewport = document.getElementById("canvasViewport");
       const canvas = document.getElementById("drawCanvas");
-
       viewport.oncontextmenu = (e) => e.preventDefault();
-
       viewport.onwheel = (e) => {
         e.preventDefault();
         const vRect = viewport.getBoundingClientRect();
         const mouseX = e.clientX - vRect.left;
         const mouseY = e.clientY - vRect.top;
-
         const zoomFactor = e.deltaY < 0 ? 1.15 : 0.85;
         const newScale = Math.min(Math.max(0.1, zoomScale * zoomFactor), 10.0);
-
         panOffsetX = mouseX - (mouseX - panOffsetX) * (newScale / zoomScale);
         panOffsetY = mouseY - (mouseY - panOffsetY) * (newScale / zoomScale);
         zoomScale = newScale;
         updateTransform();
       };
-
       window.addEventListener("keydown", (e) => {
         if (e.code === "Space" && !isSpacePressed && document.getElementById("drawModal").style.display === "flex") {
           isSpacePressed = true;
@@ -2082,7 +1899,6 @@
           redrawCanvas();
         }
       });
-
       window.addEventListener("keyup", (e) => {
         if (e.code === "Space") {
           isSpacePressed = false;
@@ -2094,7 +1910,6 @@
           updateActiveMeasurementShape();
         }
       });
-
       viewport.onmousedown = (e) => {
         if (currentToolMode === "pan" || e.button === 2 || (e.button === 0 && isSpacePressed)) {
           isPanning = true;
@@ -2104,63 +1919,50 @@
           canvas.style.cursor = "grabbing";
           return;
         }
-
         if (e.button === 0) {
           lastClientMousePos = { x: e.clientX, y: e.clientY };
           const rawCoords = getCanvasCoords(e);
           const coords = activeSnappedPoint || rawCoords;
-
           if (currentToolMode === "polygon") {
             handlePolygonClick(coords);
             return;
           }
-
           startX = coords.x;
           startY = coords.y;
           isDrawing = true;
         }
       };
-
       viewport.ondblclick = (e) => {
         if (currentToolMode === "polygon" && currentPolygonPoints.length >= 3) {
           closeAndFinishPolygon();
         }
       };
-
       window.addEventListener("mousemove", (e) => {
         lastClientMousePos = { x: e.clientX, y: e.clientY };
-
         if (isPanning) {
           panOffsetX = e.clientX - panStartX;
           panOffsetY = e.clientY - panStartY;
           updateTransform();
           return;
         }
-
         checkEdgePanning(e.clientX, e.clientY);
         updateActiveMeasurementShape();
       });
-
       window.addEventListener("mouseup", (e) => {
         stopAutoPanLoop();
-
         if (isPanning) {
           isPanning = false;
           viewport.style.cursor = (currentToolMode === "pan" || isSpacePressed) ? "grab" : "default";
           canvas.style.cursor = (currentToolMode === "pan" || isSpacePressed) ? "grab" : "crosshair";
           return;
         }
-
         if (currentToolMode === "polygon") return;
-
         if (!isDrawing) return;
         isDrawing = false;
-
         if (currentToolMode === "calibrate" && currentDragLine) {
           const dx = currentDragLine.x2 - currentDragLine.x1;
           const dy = currentDragLine.y2 - currentDragLine.y1;
           const pixelDist = Math.sqrt(dx * dx + dy * dy);
-
           if (pixelDist > 15) {
             const inputVal = prompt("📏 เส้นที่คุณลากยาวจริงกี่เมตร? (เช่น 4.0 หรือ 1.5):", "4.0");
             if (inputVal && !isNaN(parseFloat(inputVal)) && parseFloat(inputVal) > 0) {
@@ -2201,7 +2003,6 @@
             const isRoofRelated = (cat.includes("หลังคา") || cat.includes("FSO") || cat.includes("Dry Tech"));
             const currentSlopeDeg = parseFloat(document.getElementById("modalSlopeDeg").value) || 0;
             const slopeMultiplier = getSlopeMultiplier(currentSlopeDeg);
-
             if (pixelsPerMeter) {
               widthM = currentDragBox.w / pixelsPerMeter;
               heightM = currentDragBox.h / pixelsPerMeter;
@@ -2209,7 +2010,6 @@
               slopeAreaM = isRoofRelated ? (flatAreaM * slopeMultiplier) : flatAreaM;
               perimeterM = 2 * (widthM + heightM);
             }
-
             measuredShapes.push({
               type: 'rect',
               ...currentDragBox,
@@ -2227,13 +2027,11 @@
         }
       });
     }
-
     function handlePolygonClick(coords) {
       if (!pixelsPerMeter) {
         alert("กรุณากดปุ่ม '1. ตั้งสเกล' ก่อนเริ่มวาดรูปหลายเหลี่ยม");
         return;
       }
-
       if (currentPolygonPoints.length >= 3) {
         const firstPt = currentPolygonPoints[0];
         const dist = Math.sqrt(Math.pow(coords.x - firstPt.x, 2) + Math.pow(coords.y - firstPt.y, 2));
@@ -2242,29 +2040,23 @@
           return;
         }
       }
-
       let finalCoord = coords;
       if (isShiftPressed && currentPolygonPoints.length > 0 && !activeSnappedPoint) {
         const lastPt = currentPolygonPoints[currentPolygonPoints.length - 1];
         finalCoord = applyOrthoLock(lastPt.x, lastPt.y, coords.x, coords.y);
       }
-
       currentPolygonPoints.push(finalCoord);
       redrawCanvas();
     }
-
     function closeAndFinishPolygon() {
       if (currentPolygonPoints.length < 3) return;
-
       const cat = document.getElementById("drawCategorySelect").value;
       const isRoofRelated = (cat.includes("หลังคา") || cat.includes("FSO") || cat.includes("Dry Tech"));
       const currentSlopeDeg = parseFloat(document.getElementById("modalSlopeDeg").value) || 0;
       const slopeMultiplier = getSlopeMultiplier(currentSlopeDeg);
-
       const metrics = calculatePolygonMetrics(currentPolygonPoints, pixelsPerMeter);
       const flatArea = metrics.flatAreaM;
       const slopeArea = isRoofRelated ? (flatArea * slopeMultiplier) : flatArea;
-
       measuredShapes.push({
         type: 'polygon',
         points: [...currentPolygonPoints],
@@ -2273,13 +2065,11 @@
         perimeterM: metrics.perimeterM,
         slopeDeg: currentSlopeDeg
       });
-
       currentPolygonPoints = [];
       stopAutoPanLoop();
       updateBoxCounter();
       redrawCanvas();
     }
-
     function undoLastBox() {
       if (currentPolygonPoints.length > 0) {
         currentPolygonPoints.pop();
@@ -2292,7 +2082,6 @@
       updateBoxCounter();
       redrawCanvas();
     }
-
     function clearAllDrawBoxes() {
       measuredShapes = [];
       measuredLines = [];
@@ -2305,14 +2094,13 @@
       redrawCanvas();
       document.getElementById("drawStatus").innerText = "ล้างข้อมูลเรียบร้อยแล้ว ลากกรอบหรือคลิก Polygon ใหม่เพื่อวัด";
     }
-
     /* ==========================================================
        บันทึกและอัปเดตทับแถวเดิม (SAVE & APPLY IN-PLACE)
        ========================================================== */
     async function saveAndApplyInPlaceMeasurement() {
       const mType = document.getElementById("measureTypeSelect").value;
       const isLineMode = measuredLines.length > 0;
-      
+
       if (measuredShapes.length === 0 && !isLineMode) {
         alert("กรุณาตีกรอบหรือคลิก Polygon วัดอย่างน้อย 1 รายการบนแบบแปลน");
         return;
@@ -2322,7 +2110,6 @@
         alert("กรุณากรอกและบันทึก API Key ก่อน");
         return;
       }
-
       const category = document.getElementById("drawCategorySelect").value;
       const isRoofRelated = (category.includes("หลังคา") || category.includes("FSO") || cat.includes("Dry Tech"));
       const chosenProduct = document.getElementById("drawProductSelect").value;
@@ -2330,11 +2117,9 @@
       const slopeDeg = document.getElementById("modalSlopeDeg").value;
       const roofShape = document.getElementById("roofShapeSelect").value;
       const wasteFactor = (roofShape === "hip") ? "10%" : "5%";
-
       let chosenValue = 0;
       let chosenUnit = "ตร.ม.";
       let auditSummary = "";
-
       if (isLineMode) {
         chosenValue = measuredLines.reduce((sum, l) => sum + (l.lengthM || 0), 0);
         chosenUnit = "ม.";
@@ -2346,23 +2131,21 @@
         let parts = measuredShapes.map((b, i) => `#${i+1} [${b.type === 'polygon' ? 'Polygon' : 'สี่เหลี่ยม'} = ${b.perimeterM.toFixed(2)} ม.]`);
         auditSummary = `[คิดเส้นรอบรูปอาคาร/แนวสัน หน้า ${pageNum}]: ${parts.join(" + ")} = รวมความยาว ${chosenValue.toFixed(2)} เมตร`;
       } else {
-        chosenValue = isRoofRelated 
+        chosenValue = isRoofRelated
           ? measuredShapes.reduce((sum, b) => sum + (b.slopeAreaM || 0), 0)
           : measuredShapes.reduce((sum, b) => sum + (b.flatAreaM || 0), 0);
         chosenUnit = "ตร.ม.";
         let parts = measuredShapes.map((b, i) => {
-          return isRoofRelated 
+          return isRoofRelated
             ? `รูป #${i+1} (${b.type === 'polygon' ? 'Polygon' : 'สี่เหลี่ยม'} ราบ ${b.flatAreaM.toFixed(2)} ม.² ÷ cos(${b.slopeDeg || slopeDeg}°) = ลาดเอียง ${b.slopeAreaM.toFixed(2)} ม.²)`
             : `รูป #${i+1} (${b.type === 'polygon' ? 'Polygon' : 'สี่เหลี่ยม'} ${b.flatAreaM.toFixed(2)} ม.²)`;
         });
-        auditSummary = isRoofRelated 
+        auditSummary = isRoofRelated
           ? `[หน้า ${pageNum} | คำนวณ Slope ${slopeDeg}° | ทรง${roofShape === 'hip' ? 'ปั้นหยา' : 'จั่ว'}]: ${parts.join(" + ")} = รวมพื้นที่ลาดเอียงสุทธิ ${chosenValue.toFixed(2)} ตร.ม.`
           : `[หน้า ${pageNum}]: ${parts.join(" + ")} = รวมสุทธิ ${chosenValue.toFixed(2)} ตร.ม.`;
       }
-
       const statusElem = document.getElementById("drawStatus");
       statusElem.innerText = `กำลังคำนวณยอดสั่งซื้อสินค้าและระบบแพ็กเกจของ "${chosenProduct}" ...`;
-
       let mainBox = [100, 100, 500, 500];
       if (measuredShapes.length > 0 && currentDrawPageImg) {
         const primary = measuredShapes[0];
@@ -2384,7 +2167,6 @@
           ];
         }
       }
-
       const promptText = `
 คุณเป็น Quantity Surveyor (QS) ประจำเครือ SCG และ CPAC
 ผู้ใช้ได้วัดปริมาณงานจากแบบแปลนก่อสร้างจริง ได้ผลลัพธ์ดังนี้:
@@ -2393,7 +2175,6 @@
 - ปริมาณสุทธิ: ${chosenValue.toFixed(2)} ${chosenUnit}
 - รายละเอียดการวัด: ${auditSummary}
 - สัดส่วนเผื่อเศษตามทรงหลังคา: เผื่อ ${wasteFactor}
-
 หน้าที่ของคุณ:
 1. คำนวณจำนวนสั่งซื้อจริง (order_estimate) ให้เหมาะสมกับหน่วยของสินค้า พร้อมแตกแพ็กเกจระบบครบวงจร (Complete System Bundle)
    [สำคัญ]: ให้จัดรูปแบบข้อความโดยแยกแต่ละรายการสินค้าและอุปกรณ์เสริมขึ้นบรรทัดใหม่ โดยใส่เครื่องหมายขีดคั่นหน้า (- ) ทุกบรรทัด เช่น:
@@ -2401,7 +2182,6 @@
    - ฉนวนใต้หลังคา SCG FSO ... (จำนวนและหน่วย)
    - แผ่นรองใต้สันหลังคา SCG Dry Tech ... (จำนวนและหน่วย)
 2. สรุปสูตรคำนวณและสัดส่วนเผื่อเศษใน calculation_note
-
 ส่งผลลัพธ์เป็น JSON Object ตัวเดียว:
 {
   "order_estimate": "- รายการสินค้า 1 ...\\n- รายการอุปกรณ์ 2 ...",
@@ -2418,12 +2198,10 @@
             generationConfig: { responseMimeType: "application/json" }
           })
         });
-
         if (!response.ok) throw new Error("API Connection Error");
         const data = await response.json();
         const rawContent = data.candidates[0].content.parts[0].text;
         const result = JSON.parse(rawContent);
-
         if (editingItemId) {
           const item = lastRawBOQItems.find(it => it._id === editingItemId);
           if (item) {
@@ -2464,7 +2242,6 @@
           lastRawBOQItems.push(newItem);
           statusElem.innerText = `✅ เพิ่มรายการใหม่ของหน้า ${pageNum} ลงในตาราง BOQ สำเร็จ!`;
         }
-
         renderBOQTable(lastRawBOQItems);
         setTimeout(() => {
           closeModal('drawModal');
@@ -2473,7 +2250,6 @@
         statusElem.innerText = "เกิดข้อผิดพลาดในการคำนวณ กรุณาลองใหม่อีกครั้ง";
       }
     }
-
     /* ==========================================================
        ระบบประมวลผลอัตโนมัติ CROSS-CHECK 3D (แยก 1 หน้า = 1 บรรทัด)
        ========================================================== */
@@ -2482,9 +2258,7 @@
       const planFile = document.getElementById("planFile").files[0];
       const sectionFile = document.getElementById("sectionFile").files[0];
       const specFile = document.getElementById("specFile").files[0];
-
       const customInstruction = document.getElementById("customInstructionPrompt").value.trim();
-
       const concreteChoice = document.getElementById("concreteOption").value;
       const roofChoice = document.getElementById("roofOption").value;
       const ceilingInsChoice = document.getElementById("ceilingInsulationOption").value;
@@ -2494,11 +2268,9 @@
       const ceilingChoice = document.getElementById("ceilingOption").value;
       const woodChoice = document.getElementById("woodOption").value;
       const slopeDeg = document.getElementById("roofSlopeDeg").value;
-
       const statusDiv = document.getElementById("status");
       const btn = document.getElementById("processBtn");
       const recalcBtn = document.getElementById("recalcBtn");
-
       if (!apiKey) {
         alert("กรุณากรอกและบันทึก Gemini API Key ก่อน");
         return;
@@ -2507,32 +2279,25 @@
         alert("กรุณาเลือกไฟล์แบบแปลนพื้น (Floor Plan)");
         return;
       }
-
       btn.disabled = true;
       recalcBtn.disabled = true;
       statusDiv.innerText = "กำลังประมวลผลไฟล์และตรวจนับจำนวนหน้าทั้งหมด...";
-
       try {
         await loadPlanDocument(planFile);
         document.getElementById("drawBtn").disabled = false;
-
         const parts = [];
         const planPart = await fileToGenerativePart(planFile);
         parts.push(planPart);
-
         if (sectionFile) {
           statusDiv.innerText = "กำลังอ่านแบบรูปตัด/รูปด้าน (Section & Elevation) เพื่อดึงความสูงและ Slope จริง...";
           const secPart = await fileToGenerativePart(sectionFile);
           parts.push(secPart);
         }
-
         if (specFile) {
           const specPart = await fileToGenerativePart(specFile);
           parts.push(specPart);
         }
-
         statusDiv.innerText = `Gemini กำลังสแกนเอกสารแปลนทั้งหมด ${detectedTotalPages} หน้า และแยกผลลัพธ์เป็นรายหน้า...`;
-
         let customPromptSection = "";
         if (customInstruction) {
           customPromptSection = `
@@ -2543,11 +2308,9 @@ ${customInstruction}
 * ให้โฟกัสการถอดแบบตามคำสั่งข้างต้นนี้เป็นอันดับ 1
 `;
         }
-
         const promptText = `
 คุณเป็น Quantity Surveyor (QS) ระดับสูงประจำเครือ SCG และ CPAC
 หน้าที่ของคุณคือการวิเคราะห์แบบแปลนก่อสร้าง พร้อมทำ [Cross-Check ตรวจสอบความสอดคล้อง 3 มิติ (Plan ↔ Section ↔ Elevation)]
-
 [กฎเหล็กสำคัญที่สุด: แยกแสดงผลเป็น 1 หน้า = 1 รายการ (STRICT PER-PAGE LINE ITEMIZATION)]:
 เอกสารแบบแปลนที่แนบมานี้มีจำนวนทั้งหมด ${detectedTotalPages} หน้า:
 1. คุณต้องตรวจสอบและอ่านแปลน "ครบทุกหน้าตั้งแต่หน้า 1 ถึงหน้า ${detectedTotalPages}"
@@ -2557,7 +2320,6 @@ ${customInstruction}
    - ในฟิลด์ source_location.page_number ต้องระบุเลขหน้าจริงที่พบรายการนั้นอย่างแม่นยำ (เช่น รายการของชั้น 1 ระบุ 2, รายการของชั้น 2 ระบุ 3)
    - การคำนวณ order_estimate ให้คำนวณเฉพาะยอดของหน้านั้นๆ แยกเป็นอิสระ เพื่อให้ผู้ใช้สามารถตรวจสอบและแก้ไขเฉพาะหน้านั้นได้
 ${customPromptSection}
-
 [แนวทาง Cross-Check 3D เพื่อความแม่นยำสูงสุด]:
 1. หากมีไฟล์รูปตัด (Section): ให้ตรวจสอบระดับความสูงพื้นถึงใต้ท้องคาน (Clear Height) หรือความสูงพื้นถึงฝ้าจริง ห้ามเดา 2.8 หรือ 3.0 เมตร และนำความสูงจริงนี้มาคูณกับความยาวผนังที่ถอดได้จาก Floor Plan ของแต่ละชั้น
 2. หากมีไฟล์รูปด้าน (Elevation): ให้ตรวจสอบองศาความชันหลังคาจริง หากในรูปด้านระบุ Slope ต่างจากค่าเริ่มต้น (${slopeDeg}°) ให้อิงตามรูปด้านจริงและบันทึกในหมายเหตุ
@@ -2567,10 +2329,8 @@ ${customPromptSection}
 6. ฉนวนใต้หลังคา: "${roofInsChoice}" (SCG FSO อิงพื้นที่ลาดเอียงหลังคา)
 7. หากพบแนวสันหลังคา/ตะเข้สัน: ให้คิดระบบครอบแห้ง SCG Dry Tech System (ม้วนละ 3 ม.) พ่วงกับกระเบื้องครอบ
 8. สเปกผนัง: "${wallChoice}", พื้น: "${floorChoice}", ฝ้า: "${ceilingChoice}", ไม้สังเคราะห์: "${woodChoice}"
-
 [ข้อกำหนดสำคัญมากสำหรับการตอบ order_estimate]:
 ให้แตกรายการสินค้าและอุปกรณ์เสริมเป็นแต่ละบรรทัด โดยขึ้นต้นด้วยเครื่องหมายขีด (- ) ทุกบรรทัด ห้ามเขียนติดเป็นก้อนยาวเด็ดขาด
-
 ส่งคำตอบกลับมาเป็น JSON Array เท่านั้น:
 [
   {
@@ -2601,24 +2361,19 @@ ${customPromptSection}
             generationConfig: { responseMimeType: "application/json" }
           })
         });
-
         if (!response.ok) throw new Error("API Connection Error");
-
         const data = await response.json();
         const rawContent = data.candidates[0].content.parts[0].text;
         const boqItems = JSON.parse(rawContent);
-
         // เรียงลำดับรายการตามเลขหน้า (Page 1 -> 2 -> 3 ...)
         boqItems.sort((a, b) => {
           const pA = (a.source_location && a.source_location.page_number) ? a.source_location.page_number : 1;
           const pB = (b.source_location && b.source_location.page_number) ? b.source_location.page_number : 1;
           return pA - pB;
         });
-
         boqItems.forEach((item, idx) => {
           item._id = "item_" + Date.now() + "_" + idx;
         });
-
         lastRawBOQItems = boqItems;
         recalcBtn.disabled = false;
         renderBOQTable(lastRawBOQItems);
@@ -2629,7 +2384,6 @@ ${customPromptSection}
         btn.disabled = false;
       }
     }
-
     async function recalculateWithNewSpecs() {
       if (!lastRawBOQItems || lastRawBOQItems.length === 0) {
         alert("กรุณาวิเคราะห์แบบแปลนก่อนอย่างน้อยหนึ่งครั้ง");
@@ -2639,16 +2393,13 @@ ${customPromptSection}
       const statusDiv = document.getElementById("status");
       const recalcBtn = document.getElementById("recalcBtn");
       const slopeDeg = document.getElementById("roofSlopeDeg").value;
-
       recalcBtn.disabled = true;
       statusDiv.innerText = "กำลังคำนวณปริมาณสินค้าใหม่ตามสเปกที่เลือก (คงการแยกรายหน้าเดิม)...";
-
       try {
         const promptText = `
 คุณเป็น Quantity Surveyor ประจำ SCG และ CPAC
 นี่คือรายการปริมาณงานเดิมที่แยกรายหน้าไว้แล้ว:
 ${JSON.stringify(lastRawBOQItems, null, 2)}
-
 ผู้ใช้ต้องการเปลี่ยนสเปกวัสดุใหม่ดังนี้:
 - หลังคา: "${document.getElementById("roofOption").value}" (ความชัน ${slopeDeg} องศา)
 - ฉนวนปูเหนือฝ้า: "${document.getElementById("ceilingInsulationOption").value}"
@@ -2658,8 +2409,7 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
 - พื้น: "${document.getElementById("floorOption").value}"
 - ฝ้า: "${document.getElementById("ceilingOption").value}"
 - ไม้สังเคราะห์: "${document.getElementById("woodOption").value}"
-
-[สำคัญมาก]: 
+[สำคัญมาก]:
 1. ต้องคงการแยกรายหน้าเดิม ห้ามยุบรวมรายการข้ามหน้ากันเป็นอันขาด
 2. ในฟิลด์ order_estimate ให้จัดรูปแบบแยกแต่ละรายการสินค้าขึ้นบรรทัดใหม่ด้วยเครื่องหมายขีด (- ) ทุกบรรทัด
 ส่งผลลัพธ์กลับมาเป็น JSON Array เท่านั้น
@@ -2673,17 +2423,13 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
             generationConfig: { responseMimeType: "application/json" }
           })
         });
-
         if (!response.ok) throw new Error("Recalculate Error");
-
         const data = await response.json();
         const rawContent = data.candidates[0].content.parts[0].text;
         const updatedItems = JSON.parse(rawContent);
-
         updatedItems.forEach((item, idx) => {
           item._id = (lastRawBOQItems[idx] && lastRawBOQItems[idx]._id) ? lastRawBOQItems[idx]._id : "item_" + Date.now() + "_" + idx;
         });
-
         lastRawBOQItems = updatedItems;
         renderBOQTable(lastRawBOQItems);
         statusDiv.innerText = "คำนวณและอัปเดตสเปกสินค้าใหม่สำเร็จ!";
@@ -2693,16 +2439,13 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
         recalcBtn.disabled = false;
       }
     }
-
     function renderBOQTable(items) {
       const tbody = document.getElementById("boqBody");
       tbody.innerHTML = "";
-
       if (!items || items.length === 0) {
         document.getElementById("resultCard").style.display = "none";
         return;
       }
-
       items.forEach((item) => {
         let badgeClass = "badge badge-other";
         const cat = item.category || "";
@@ -2716,7 +2459,6 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
         else if (cat.includes("พื้น")) badgeClass = "badge badge-floor";
         else if (cat.includes("ฝ้า") || cat.includes("เพดาน")) badgeClass = "badge badge-ceiling";
         else if (cat.includes("สุขาภิบาล") || cat.includes("ระบบ")) badgeClass = "badge badge-mep";
-
         const conf = typeof item.confidence_score === "number" ? item.confidence_score : 95;
         let confClass = "conf-high";
         let confIcon = "🟢";
@@ -2727,21 +2469,16 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
           confClass = "conf-med";
           confIcon = "🟡";
         }
-
         const loc = item.source_location || {};
         const pageNum = loc.page_number || 1;
         const pageBadge = `<span class="page-indicator-badge">📄 หน้า ${pageNum}</span>`;
-
         const isModified = item.is_manual_modified ? "modified" : "";
         const manualBadge = item.is_manual_modified ? `<span class="manual-badge">📐 แก้ไขแล้ว</span>` : "";
-
-        const hasCrossCheck = (item.verification_method || "").toLowerCase().includes("section") || 
-                              (item.verification_method || "").includes("รูปตัด") || 
+        const hasCrossCheck = (item.verification_method || "").toLowerCase().includes("section") ||
+                              (item.verification_method || "").includes("รูปตัด") ||
                               (item.verification_method || "").includes("ความสูง");
         const crossCheckBadge = hasCrossCheck ? `<div class="cross-check-tag">🔍 Cross-Checked 3D</div>` : "";
-
         const orderEstimateFormatted = formatOrderEstimateHTML(item.order_estimate);
-
         const row = document.createElement("tr");
         row.id = `boq-row-${item._id}`;
         row.innerHTML = `
@@ -2782,34 +2519,28 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
       });
       document.getElementById("resultCard").style.display = "block";
     }
-
     function deleteBOQItem(id) {
       if (!lastRawBOQItems || lastRawBOQItems.length === 0) return;
       const targetItem = lastRawBOQItems.find(item => item._id === id);
       const itemName = targetItem ? (targetItem.item_name || "รายการนี้") : "รายการนี้";
-
       if (confirm(`คุณต้องการลบ "${itemName}" ออกจากตาราง BOQ ใช่หรือไม่?`)) {
         lastRawBOQItems = lastRawBOQItems.filter(item => item._id !== id);
         renderBOQTable(lastRawBOQItems);
       }
     }
-
     function updateNetQuantity(id, newValue) {
       if (!lastRawBOQItems) return;
       const item = lastRawBOQItems.find(it => it._id === id);
       if (!item) return;
-
       const trimmed = newValue.trim();
       item.net_quantity = trimmed;
       item.is_manual_modified = true;
-
       const numericMatch = trimmed.match(/[\d,.]+/);
       if (numericMatch) {
         const rawNum = parseFloat(numericMatch[0].replace(/,/g, ''));
         if (!isNaN(rawNum) && rawNum > 0) {
           const product = (item.scg_product || "").toLowerCase();
           let newEstimate = "";
-
           if (product.includes("dry tech") || product.includes("สันหลังคา")) {
             const tiles = Math.ceil(rawNum * 3.3 * 1.05);
             const dryRolls = Math.ceil((rawNum / 3.0) * 1.05);
@@ -2848,7 +2579,6 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
             const sqmAmt = (rawNum * 1.05).toFixed(1);
             newEstimate = `- แผ่นหลังคา Metal Sheet: ${sqmAmt} ตร.ม.`;
           }
-
           if (newEstimate) {
             item.order_estimate = newEstimate;
             const estElem = document.getElementById(`order-estimate-${id}`);
@@ -2856,24 +2586,20 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
           }
         }
       }
-
       const inputElem = document.getElementById(`qty-input-${id}`);
       if (inputElem) {
         inputElem.classList.add("modified");
       }
     }
-
     function closeModal(modalId) {
       stopAutoPanLoop();
       document.getElementById(modalId).style.display = "none";
     }
-
     window.onclick = function(event) {
       if (event.target.classList.contains("modal")) {
         closeModal(event.target.id);
       }
     };
-
     /* ==========================================================
        1. ระบบ EXPORT เป็น EXCEL (.xlsx แท้ ไม่เพี้ยน)
        ========================================================== */
@@ -2882,13 +2608,11 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
         alert("ไม่มีข้อมูลสำหรับส่งออก Excel");
         return;
       }
-
       const excelData = lastRawBOQItems.map(row => {
         const page = (row.source_location && row.source_location.page_number) ? row.source_location.page_number : "-";
         const desc = (row.source_location && row.source_location.location_description) ? row.source_location.location_description : "-";
         const modifiedStatus = row.is_manual_modified ? "แก้ไขในแบบแล้ว" : "คำนวณอัตโนมัติ";
         const cleanEstimate = (row.order_estimate || "-").replace(/^[-•*]\s*/gm, '').replace(/\r?\n/g, " | ");
-
         return {
           "หมวดงาน": row.category || "-",
           "หน้าที่พบ": `หน้า ${page}`,
@@ -2904,9 +2628,7 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
           "คำอธิบายตำแหน่งในแบบ": desc
         };
       });
-
       const worksheet = XLSX.utils.json_to_sheet(excelData);
-
       // ปรับความกว้างคอลัมน์อัตโนมัติ (Auto column width)
       const colWidths = [
         { wch: 16 }, // หมวดงาน
@@ -2923,14 +2645,11 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
         { wch: 30 }  // ตำแหน่ง
       ];
       worksheet['!cols'] = colWidths;
-
       const workbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(workbook, worksheet, "SCG_BOQ");
-
       const fileName = `SCG_CPAC_BOQ_${new Date().toISOString().slice(0,10)}.xlsx`;
       XLSX.writeFile(workbook, fileName);
     }
-
     /* ==========================================================
        2. ระบบ EXPORT เป็นรายงาน PDF (A4 แนวนอน คมชัด ไม่ขาวโพลน 100%)
        ========================================================== */
@@ -2939,7 +2658,6 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
         alert("ไม่มีข้อมูลสำหรับส่งออก PDF");
         return;
       }
-
       const pdfBtn = document.getElementById("btnExportPdf");
       const originalBtnText = pdfBtn ? pdfBtn.innerText : "";
       if (pdfBtn) {
@@ -2947,8 +2665,16 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
         pdfBtn.disabled = true;
       }
 
-      // 1. สร้าง Fullscreen Loading Overlay เพื่อบังสายตาตอน Canvas เรนเดอร์
+      // บันทึกตำแหน่ง Scroll เดิมของผู้ใช้
+      const prevScrollX = window.scrollX || window.pageXOffset;
+      const prevScrollY = window.scrollY || window.pageYOffset;
+
+      // เลื่อนกลับไปบนสุดชั่วคราวเพื่อป้องกัน html2canvas คำนวณพิกัดเพี้ยนจนเป็นหน้าว่าง
+      window.scrollTo(0, 0);
+
+      // 1. Loading Overlay แจ้งเตือนผู้ใช้
       const overlay = document.createElement("div");
+      overlay.id = "pdfLoadingOverlay";
       overlay.style.position = "fixed";
       overlay.style.left = "0";
       overlay.style.top = "0";
@@ -2968,10 +2694,10 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
       `;
       document.body.appendChild(overlay);
 
-      // 2. สร้าง Container ตารางรายงาน วางที่พิกัด 0, 0 แท้จริง (ไม่ผลักไป -9999px)
+      // 2. Container สำหรับเรนเดอร์ PDF (ใช้ position: absolute ที่ top: 0 เพื่อไม่ให้หลุด Canvas)
       const printContainer = document.createElement("div");
       printContainer.id = "printPdfContainer";
-      printContainer.style.position = "fixed";
+      printContainer.style.position = "absolute";
       printContainer.style.left = "0";
       printContainer.style.top = "0";
       printContainer.style.width = "1120px";
@@ -2980,7 +2706,7 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
       printContainer.style.boxSizing = "border-box";
       printContainer.style.color = "#0f172a";
       printContainer.style.fontFamily = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
-      printContainer.style.zIndex = "999998"; // อยู่ใต้ Overlay พอดี ทำให้ไม่รกตา
+      printContainer.style.zIndex = "1000";
 
       const headerHTML = `
         <div style="border-bottom: 3px solid #dc2626; padding-bottom: 12px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: flex-end;">
@@ -2994,7 +2720,6 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
           </div>
         </div>
       `;
-
       let rowsHTML = "";
       lastRawBOQItems.forEach((row, i) => {
         const page = (row.source_location && row.source_location.page_number) ? row.source_location.page_number : "-";
@@ -3004,9 +2729,8 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
           .filter(s => s.length > 0)
           .map(s => `• ${s}`)
           .join("<br>");
-
         rowsHTML += `
-          <tr style="border-bottom: 1px solid #cbd5e1; font-size: 10px; background: ${i % 2 === 0 ? '#ffffff' : '#f8fafc'};">
+          <tr style="border-bottom: 1px solid #cbd5e1; font-size: 10px; background: ${i % 2 === 0 ? '#ffffff' : '#f8fafc'}; page-break-inside: avoid;">
             <td style="padding: 6px 8px; font-weight: bold; color: #b91c1c;">${row.category || "-"}</td>
             <td style="padding: 6px 8px; text-align: center; font-weight: bold;">หน้า ${page}</td>
             <td style="padding: 6px 8px; font-weight: bold;">${row.item_name || "-"}</td>
@@ -3018,7 +2742,6 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
           </tr>
         `;
       });
-
       const tableHTML = `
         <table style="width: 100%; border-collapse: collapse; text-align: left;">
           <thead>
@@ -3038,7 +2761,6 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
           </tbody>
         </table>
       `;
-
       printContainer.innerHTML = headerHTML + tableHTML;
       document.body.appendChild(printContainer);
 
@@ -3046,39 +2768,45 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
         margin: [8, 8, 8, 8],
         filename: `SCG_CPAC_BOQ_Report_${new Date().toISOString().slice(0,10)}.pdf`,
         image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { 
-          scale: 2, 
-          useCORS: true, 
-          scrollX: 0, 
+        html2canvas: {
+          scale: 2,
+          useCORS: true,
+          logging: false,
+          scrollX: 0,
           scrollY: 0,
+          x: 0,
+          y: 0,
           windowWidth: 1120
         },
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' },
-        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+        pagebreak: { mode: ['css', 'legacy'] }
       };
 
-      // หน่วงเวลา 250ms เพื่อให้ DOM และ Font ภาษาไทยเรนเดอร์ลงในตารางครบ 100%
+      const cleanup = () => {
+        if (document.body.contains(printContainer)) {
+          document.body.removeChild(printContainer);
+        }
+        if (document.body.contains(overlay)) {
+          document.body.removeChild(overlay);
+        }
+        window.scrollTo(prevScrollX, prevScrollY);
+        if (pdfBtn) {
+          pdfBtn.innerText = originalBtnText;
+          pdfBtn.disabled = false;
+        }
+      };
+
+      // หน่วงเวลาเล็กน้อยเพื่อให้ DOM และ Font เรนเดอร์ครบก่อนจับภาพ
       setTimeout(() => {
         html2pdf().set(opt).from(printContainer).save().then(() => {
-          document.body.removeChild(printContainer);
-          document.body.removeChild(overlay);
-          if (pdfBtn) {
-            pdfBtn.innerText = originalBtnText;
-            pdfBtn.disabled = false;
-          }
+          cleanup();
         }).catch(err => {
-          console.warn("PDF generation warning, fallback to print:", err);
-          document.body.removeChild(printContainer);
-          document.body.removeChild(overlay);
-          if (pdfBtn) {
-            pdfBtn.innerText = originalBtnText;
-            pdfBtn.disabled = false;
-          }
+          cleanup();
+          alert("เกิดข้อผิดพลาดในการสร้าง PDF ระบบจะเปิดหน้าต่างสั่งพิมพ์แทน");
           window.print();
         });
-      }, 250);
+      }, 350);
     }
-
     /* ==========================================================
        3. ระบบ EXPORT เป็นไฟล์ JSON (Snapshot สำหรับโหลดทำต่อ)
        ========================================================== */
@@ -3087,7 +2815,6 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
         alert("ไม่มีข้อมูลสำหรับส่งออก JSON");
         return;
       }
-
       // บันทึกทั้งรายการ BOQ และตัวเลือกการตั้งค่าต่างๆ เก็บไว้ด้วย
       const projectSnapshot = {
         exportDate: new Date().toISOString(),
@@ -3106,7 +2833,6 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
         },
         items: lastRawBOQItems
       };
-
       const jsonString = JSON.stringify(projectSnapshot, null, 2);
       const blob = new Blob([jsonString], { type: "application/json" });
       const url = URL.createObjectURL(blob);
@@ -3118,25 +2844,22 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
     }
-
     /* ==========================================================
        4. ระบบ IMPORT ข้อมูลจากไฟล์ JSON เดิมกลับมาทำงานต่อ
        ========================================================== */
     function handleJsonFileImport(event) {
       const file = event.target.files[0];
       if (!file) return;
-
       const reader = new FileReader();
       reader.onload = function(e) {
         try {
           const imported = JSON.parse(e.target.result);
           let itemsToLoad = [];
-
           if (Array.isArray(imported)) {
             itemsToLoad = imported;
           } else if (imported && Array.isArray(imported.items)) {
             itemsToLoad = imported.items;
-            
+
             // คืนค่า Dropdowns และการตั้งค่าต่างๆ ให้ตรงกับโปรเจกต์เดิม
             if (imported.settings) {
               const s = imported.settings;
@@ -3155,15 +2878,12 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
           } else {
             throw new Error("โครงสร้างไฟล์ JSON ไม่ถูกต้อง");
           }
-
           itemsToLoad.forEach((item, idx) => {
             if (!item._id) item._id = "item_" + Date.now() + "_" + idx;
           });
-
           lastRawBOQItems = itemsToLoad;
           document.getElementById("recalcBtn").disabled = false;
           renderBOQTable(lastRawBOQItems);
-
           document.getElementById("status").innerText = `✅ นำเข้าข้อมูลโปรเจกต์เดิมสำเร็จแล้ว (${lastRawBOQItems.length} รายการ)`;
           alert(`นำเข้าข้อมูลเรียบร้อยแล้ว (${lastRawBOQItems.length} รายการ)\nคุณสามารถตรวจเช็กและเริ่มแก้ไขหรือวัดขนาดต่อได้ทันที`);
         } catch (err) {
