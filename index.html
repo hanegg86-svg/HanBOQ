@@ -390,7 +390,7 @@
     .btn-export-json:hover { background: #7e22ce; }
     .btn-import-json { background: #475569; }
     .btn-import-json:hover { background: #334155; }
-    /* Modal */
+    /* Modal ทั่วไป */
     .modal {
       display: none;
       position: fixed;
@@ -603,6 +603,74 @@
       font-weight: 600;
       color: #92400e;
     }
+
+    /* Modal พรีวิวกระดาษ A4 แนวนอน */
+    .pdf-preview-modal-content {
+      background: #334155;
+      border-radius: 12px;
+      padding: 16px;
+      width: 98%;
+      max-width: 1300px;
+      height: 94vh;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.4);
+    }
+    .pdf-preview-viewport {
+      flex: 1;
+      overflow: auto;
+      background: #475569;
+      border-radius: 8px;
+      padding: 24px;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+    }
+    /* แผ่นกระดาษ A4 แนวนอนจำลอง (สเกลมาตรฐาน 297mm x 210mm) */
+    .a4-landscape-page {
+      background: #ffffff;
+      width: 1120px;
+      min-height: 792px;
+      padding: 32px 36px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+      color: #0f172a;
+      box-sizing: border-box;
+      border-radius: 2px;
+    }
+    .pdf-preview-toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #1e293b;
+      padding: 10px 16px;
+      border-radius: 8px;
+      margin-bottom: 12px;
+      color: #f8fafc;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    /* สไตล์สำหรับการสั่งพิมพ์จากเบราว์เซอร์โดยตรง (Print Stylesheet) */
+    @media print {
+      body * {
+        visibility: hidden;
+      }
+      #a4ReportPaper, #a4ReportPaper * {
+        visibility: visible;
+      }
+      #a4ReportPaper {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100% !important;
+        padding: 0 !important;
+        box-shadow: none !important;
+      }
+      @page {
+        size: A4 landscape;
+        margin: 10mm;
+      }
+    }
   </style>
 </head>
 <body>
@@ -784,11 +852,36 @@
     <!-- แผงปุ่ม Export / Import 4 ปุ่มหลัก -->
     <div class="export-import-grid">
       <button type="button" class="btn-export-excel" onclick="exportExcel()">📊 Export เป็น Excel (.xlsx แท้)</button>
-      <button type="button" class="btn-export-pdf" id="btnExportPdf" onclick="exportPDF()">📄 Export เป็นรายงาน PDF (A4 แนวนอน)</button>
+      <button type="button" class="btn-export-pdf" id="btnExportPdf" onclick="openPdfPreviewModal()">📄 พรีวิว & ตีกรอบบันทึก PDF (A4 แนวนอน)</button>
       <button type="button" class="btn-export-json" onclick="exportJSON()">💾 บันทึกโปรเจกต์ (Export JSON)</button>
       <button type="button" class="btn-import-json" onclick="document.getElementById('jsonFileInput').click()">📂 นำเข้าโปรเจกต์ (Import JSON)</button>
     </div>
   </div>
+
+  <!-- Modal พรีวิวเอกสารตีกรอบหน้ากระดาษ A4 แนวนอน -->
+  <div id="pdfPreviewModal" class="modal">
+    <div class="pdf-preview-modal-content">
+      <div class="pdf-preview-toolbar">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="font-size: 18px;">📄</span>
+          <div>
+            <div style="font-weight: bold; font-size: 15px;">พรีวิวรายงานเอกสาร A4 แนวนอน (SCG BOQ Report)</div>
+            <div style="font-size: 12px; opacity: 0.8;">ตรวจสอบความถูกต้องของหน้ากระดาษก่อนบันทึกหรือสั่งพิมพ์</div>
+          </div>
+        </div>
+        <div style="display: flex; gap: 8px; align-items: center;">
+          <button type="button" id="btnDownloadPdfDirect" onclick="downloadPdfFromCurrentPaper()" style="background: #16a34a; padding: 8px 16px; font-size: 13px;">💾 บันทึกเป็นไฟล์ PDF ทันที</button>
+          <button type="button" onclick="window.print()" style="background: #0284c7; padding: 8px 16px; font-size: 13px;">🖨️ สั่งพิมพ์ / Save as PDF (บราวเซอร์)</button>
+          <button type="button" onclick="closeModal('pdfPreviewModal')" style="background: #64748b; padding: 8px 14px; font-size: 13px;">✕ ปิด</button>
+        </div>
+      </div>
+      <div class="pdf-preview-viewport">
+        <!-- แผ่นกระดาษ A4 แนวนอนจริงที่ผู้ใช้มองเห็นและให้ระบบจับภาพ -->
+        <div id="a4ReportPaper" class="a4-landscape-page"></div>
+      </div>
+    </div>
+  </div>
+
   <!-- In-Place Drawing & Calibration Modal พร้อม Auto-Edge Pan -->
   <div id="drawModal" class="modal">
     <div class="modal-content">
@@ -2651,67 +2744,18 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
       XLSX.writeFile(workbook, fileName);
     }
     /* ==========================================================
-       2. ระบบ EXPORT เป็นรายงาน PDF (A4 แนวนอน คมชัด ไม่ขาวโพลน 100%)
+       2. ระบบพรีวิวเอกสารตีกรอบหน้ากระดาษ A4 แนวนอน (แก้บั๊ก PDF เปล่า)
        ========================================================== */
-    function exportPDF() {
+    function openPdfPreviewModal() {
       if (!lastRawBOQItems || lastRawBOQItems.length === 0) {
-        alert("ไม่มีข้อมูลสำหรับส่งออก PDF");
+        alert("ไม่มีข้อมูลสำหรับแสดงรายงาน PDF");
         return;
       }
-      const pdfBtn = document.getElementById("btnExportPdf");
-      const originalBtnText = pdfBtn ? pdfBtn.innerText : "";
-      if (pdfBtn) {
-        pdfBtn.innerText = "⏳ กำลังสร้างไฟล์ PDF...";
-        pdfBtn.disabled = true;
-      }
-
-      // บันทึกตำแหน่ง Scroll เดิมของผู้ใช้
-      const prevScrollX = window.scrollX || window.pageXOffset;
-      const prevScrollY = window.scrollY || window.pageYOffset;
-
-      // เลื่อนกลับไปบนสุดชั่วคราวเพื่อป้องกัน html2canvas คำนวณพิกัดเพี้ยนจนเป็นหน้าว่าง
-      window.scrollTo(0, 0);
-
-      // 1. Loading Overlay แจ้งเตือนผู้ใช้
-      const overlay = document.createElement("div");
-      overlay.id = "pdfLoadingOverlay";
-      overlay.style.position = "fixed";
-      overlay.style.left = "0";
-      overlay.style.top = "0";
-      overlay.style.width = "100%";
-      overlay.style.height = "100%";
-      overlay.style.backgroundColor = "rgba(15, 23, 42, 0.75)";
-      overlay.style.backdropFilter = "blur(4px)";
-      overlay.style.zIndex = "999999";
-      overlay.style.display = "flex";
-      overlay.style.flexDirection = "column";
-      overlay.style.justifyContent = "center";
-      overlay.style.alignItems = "center";
-      overlay.style.color = "#ffffff";
-      overlay.innerHTML = `
-        <div style="font-size: 20px; font-weight: bold; margin-bottom: 8px;">⏳ กำลังสร้างเอกสารรายงาน PDF...</div>
-        <div style="font-size: 14px; opacity: 0.85;">กรุณารอสักครู่ ระบบกำลังจัดหน้ากระดาษ A4 แนวนอน</div>
-      `;
-      document.body.appendChild(overlay);
-
-      // 2. Container สำหรับเรนเดอร์ PDF (ใช้ position: absolute ที่ top: 0 เพื่อไม่ให้หลุด Canvas)
-      const printContainer = document.createElement("div");
-      printContainer.id = "printPdfContainer";
-      printContainer.style.position = "absolute";
-      printContainer.style.left = "0";
-      printContainer.style.top = "0";
-      printContainer.style.width = "1120px";
-      printContainer.style.background = "#ffffff";
-      printContainer.style.padding = "24px";
-      printContainer.style.boxSizing = "border-box";
-      printContainer.style.color = "#0f172a";
-      printContainer.style.fontFamily = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
-      printContainer.style.zIndex = "1000";
-
+      const paper = document.getElementById("a4ReportPaper");
       const headerHTML = `
         <div style="border-bottom: 3px solid #dc2626; padding-bottom: 12px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: flex-end;">
           <div>
-            <h2 style="margin: 0; color: #dc2626; font-size: 22px; font-weight: bold;">รายงานถอดแบบและประมาณการสั่งซื้อสินค้า SCG & คอนกรีต CPAC</h2>
+            <h2 style="margin: 0; color: #dc2626; font-size: 20px; font-weight: bold;">รายงานถอดแบบและประมาณการสั่งซื้อสินค้า SCG & คอนกรีต CPAC</h2>
             <div style="font-size: 12px; color: #64748b; margin-top: 4px;">สรุปรายการแยกตามหน้าแปลนก่อสร้างจริง พร้อมระบบตรวจสอบ Cross-Check 3D</div>
           </div>
           <div style="text-align: right; font-size: 11px; color: #475569; line-height: 1.4;">
@@ -2761,51 +2805,41 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
           </tbody>
         </table>
       `;
-      printContainer.innerHTML = headerHTML + tableHTML;
-      document.body.appendChild(printContainer);
+      paper.innerHTML = headerHTML + tableHTML;
+      document.getElementById("pdfPreviewModal").style.display = "flex";
+    }
+
+    /* บันทึกเป็น PDF ทันทีจากหน้ากระดาษพรีวิว */
+    function downloadPdfFromCurrentPaper() {
+      const paper = document.getElementById("a4ReportPaper");
+      const btn = document.getElementById("btnDownloadPdfDirect");
+      const originalText = btn.innerText;
+      btn.innerText = "⏳ กำลังสร้างไฟล์ PDF...";
+      btn.disabled = true;
 
       const opt = {
-        margin: [8, 8, 8, 8],
+        margin: [6, 6, 6, 6],
         filename: `SCG_CPAC_BOQ_Report_${new Date().toISOString().slice(0,10)}.pdf`,
         image: { type: 'jpeg', quality: 0.98 },
         html2canvas: {
           scale: 2,
           useCORS: true,
-          logging: false,
-          scrollX: 0,
-          scrollY: 0,
-          x: 0,
-          y: 0,
-          windowWidth: 1120
+          logging: false
         },
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' },
         pagebreak: { mode: ['css', 'legacy'] }
       };
 
-      const cleanup = () => {
-        if (document.body.contains(printContainer)) {
-          document.body.removeChild(printContainer);
-        }
-        if (document.body.contains(overlay)) {
-          document.body.removeChild(overlay);
-        }
-        window.scrollTo(prevScrollX, prevScrollY);
-        if (pdfBtn) {
-          pdfBtn.innerText = originalBtnText;
-          pdfBtn.disabled = false;
-        }
-      };
-
-      // หน่วงเวลาเล็กน้อยเพื่อให้ DOM และ Font เรนเดอร์ครบก่อนจับภาพ
-      setTimeout(() => {
-        html2pdf().set(opt).from(printContainer).save().then(() => {
-          cleanup();
-        }).catch(err => {
-          cleanup();
-          alert("เกิดข้อผิดพลาดในการสร้าง PDF ระบบจะเปิดหน้าต่างสั่งพิมพ์แทน");
-          window.print();
-        });
-      }, 350);
+      html2pdf().set(opt).from(paper).save().then(() => {
+        btn.innerText = originalText;
+        btn.disabled = false;
+      }).catch(err => {
+        console.error("html2pdf error:", err);
+        btn.innerText = originalText;
+        btn.disabled = false;
+        alert("ระบบดาวน์โหลดตรงขัดข้องเล็กน้อย จะเปิดหน้าต่างสั่งพิมพ์ของบราวเซอร์แทนเพื่อบันทึกเป็น PDF");
+        window.print();
+      });
     }
     /* ==========================================================
        3. ระบบ EXPORT เป็นไฟล์ JSON (Snapshot สำหรับโหลดทำต่อ)
