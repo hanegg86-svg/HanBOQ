@@ -402,6 +402,22 @@
     .btn-import-json { background: #475569; }
     .btn-import-json:hover { background: #334155; }
 
+    /* CSS สำหรับหน้าต่างพิมพ์ของเบราว์เซอร์ */
+    @media print {
+      body * {
+        visibility: hidden;
+      }
+      #printFriendlyContainer, #printFriendlyContainer * {
+        visibility: visible;
+      }
+      #printFriendlyContainer {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+      }
+    }
+
     /* Modal */
     .modal {
       display: none;
@@ -814,7 +830,7 @@
     <!-- แผงปุ่ม Export / Import 4 ปุ่มหลัก -->
     <div class="export-import-grid">
       <button type="button" class="btn-export-excel" onclick="exportExcel()">📊 Export เป็น Excel (.xlsx แท้)</button>
-      <button type="button" class="btn-export-pdf" onclick="exportPDF()">📄 Export เป็นรายงาน PDF (A4 แนวนอน)</button>
+      <button type="button" class="btn-export-pdf" id="btnExportPdf" onclick="exportPDF()">📄 Export เป็นรายงาน PDF (A4 แนวนอน)</button>
       <button type="button" class="btn-export-json" onclick="exportJSON()">💾 บันทึกโปรเจกต์ (Export JSON)</button>
       <button type="button" class="btn-import-json" onclick="document.getElementById('jsonFileInput').click()">📂 นำเข้าโปรเจกต์ (Import JSON)</button>
     </div>
@@ -2324,7 +2340,7 @@
       }
 
       const category = document.getElementById("drawCategorySelect").value;
-      const isRoofRelated = (category.includes("หลังคา") || category.includes("FSO") || category.includes("Dry Tech"));
+      const isRoofRelated = (category.includes("หลังคา") || category.includes("FSO") || cat.includes("Dry Tech"));
       const chosenProduct = document.getElementById("drawProductSelect").value;
       const pageNum = parseInt(document.getElementById("drawPageSelect").value);
       const slopeDeg = document.getElementById("modalSlopeDeg").value;
@@ -2933,6 +2949,7 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
 
     /* ==========================================================
        2. ระบบ EXPORT เป็นรายงาน PDF (A4 แนวนอน พร้อมจัดหน้า)
+       (อัปเดต: แนบ DOM ชั่วคราว + ระบบ Fallback Print)
        ========================================================== */
     function exportPDF() {
       if (!lastRawBOQItems || lastRawBOQItems.length === 0) {
@@ -2940,21 +2957,34 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
         return;
       }
 
-      // สร้างหน้ากระดาษจำลองสำหรับพิมพ์รายงาน PDF
+      const pdfBtn = document.getElementById("btnExportPdf");
+      const originalBtnText = pdfBtn ? pdfBtn.innerText : "";
+      if (pdfBtn) {
+        pdfBtn.innerText = "⏳ กำลังสร้างไฟล์ PDF...";
+        pdfBtn.disabled = true;
+      }
+
+      // สร้างคอนเทนเนอร์สำหรับเรนเดอร์เอกสาร A4 แนวนอน
       const printContainer = document.createElement("div");
-      printContainer.style.padding = "16px";
-      printContainer.style.fontFamily = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+      printContainer.id = "printFriendlyContainer";
+      printContainer.style.width = "1120px";
+      printContainer.style.padding = "24px";
+      printContainer.style.background = "#ffffff";
       printContainer.style.color = "#0f172a";
+      printContainer.style.position = "fixed";
+      printContainer.style.left = "-9999px";
+      printContainer.style.top = "0";
+      printContainer.style.zIndex = "-1000";
 
       const headerHTML = `
-        <div style="border-bottom: 2px solid #dc2626; padding-bottom: 8px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: flex-end;">
+        <div style="border-bottom: 3px solid #dc2626; padding-bottom: 12px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: flex-end;">
           <div>
-            <h2 style="margin: 0; color: #dc2626; font-size: 20px;">รายงานถอดแบบและประมาณการสั่งซื้อสินค้า SCG & คอนกรีต CPAC</h2>
-            <div style="font-size: 11px; color: #64748b; margin-top: 4px;">สรุปรายการแยกตามหน้าแปลนก่อสร้างจริง พร้อมระบบตรวจสอบ Cross-Check 3D</div>
+            <h2 style="margin: 0; color: #dc2626; font-size: 22px; font-weight: bold;">รายงานถอดแบบและประมาณการสั่งซื้อสินค้า SCG & คอนกรีต CPAC</h2>
+            <div style="font-size: 12px; color: #64748b; margin-top: 4px;">สรุปรายการแยกตามหน้าแปลนก่อสร้างจริง พร้อมระบบตรวจสอบ Cross-Check 3D</div>
           </div>
-          <div style="text-align: right; font-size: 11px; color: #475569;">
-            <div>วันที่ออกรายงาน: ${new Date().toLocaleDateString('th-TH')}</div>
-            <div>จำนวนรายการทั้งหมด: ${lastRawBOQItems.length} รายการ</div>
+          <div style="text-align: right; font-size: 11px; color: #475569; line-height: 1.4;">
+            <div><strong>วันที่ออกรายงาน:</strong> ${new Date().toLocaleDateString('th-TH')}</div>
+            <div><strong>จำนวนรายการทั้งหมด:</strong> ${lastRawBOQItems.length} รายการ</div>
           </div>
         </div>
       `;
@@ -3004,16 +3034,41 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
       `;
 
       printContainer.innerHTML = headerHTML + tableHTML;
+      document.body.appendChild(printContainer); // แปะลงใน DOM ชั่วคราวเพื่อให้คำนวณขนาดได้จริง
 
       const opt = {
         margin: [8, 8, 8, 8],
         filename: `SCG_CPAC_BOQ_Report_${new Date().toISOString().slice(0,10)}.pdf`,
         image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true },
+        html2canvas: { scale: 2, useCORS: true, logging: false },
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
       };
 
-      html2pdf().set(opt).from(printContainer).save();
+      if (typeof html2pdf !== "undefined") {
+        html2pdf().set(opt).from(printContainer).save().then(() => {
+          document.body.removeChild(printContainer);
+          if (pdfBtn) {
+            pdfBtn.innerText = originalBtnText;
+            pdfBtn.disabled = false;
+          }
+        }).catch(err => {
+          console.warn("สลับไปใช้โหมดพิมพ์เอกสารของระบบ:", err);
+          document.body.removeChild(printContainer);
+          if (pdfBtn) {
+            pdfBtn.innerText = originalBtnText;
+            pdfBtn.disabled = false;
+          }
+          window.print();
+        });
+      } else {
+        // Fallback: ถ้าไลบรารียังไม่พร้อม ให้ใช้ window.print() ทันที
+        if (pdfBtn) {
+          pdfBtn.innerText = originalBtnText;
+          pdfBtn.disabled = false;
+        }
+        window.print();
+        document.body.removeChild(printContainer);
+      }
     }
 
     /* ==========================================================
