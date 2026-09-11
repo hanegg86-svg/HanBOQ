@@ -402,22 +402,6 @@
     .btn-import-json { background: #475569; }
     .btn-import-json:hover { background: #334155; }
 
-    /* CSS สำหรับหน้าต่างพิมพ์ของเบราว์เซอร์ */
-    @media print {
-      body * {
-        visibility: hidden;
-      }
-      #printFriendlyContainer, #printFriendlyContainer * {
-        visibility: visible;
-      }
-      #printFriendlyContainer {
-        position: absolute;
-        left: 0;
-        top: 0;
-        width: 100%;
-      }
-    }
-
     /* Modal */
     .modal {
       display: none;
@@ -1424,7 +1408,7 @@
           checkPoint({ x: shape.x, y: shape.y });
           checkPoint({ x: shape.x + shape.w, y: shape.y });
           checkPoint({ x: shape.x + shape.w, y: shape.y + shape.h });
-          checkPoint({ x: shape.x, y: shape.y + shape.h });
+          checkPoint({ x: shape.x, y: shape.h });
         } else if (shape.type === 'polygon' && shape.points) {
           shape.points.forEach(checkPoint);
         }
@@ -2948,8 +2932,7 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
     }
 
     /* ==========================================================
-       2. ระบบ EXPORT เป็นรายงาน PDF (A4 แนวนอน พร้อมจัดหน้า)
-       (อัปเดต: แนบ DOM ชั่วคราว + ระบบ Fallback Print)
+       2. ระบบ EXPORT เป็นรายงาน PDF (A4 แนวนอน คมชัด ไม่ขาวโพลน 100%)
        ========================================================== */
     function exportPDF() {
       if (!lastRawBOQItems || lastRawBOQItems.length === 0) {
@@ -2964,17 +2947,40 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
         pdfBtn.disabled = true;
       }
 
-      // สร้างคอนเทนเนอร์สำหรับเรนเดอร์เอกสาร A4 แนวนอน
+      // 1. สร้าง Fullscreen Loading Overlay เพื่อบังสายตาตอน Canvas เรนเดอร์
+      const overlay = document.createElement("div");
+      overlay.style.position = "fixed";
+      overlay.style.left = "0";
+      overlay.style.top = "0";
+      overlay.style.width = "100%";
+      overlay.style.height = "100%";
+      overlay.style.backgroundColor = "rgba(15, 23, 42, 0.75)";
+      overlay.style.backdropFilter = "blur(4px)";
+      overlay.style.zIndex = "999999";
+      overlay.style.display = "flex";
+      overlay.style.flexDirection = "column";
+      overlay.style.justifyContent = "center";
+      overlay.style.alignItems = "center";
+      overlay.style.color = "#ffffff";
+      overlay.innerHTML = `
+        <div style="font-size: 20px; font-weight: bold; margin-bottom: 8px;">⏳ กำลังสร้างเอกสารรายงาน PDF...</div>
+        <div style="font-size: 14px; opacity: 0.85;">กรุณารอสักครู่ ระบบกำลังจัดหน้ากระดาษ A4 แนวนอน</div>
+      `;
+      document.body.appendChild(overlay);
+
+      // 2. สร้าง Container ตารางรายงาน วางที่พิกัด 0, 0 แท้จริง (ไม่ผลักไป -9999px)
       const printContainer = document.createElement("div");
-      printContainer.id = "printFriendlyContainer";
-      printContainer.style.width = "1120px";
-      printContainer.style.padding = "24px";
-      printContainer.style.background = "#ffffff";
-      printContainer.style.color = "#0f172a";
+      printContainer.id = "printPdfContainer";
       printContainer.style.position = "fixed";
-      printContainer.style.left = "-9999px";
+      printContainer.style.left = "0";
       printContainer.style.top = "0";
-      printContainer.style.zIndex = "-1000";
+      printContainer.style.width = "1120px";
+      printContainer.style.background = "#ffffff";
+      printContainer.style.padding = "24px";
+      printContainer.style.boxSizing = "border-box";
+      printContainer.style.color = "#0f172a";
+      printContainer.style.fontFamily = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+      printContainer.style.zIndex = "999998"; // อยู่ใต้ Overlay พอดี ทำให้ไม่รกตา
 
       const headerHTML = `
         <div style="border-bottom: 3px solid #dc2626; padding-bottom: 12px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: flex-end;">
@@ -3000,7 +3006,7 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
           .join("<br>");
 
         rowsHTML += `
-          <tr style="border-bottom: 1px solid #e2e8f0; font-size: 10px; background: ${i % 2 === 0 ? '#ffffff' : '#f8fafc'};">
+          <tr style="border-bottom: 1px solid #cbd5e1; font-size: 10px; background: ${i % 2 === 0 ? '#ffffff' : '#f8fafc'};">
             <td style="padding: 6px 8px; font-weight: bold; color: #b91c1c;">${row.category || "-"}</td>
             <td style="padding: 6px 8px; text-align: center; font-weight: bold;">หน้า ${page}</td>
             <td style="padding: 6px 8px; font-weight: bold;">${row.item_name || "-"}</td>
@@ -3016,7 +3022,7 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
       const tableHTML = `
         <table style="width: 100%; border-collapse: collapse; text-align: left;">
           <thead>
-            <tr style="background: #f1f5f9; border-bottom: 2px solid #cbd5e1; font-size: 11px;">
+            <tr style="background: #f1f5f9; border-bottom: 2px solid #94a3b8; font-size: 11px;">
               <th style="padding: 8px;">หมวดงาน</th>
               <th style="padding: 8px; text-align: center;">หน้า</th>
               <th style="padding: 8px;">รายการงานตามแบบ</th>
@@ -3034,41 +3040,43 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
       `;
 
       printContainer.innerHTML = headerHTML + tableHTML;
-      document.body.appendChild(printContainer); // แปะลงใน DOM ชั่วคราวเพื่อให้คำนวณขนาดได้จริง
+      document.body.appendChild(printContainer);
 
       const opt = {
         margin: [8, 8, 8, 8],
         filename: `SCG_CPAC_BOQ_Report_${new Date().toISOString().slice(0,10)}.pdf`,
         image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true, logging: false },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
+        html2canvas: { 
+          scale: 2, 
+          useCORS: true, 
+          scrollX: 0, 
+          scrollY: 0,
+          windowWidth: 1120
+        },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' },
+        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
       };
 
-      if (typeof html2pdf !== "undefined") {
+      // หน่วงเวลา 250ms เพื่อให้ DOM และ Font ภาษาไทยเรนเดอร์ลงในตารางครบ 100%
+      setTimeout(() => {
         html2pdf().set(opt).from(printContainer).save().then(() => {
           document.body.removeChild(printContainer);
+          document.body.removeChild(overlay);
           if (pdfBtn) {
             pdfBtn.innerText = originalBtnText;
             pdfBtn.disabled = false;
           }
         }).catch(err => {
-          console.warn("สลับไปใช้โหมดพิมพ์เอกสารของระบบ:", err);
+          console.warn("PDF generation warning, fallback to print:", err);
           document.body.removeChild(printContainer);
+          document.body.removeChild(overlay);
           if (pdfBtn) {
             pdfBtn.innerText = originalBtnText;
             pdfBtn.disabled = false;
           }
           window.print();
         });
-      } else {
-        // Fallback: ถ้าไลบรารียังไม่พร้อม ให้ใช้ window.print() ทันที
-        if (pdfBtn) {
-          pdfBtn.innerText = originalBtnText;
-          pdfBtn.disabled = false;
-        }
-        window.print();
-        document.body.removeChild(printContainer);
-      }
+      }, 250);
     }
 
     /* ==========================================================
