@@ -624,7 +624,6 @@
       justify-content: center;
       align-items: flex-start;
     }
-    /* แผ่นกระดาษ A4 แนวนอนจำลอง (สเกลมาตรฐาน) */
     .a4-landscape-page {
       background: #ffffff;
       width: 1120px;
@@ -661,7 +660,7 @@
 
   <!-- เลือกวัสดุและอัปโหลดเอกสาร -->
   <div class="card">
-    <label>เลือกสเปกหรือวัสดุทดแทน (ระบบรองรับ Multi-Page Scan แยกหน้า, Auto-Edge Panning, OSNAP, Ortho Lock และ Cross-Check 3D):</label>
+    <label>เลือกสเปกหรือวัสดุทดแทน (ระบบรองรับ Multi-Drawing ในหน้าเดียว, แยกหน้าอัตโนมัติ, Auto-Edge Panning, OSNAP, Ortho Lock และ Cross-Check 3D):</label>
     <div class="grid-options">
       <!-- 1. คอนกรีตและแผ่นพื้นโครงสร้าง CPAC -->
       <div>
@@ -763,7 +762,7 @@
         </select>
       </div>
     </div>
-    <label for="planFile">1. แบบแปลนพื้น (Floor Plan - PDF/รูปภาพ หลายหน้าได้):</label>
+    <label for="planFile">1. แบบแปลน (Floor Plan & Roof Plan - PDF/รูปภาพ มีหลายผังในหน้าเดียวหรือหลายหน้าได้):</label>
     <input type="file" id="planFile" accept="image/*,application/pdf" onchange="onFileSelected()">
 
     <label for="sectionFile" style="color: #0369a1;">📐 2. แบบรูปตัด / รูปด้าน (Section & Elevation - สำหรับตรวจสอบความสูงผนัง & Slope 3D):</label>
@@ -777,21 +776,21 @@
       <label for="customInstructionPrompt" style="color: #c2410c; margin-bottom: 4px;">
         💬 คำสั่งเฉพาะเจาะจงสำหรับ AI (สั่งโฟกัสกรอบสี จุด หรือเงื่อนไขพิเศษในแบบ):
       </label>
-      <textarea id="customInstructionPrompt" placeholder="เช่น: วัดพื้นที่หลังคาตามกรอบสีแดงในแบบ, ถอดเฉพาะงานผนังห้องนอน 1, หรือให้สแกนทุกชั้นตั้งแต่หน้า 1 ถึงหน้าสุดท้าย"></textarea>
+      <textarea id="customInstructionPrompt" placeholder="เช่น: หน้านี้มีทั้งแปลนพื้นและแปลนหลังคา ให้ถอดทั้ง 2 ส่วนแยกรายการกันให้ครบถ้วน"></textarea>
 
       <div style="font-size: 12px; color: #7c2d12; font-weight: 600;">⚡ ปุ่มคำสั่งด่วน (คลิกเพื่อเติมข้อความ):</div>
       <div class="prompt-chip-group">
+        <span class="prompt-chip" onclick="applyQuickPrompt('สแกนแยกทั้งแปลนพื้นและแปลนหลังคาที่อยู่ในหน้าเดียวกันให้ครบทุกหมวดงาน')">📑 สแกนทั้งพื้น & หลังคาในหน้าเดียว</span>
         <span class="prompt-chip" onclick="applyQuickPrompt('วัดพื้นที่หลังคาตามกรอบสีแดงในแบบ')">🎯 วัดตามกรอบสีแดง</span>
         <span class="prompt-chip" onclick="applyQuickPrompt('วัดพื้นที่ตามเส้นประ/กรอบไฮไลต์สีน้ำเงินในแบบ')">🔷 วัดตามกรอบสีน้ำเงิน</span>
         <span class="prompt-chip" onclick="applyQuickPrompt('ถอดแบบและคำนวณเฉพาะงานหลังคาและฉนวนกันความร้อน')">🏠 เน้นเฉพาะงานหลังคา & ฉนวน</span>
-        <span class="prompt-chip" onclick="applyQuickPrompt('ถอดแบบเฉพาะงานโครงสร้างคอนกรีตและแผ่นพื้น CPAC Hollow Core แยกแสดงทีละชั้น')">🏢 เน้นโครงสร้าง CPAC แยกแต่ละชั้น</span>
-        <span class="prompt-chip" onclick="applyQuickPrompt('สแกนและถอดปริมาณงานทุกหน้าของเอกสารให้ครบถ้วน ห้ามรวมสินค้าข้ามหน้ากัน')">📑 สแกนแยกแสดงผลทีละหน้า</span>
+        <span class="prompt-chip" onclick="applyQuickPrompt('ถอดแบบเฉพาะงานโครงสร้างคอนกรีตและแผ่นพื้น CPAC Hollow Core แยกแสดงทีละชั้น')">🏢 เน้นโครงสร้าง CPAC</span>
         <span class="prompt-chip" style="background: #f1f5f9; color: #475569; border-color: #cbd5e1;" onclick="clearQuickPrompt()">ล้างคำสั่ง</span>
       </div>
     </div>
 
     <div class="btn-group">
-      <button id="processBtn" onclick="processDocuments()">เริ่มวิเคราะห์และ Cross-Check 3D (แยกแสดงผลทีละหน้าอัตโนมัติ)</button>
+      <button id="processBtn" onclick="processDocuments()">เริ่มวิเคราะห์และ Cross-Check 3D (สแกนครบทุกผังในหน้าเดียว)</button>
       <button id="drawBtn" class="btn-draw" onclick="openManualDrawModal(null)" disabled>🎯 สร้างรายการใหม่ด้วย Precision Geometry Tool</button>
       <button id="recalcBtn" class="btn-recalc" onclick="recalculateWithNewSpecs()" disabled>🔄 คำนวณใหม่ตามสเปกที่เลือก</button>
       <button type="button" class="btn-import" onclick="document.getElementById('jsonFileInput').click()">📂 นำเข้าโปรเจกต์เดิม (Import JSON)</button>
@@ -801,8 +800,8 @@
   <!-- ตาราง BOQ -->
   <div class="card" id="resultCard" style="display: none;">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-      <h3 style="margin: 0;">รายการประเมินปริมาณงานและสินค้า SCG & คอนกรีต CPAC (แยกแถวรายหน้า)</h3>
-      <span style="font-size: 12px; color: #64748b;">💡 แต่ละแถวผูกกับหน้าที่พบโดยตรง กด "ดู/แก้ไขในแบบ" เพื่อกระโดดไปหน้านั้นได้ทันที</span>
+      <h3 style="margin: 0;">รายการประเมินปริมาณงานและสินค้า SCG & คอนกรีต CPAC (แยกแถวรายผัง/หมวดงาน)</h3>
+      <span style="font-size: 12px; color: #64748b;">💡 แต่ละแถวจะโฟกัสตำแหน่งผังจริงในแบบ กด "ดู/แก้ไขในแบบ" เพื่อกระโดดไปกรอบผังนั้นได้ทันที</span>
     </div>
     <div class="table-container" id="boqPrintArea">
       <table id="boqTable">
@@ -811,7 +810,7 @@
             <th>หมวดงาน</th>
             <th>หน้าที่พบ</th>
             <th>รหัสอ้างอิง</th>
-            <th>รายการงานตามแบบ (แยกชั้น/โซน)</th>
+            <th>รายการงานตามแบบ (แยกชั้น/ผัง/โซน)</th>
             <th>ปริมาณสุทธิ (แก้ไขได้)</th>
             <th>สินค้า SCG / CPAC ที่แนะนำ</th>
             <th>ประมาณการสั่งซื้อจริง (พร้อมแพ็กเกจระบบ)</th>
@@ -945,7 +944,6 @@
     let detectedTotalPages = 1;
 
     let editingItemId = null;
-    // คำสั่งเฉพาะเจาะจง
     function applyQuickPrompt(text) {
       const promptInput = document.getElementById("customInstructionPrompt");
       if (promptInput.value.trim() === "") {
@@ -957,7 +955,6 @@
     function clearQuickPrompt() {
       document.getElementById("customInstructionPrompt").value = "";
     }
-    // มาตรฐานความชันขั้นต่ำ
     const SCG_ROOF_MIN_SLOPE = {
       "metal_lumax": 0.3,
       "metal_snaplock": 3,
@@ -980,7 +977,6 @@
       if (p.includes("prestige") || p.includes("เพรสทีจ")) return 25;
       return 15;
     }
-    // แคตตาล็อกสินค้า SCG และ CPAC
     const SCG_PRODUCT_CATALOG = {
       "งานหลังคา": [
         "SCG Roof Metal Sheet ลอน LumaX (รับความชันต่ำสุด 0.3 องศา)",
@@ -1046,7 +1042,6 @@
         "ไม้ระแนงฝ้า SCG Smartwood"
       ]
     };
-    // ตัวแปร Geometry & Measurement
     let currentDrawPageImg = null;
     let currentToolMode = "area";
     let pixelsPerMeter = null;
@@ -1292,7 +1287,6 @@
         detectedTotalPages = 1;
       }
     }
-    // ฟังก์ชัน getPageImage ถมสีขาวบริสุทธิ์ (#FFFFFF) ป้องกันหน้าแปลนดำ
     async function getPageImage(pageNum) {
       if (pdfDocumentInstance) {
         const pageIndex = Math.min(Math.max(1, pageNum || 1), pdfDocumentInstance.numPages);
@@ -1730,17 +1724,14 @@
       const ctx = canvas.getContext("2d");
       canvas.width = currentDrawPageImg.width;
       canvas.height = currentDrawPageImg.height;
-      // ถมพื้นหลังขาวบริสุทธิ์ก่อนวาดรูปเสมอ
       ctx.fillStyle = "#ffffff";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
-      // วาดภาพแบบแปลน
       ctx.drawImage(currentDrawPageImg, 0, 0);
       const cat = document.getElementById("drawCategorySelect").value;
       const isRoofRelated = (cat.includes("หลังคา") || cat.includes("FSO") || cat.includes("Dry Tech"));
       const mType = document.getElementById("measureTypeSelect").value;
       const currentSlopeDeg = parseFloat(document.getElementById("modalSlopeDeg").value) || 0;
       const slopeMultiplier = getSlopeMultiplier(currentSlopeDeg);
-      // วาดเส้น Calibration
       if (calibrationLine) {
         ctx.save();
         ctx.strokeStyle = "#8b5cf6";
@@ -1750,7 +1741,7 @@
         ctx.lineTo(calibrationLine.x2, calibrationLine.y2);
         ctx.stroke();
         const midX = (calibrationLine.x1 + calibrationLine.x2) / 2;
-        const midY = (calibrationLine.x1 + calibrationLine.x2) / 2;
+        const midY = (calibrationLine.y1 + calibrationLine.y2) / 2;
         ctx.fillStyle = "#8b5cf6";
         ctx.fillRect(midX - 50, midY - 26, 100, 24);
         ctx.fillStyle = "#ffffff";
@@ -1758,7 +1749,6 @@
         ctx.fillText(`📏 ${calibrationLine.meters} ม.`, midX - 35, midY - 9);
         ctx.restore();
       }
-      // วาดเส้นขณะลาก Calibrate หรือ Line วัดความยาว
       if (currentDragLine) {
         ctx.save();
         ctx.strokeStyle = (currentToolMode === "line") ? "#f59e0b" : "#a855f7";
@@ -1770,12 +1760,10 @@
         ctx.stroke();
         ctx.restore();
       }
-      // ฉากหลัง Dimming ปรับให้สลัวเพียงเล็กน้อย (alpha: 0.15)
       if (measuredShapes.length > 0 || measuredLines.length > 0 || currentDragBox || currentPolygonPoints.length > 0) {
         ctx.fillStyle = "rgba(15, 23, 42, 0.15)";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
       }
-      // วาดเส้นวัดความยาวที่บันทึกไว้
       measuredLines.forEach((line) => {
         ctx.save();
         ctx.strokeStyle = "#f59e0b";
@@ -1793,7 +1781,6 @@
         ctx.fillText(`📏 ${line.lengthM.toFixed(2)} ม.`, midX - 38, midY - 7);
         ctx.restore();
       });
-      // วาดชิ้นงานทั้งหมดที่บันทึกไว้
       measuredShapes.forEach((shape, idx) => {
         ctx.save();
         if (shape.type === 'polygon' && shape.points) {
@@ -1856,7 +1843,6 @@
         }
         ctx.restore();
       });
-      // วาด Polygon ที่กำลังคลิกต่อจุดอยู่
       if (currentPolygonPoints.length > 0) {
         ctx.save();
         ctx.strokeStyle = "#38bdf8";
@@ -1887,7 +1873,6 @@
         }
         ctx.restore();
       }
-      // วาดสี่เหลี่ยมที่กำลังคลิกลากอยู่
       if (currentDragBox) {
         ctx.drawImage(currentDrawPageImg, currentDragBox.x, currentDragBox.y, currentDragBox.w, currentDragBox.h, currentDragBox.x, currentDragBox.y, currentDragBox.w, currentDragBox.h);
         ctx.strokeStyle = "#38bdf8";
@@ -1917,7 +1902,6 @@
           ctx.fillText(dragLabel, currentDragBox.x + 6, currentDragBox.y - 8);
         }
       }
-      // วาด Snap Target Highlight (วงแหวนสีเขียวมะนาว OSNAP)
       if (activeSnappedPoint) {
         ctx.save();
         ctx.strokeStyle = "#10b981";
@@ -2162,9 +2146,6 @@
       redrawCanvas();
       document.getElementById("drawStatus").innerText = "ล้างข้อมูลเรียบร้อยแล้ว ลากกรอบหรือคลิก Polygon ใหม่เพื่อวัด";
     }
-    /* ==========================================================
-       บันทึกและอัปเดตทับแถวเดิม (SAVE & APPLY IN-PLACE)
-       ========================================================== */
     async function saveAndApplyInPlaceMeasurement() {
       const mType = document.getElementById("measureTypeSelect").value;
       const isLineMode = measuredLines.length > 0;
@@ -2318,8 +2299,9 @@
         statusElem.innerText = "เกิดข้อผิดพลาดในการคำนวณ กรุณาลองใหม่อีกครั้ง";
       }
     }
+
     /* ==========================================================
-       ระบบประมวลผลอัตโนมัติ CROSS-CHECK 3D (แยก 1 หน้า = 1 บรรทัด)
+       ระบบประมวลผลอัตโนมัติ CROSS-CHECK 3D & MULTI-DRAWING SCAN
        ========================================================== */
     async function processDocuments() {
       const apiKey = document.getElementById("apiKey").value.trim();
@@ -2365,7 +2347,7 @@
           const specPart = await fileToGenerativePart(specFile);
           parts.push(specPart);
         }
-        statusDiv.innerText = `Gemini กำลังสแกนเอกสารแปลนทั้งหมด ${detectedTotalPages} หน้า และแยกผลลัพธ์เป็นรายหน้า...`;
+        statusDiv.innerText = `Gemini กำลังสแกนทุกผัง (ทั้งแปลนพื้น แปลนหลังคา และรูปตัด) ในเอกสารทั้งหมด ${detectedTotalPages} หน้า...`;
         let customPromptSection = "";
         if (customInstruction) {
           customPromptSection = `
@@ -2373,48 +2355,51 @@
 """
 ${customInstruction}
 """
-* ให้โฟกัสการถอดแบบตามคำสั่งข้างต้นนี้เป็นอันดับ 1
+* ให้ปฏิบัติตามคำสั่งข้างต้นนี้อย่างเคร่งครัด
 `;
         }
         const promptText = `
-คุณเป็น Quantity Surveyor (QS) ระดับสูงประจำเครือ SCG และ CPAC
+คุณเป็น Chief Quantity Surveyor (QS) ระดับสูงประจำเครือ SCG และ CPAC
 หน้าที่ของคุณคือการวิเคราะห์แบบแปลนก่อสร้าง พร้อมทำ [Cross-Check ตรวจสอบความสอดคล้อง 3 มิติ (Plan ↔ Section ↔ Elevation)]
-[กฎเหล็กสำคัญที่สุด: แยกแสดงผลเป็น 1 หน้า = 1 รายการ (STRICT PER-PAGE LINE ITEMIZATION)]:
-เอกสารแบบแปลนที่แนบมานี้มีจำนวนทั้งหมด ${detectedTotalPages} หน้า:
-1. คุณต้องตรวจสอบและอ่านแปลน "ครบทุกหน้าตั้งแต่หน้า 1 ถึงหน้า ${detectedTotalPages}"
-2. [ห้ามรวมสินค้าข้ามหน้าเด็ดขาด]: หากพบสินค้าเดียวกัน (เช่น แผ่นพื้น CPAC Hollow Core, ฉนวน STAY COOL หรือผนัง Q-CON) ในหลายหน้า (เช่น ชั้น 1 พบที่หน้า 2, ชั้น 2 พบที่หน้า 3):
-   - "ต้องแยกออกเป็นคนละรายการ (คนละแถวใน JSON Array)" ห้ามบวกรวมกันเป็นบรรทัดเดียวเด็ดขาด!
-   - ในฟิลด์ item_name ให้ระบุชื่อชั้นหรือโซนกำกับไว้เสมอ เช่น "แผ่นพื้นสำเร็จรูป CPAC Hollow Core (ชั้น 1)", "แผ่นพื้นสำเร็จรูป CPAC Hollow Core (ชั้น 2)"
-   - ในฟิลด์ source_location.page_number ต้องระบุเลขหน้าจริงที่พบรายการนั้นอย่างแม่นยำ (เช่น รายการของชั้น 1 ระบุ 2, รายการของชั้น 2 ระบุ 3)
-   - การคำนวณ order_estimate ให้คำนวณเฉพาะยอดของหน้านั้นๆ แยกเป็นอิสระ เพื่อให้ผู้ใช้สามารถตรวจสอบและแก้ไขเฉพาะหน้านั้นได้
+[กฎเหล็กสำคัญที่สุด: ตรวจสแกนครบทุกผังในแต่ละหน้า (MULTI-DRAWING / MULTI-ZONE SCAN)]:
+ในแผ่นกระดาษแปลนก่อสร้าง 1 แผ่น (หรือ 1 หน้า) มักมีหลายผังย่อยจัดวางอยู่ร่วมกัน เช่น:
+- โซนที่ 1: แปลนพื้น (Floor Plan)
+- โซนที่ 2: แปลนหลังคา (Roof Plan)
+- โซนที่ 3: แบบขยาย หรือ รูปด้าน/รูปตัด
+** ข้อกำหนดเด็ดขาด **:
+1. หากในหน้าใดมีทั้ง "แปลนพื้น" และ "แปลนหลังคา" (หรือผังย่อยหลายอันในแผ่นเดียวกัน) คุณต้องถอดปริมาณงาน "แยกออกเป็นคนละรายการ/คนละแถวใน JSON Array อย่างครบถ้วน" ห้ามข้ามงานหลังคาหรือเลือกถอดแค่งานพื้นเด็ดขาด!
+2. ในฟิลด์ item_name ต้องระบุผังหรือส่วนงานให้ชัดเจน เช่น:
+   - "งานโครงสร้างพื้นและแผ่นพื้น CPAC Hollow Core (แปลนพื้น)"
+   - "งานมุงหลังคาและฉนวนกันความร้อน (แปลนหลังคา)"
+   - "งานผนังก่อและฉาบ (แปลนพื้น)"
+3. ในฟิลด์ source_location.box_2d [ymin, xmin, ymax, xmax] (สเกล 0-1000): ต้องระบุกรอบพิกัดของผังนั้นๆ ให้ถูกต้อง เช่น งานหลังคาให้ตีกรอบเฉพาะโซนแปลนหลังคา ไม่ใช่คลุมทั้งหน้า
+4. หากเอกสารมีหลายหน้า ให้สแกนครบทุกหน้าตั้งแต่หน้า 1 ถึง ${detectedTotalPages}
 ${customPromptSection}
-[แนวทาง Cross-Check 3D เพื่อความแม่นยำสูงสุด]:
-1. หากมีไฟล์รูปตัด (Section): ให้ตรวจสอบระดับความสูงพื้นถึงใต้ท้องคาน (Clear Height) หรือความสูงพื้นถึงฝ้าจริง ห้ามเดา 2.8 หรือ 3.0 เมตร และนำความสูงจริงนี้มาคูณกับความยาวผนังที่ถอดได้จาก Floor Plan ของแต่ละชั้น
-2. หากมีไฟล์รูปด้าน (Elevation): ให้ตรวจสอบองศาความชันหลังคาจริง หากในรูปด้านระบุ Slope ต่างจากค่าเริ่มต้น (${slopeDeg}°) ให้อิงตามรูปด้านจริงและบันทึกในหมายเหตุ
-3. งานคอนกรีต/โครงสร้าง CPAC: "${concreteChoice}" (หากพบงานพื้นโครงสร้าง ให้แปลงเป็น CPAC Hollow Core + Topping หนา 5 ซม. + ตะแกรง Wire Mesh 4 มม. @ 20 ซม.)
-4. งานหลังคา: สเปก "${roofChoice}" (Top View ต้องนำพื้นที่ราบมาหารด้วย cos(องศาหลังคา) ก่อนคิดสินค้า)
-5. ฉนวนปูเหนือฝ้า: "${ceilingInsChoice}" (SCG STAY COOL อิงพื้นที่ราบฝ้าเพดาน ม้วนละ 2.40 ตร.ม. เผื่อ 5%)
-6. ฉนวนใต้หลังคา: "${roofInsChoice}" (SCG FSO อิงพื้นที่ลาดเอียงหลังคา)
-7. หากพบแนวสันหลังคา/ตะเข้สัน: ให้คิดระบบครอบแห้ง SCG Dry Tech System (ม้วนละ 3 ม.) พ่วงกับกระเบื้องครอบ
-8. สเปกผนัง: "${wallChoice}", พื้น: "${floorChoice}", ฝ้า: "${ceilingChoice}", ไม้สังเคราะห์: "${woodChoice}"
-[ข้อกำหนดสำคัญมากสำหรับการตอบ order_estimate]:
+[สเปกวัสดุที่ผู้ใช้เลือก]:
+1. คอนกรีต/โครงสร้าง CPAC: "${concreteChoice}" (หากพบงานพื้นโครงสร้าง ให้แปลงเป็น CPAC Hollow Core + Topping หนา 5 ซม. + ตะแกรง Wire Mesh 4 มม. @ 20 ซม.)
+2. งานหลังคา: สเปก "${roofChoice}" (ต้องนำพื้นที่ราบมาหารด้วย cos(${slopeDeg}°) ก่อนคิดปริมาณสั่งซื้อกระเบื้อง/แผ่นหลังคา)
+3. ฉนวนปูเหนือฝ้า: "${ceilingInsChoice}" (SCG STAY COOL อิงพื้นที่ราบฝ้าเพดาน ม้วนละ 2.40 ตร.ม. เผื่อ 5%)
+4. ฉนวนใต้หลังคา: "${roofInsChoice}" (SCG FSO อิงพื้นที่ลาดเอียงหลังคา)
+5. หากพบแนวสันหลังคา/ตะเข้สัน: ให้คิดระบบครอบแห้ง SCG Dry Tech System (ม้วนละ 3 ม.) พ่วงกับกระเบื้องครอบ
+6. สเปกผนัง: "${wallChoice}", พื้น: "${floorChoice}", ฝ้า: "${ceilingChoice}", ไม้สังเคราะห์: "${woodChoice}"
+[ข้อกำหนดรูปแบบการตอบ order_estimate]:
 ให้แตกรายการสินค้าและอุปกรณ์เสริมเป็นแต่ละบรรทัด โดยขึ้นต้นด้วยเครื่องหมายขีด (- ) ทุกบรรทัด ห้ามเขียนติดเป็นก้อนยาวเด็ดขาด
 ส่งคำตอบกลับมาเป็น JSON Array เท่านั้น:
 [
   {
-    "category": "หมวดงาน",
+    "category": "หมวดงาน (เช่น งานโครงสร้างและคอนกรีต CPAC, งานหลังคา, งานฉนวนใต้หลังคา (SCG FSO), งานผนัง)",
     "code_ref": "รหัสสัญลักษณ์บนแบบ หรือ -",
-    "item_name": "ชื่อรายการงานตามแบบแปลน (ต้องระบุชั้น/ส่วน เช่น ชั้น 1 หรือ ชั้น 2)",
-    "net_quantity": "ปริมาณสุทธิเฉพาะของหน้านั้น (ระบุ ตร.ม., ม., หรือ คิว)",
+    "item_name": "ชื่อรายการงานตามแบบแปลน (ระบุผังชัดเจน เช่น แปลนพื้น หรือ แปลนหลังคา)",
+    "net_quantity": "ปริมาณสุทธิ (ระบุ ตร.ม., ม., หรือ คิว)",
     "scg_product": "ชื่อสินค้า SCG หรือ CPAC ที่แนะนำ/ทดแทน",
     "order_estimate": "- สินค้าหลัก 1 ...\\n- อุปกรณ์เสริม 2 ...",
     "confidence_score": 98,
-    "calculation_note": "สูตรคำนวณเฉพาะของหน้านี้ และสัดส่วนเผื่อเศษ",
-    "verification_method": "สรุปผลการตรวจสอบเฉพาะของหน้านี้ และที่มาตัวเลขอย่างละเอียด",
+    "calculation_note": "สูตรคำนวณเฉพาะรายการนี้ และสัดส่วนเผื่อเศษ",
+    "verification_method": "สรุปผลการตรวจสอบ ที่มาตัวเลข และระบุโซนผังที่ตรวจพบบนหน้านั้น",
     "source_location": {
-      "page_number": 2,
-      "box_2d": [100, 100, 500, 500],
-      "location_description": "คำอธิบายตำแหน่งบนหน้านี้"
+      "page_number": 1,
+      "box_2d": [ymin, xmin, ymax, xmax],
+      "location_description": "คำอธิบายตำแหน่งโซนผังบนหน้านี้"
     }
   }
 ]
@@ -2433,7 +2418,6 @@ ${customPromptSection}
         const data = await response.json();
         const rawContent = data.candidates[0].content.parts[0].text;
         const boqItems = JSON.parse(rawContent);
-        // เรียงลำดับรายการตามเลขหน้า (Page 1 -> 2 -> 3 ...)
         boqItems.sort((a, b) => {
           const pA = (a.source_location && a.source_location.page_number) ? a.source_location.page_number : 1;
           const pB = (b.source_location && b.source_location.page_number) ? b.source_location.page_number : 1;
@@ -2445,7 +2429,7 @@ ${customPromptSection}
         lastRawBOQItems = boqItems;
         recalcBtn.disabled = false;
         renderBOQTable(lastRawBOQItems);
-        statusDiv.innerText = `ประมวลผลสำเร็จเรียบร้อย! แยกแสดงผลเป็น ${boqItems.length} รายการตามหน้าแปลนจริง`;
+        statusDiv.innerText = `ประมวลผลสำเร็จเรียบร้อย! ถอดปริมาณงานได้ทั้งหมด ${boqItems.length} รายการ (ครอบคลุมทั้งแปลนพื้นและหลังคา)`;
       } catch (err) {
         statusDiv.innerText = "เกิดข้อผิดพลาดในการประมวลผล กรุณาลองใหม่อีกครั้ง";
       } finally {
@@ -2462,11 +2446,11 @@ ${customPromptSection}
       const recalcBtn = document.getElementById("recalcBtn");
       const slopeDeg = document.getElementById("roofSlopeDeg").value;
       recalcBtn.disabled = true;
-      statusDiv.innerText = "กำลังคำนวณปริมาณสินค้าใหม่ตามสเปกที่เลือก (คงการแยกรายหน้าเดิม)...";
+      statusDiv.innerText = "กำลังคำนวณปริมาณสินค้าใหม่ตามสเปกที่เลือก...";
       try {
         const promptText = `
 คุณเป็น Quantity Surveyor ประจำ SCG และ CPAC
-นี่คือรายการปริมาณงานเดิมที่แยกรายหน้าไว้แล้ว:
+นี่คือรายการปริมาณงานเดิม:
 ${JSON.stringify(lastRawBOQItems, null, 2)}
 ผู้ใช้ต้องการเปลี่ยนสเปกวัสดุใหม่ดังนี้:
 - หลังคา: "${document.getElementById("roofOption").value}" (ความชัน ${slopeDeg} องศา)
@@ -2478,7 +2462,7 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
 - ฝ้า: "${document.getElementById("ceilingOption").value}"
 - ไม้สังเคราะห์: "${document.getElementById("woodOption").value}"
 [สำคัญมาก]:
-1. ต้องคงการแยกรายหน้าเดิม ห้ามยุบรวมรายการข้ามหน้ากันเป็นอันขาด
+1. ต้องคงรายการเดิมทุกแถว (ทั้งงานพื้น งานหลังคา และงานอื่นๆ)
 2. ในฟิลด์ order_estimate ให้จัดรูปแบบแยกแต่ละรายการสินค้าขึ้นบรรทัดใหม่ด้วยเครื่องหมายขีด (- ) ทุกบรรทัด
 ส่งผลลัพธ์กลับมาเป็น JSON Array เท่านั้น
 `;
@@ -2668,9 +2652,6 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
         closeModal(event.target.id);
       }
     };
-    /* ==========================================================
-       1. ระบบ EXPORT เป็น EXCEL (.xlsx แท้ ไม่เพี้ยน)
-       ========================================================== */
     function exportExcel() {
       if (!lastRawBOQItems || lastRawBOQItems.length === 0) {
         alert("ไม่มีข้อมูลสำหรับส่งออก Excel");
@@ -2708,8 +2689,6 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
       const fileName = `SCG_CPAC_BOQ_${new Date().toISOString().slice(0,10)}.xlsx`;
       XLSX.writeFile(workbook, fileName);
     }
-
-    /* สร้างเนื้อหารายงาน HTML สำหรับ Preview และ Print */
     function buildReportHTML() {
       const headerHTML = `
         <div style="border-bottom: 3px solid #dc2626; padding-bottom: 12px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: flex-end;">
@@ -2766,10 +2745,6 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
       `;
       return headerHTML + tableHTML;
     }
-
-    /* ==========================================================
-       2. ระบบพรีวิวเอกสารตีกรอบหน้ากระดาษ A4 แนวนอน
-       ========================================================== */
     function openPdfPreviewModal() {
       if (!lastRawBOQItems || lastRawBOQItems.length === 0) {
         alert("ไม่มีข้อมูลสำหรับแสดงรายงาน PDF");
@@ -2779,10 +2754,6 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
       paper.innerHTML = buildReportHTML();
       document.getElementById("pdfPreviewModal").style.display = "flex";
     }
-
-    /* ==========================================================
-       3. ระบบสั่งพิมพ์ / บันทึกเป็น PDF ผ่าน Clean Print Window (ไม่ทับซ้อน คมชัด 100%)
-       ========================================================== */
     function printReportDocument() {
       if (!lastRawBOQItems || lastRawBOQItems.length === 0) {
         alert("ไม่มีข้อมูลสำหรับสั่งพิมพ์");
@@ -2854,10 +2825,6 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
       `);
       printWindow.document.close();
     }
-
-    /* ==========================================================
-       4. ระบบ EXPORT เป็นไฟล์ JSON (Snapshot สำหรับโหลดทำต่อ)
-       ========================================================== */
     function exportJSON() {
       if (!lastRawBOQItems || lastRawBOQItems.length === 0) {
         alert("ไม่มีข้อมูลสำหรับส่งออก JSON");
@@ -2865,7 +2832,7 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
       }
       const projectSnapshot = {
         exportDate: new Date().toISOString(),
-        version: "2.6",
+        version: "2.7",
         settings: {
           concreteOption: document.getElementById("concreteOption").value,
           roofOption: document.getElementById("roofOption").value,
@@ -2891,10 +2858,6 @@ ${JSON.stringify(lastRawBOQItems, null, 2)}
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
     }
-
-    /* ==========================================================
-       5. ระบบ IMPORT ข้อมูลจากไฟล์ JSON เดิมกลับมาทำงานต่อ
-       ========================================================== */
     function handleJsonFileImport(event) {
       const file = event.target.files[0];
       if (!file) return;
