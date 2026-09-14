@@ -1,0 +1,339 @@
+/* ==========================================================================
+   SCG AI BOQ & Concrete Structure Estimator - Stylesheet
+   ========================================================================== */
+
+body {
+  font-family: 'Sarabun', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background-color: #f8fafc;
+  color: #0f172a;
+  margin: 0;
+  padding: 20px;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+h2 {
+  color: #0f172a;
+  margin-top: 0;
+  margin-bottom: 20px;
+  font-size: 24px;
+}
+
+.card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 16px;
+  margin-bottom: 16px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.spec-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 4px;
+  color: #334155;
+}
+
+select,
+input[type="text"],
+input[type="password"],
+input[type="file"],
+textarea {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font-size: 13px;
+  box-sizing: border-box;
+}
+
+textarea {
+  resize: vertical;
+  min-height: 60px;
+}
+
+/* Custom Prompt Section */
+.custom-prompt-container {
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  border-radius: 8px;
+  padding: 12px;
+  margin-top: 14px;
+  margin-bottom: 14px;
+}
+
+.btn-custom-add {
+  background: #ea580c;
+  color: #ffffff;
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.btn-custom-add:hover {
+  background: #c2410c;
+}
+
+.prompt-chip-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.prompt-chip {
+  background: #ffedd5;
+  color: #9a3412;
+  border: 1px solid #fdba74;
+  padding: 4px 10px;
+  border-radius: 16px;
+  font-size: 12px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.15s ease;
+}
+
+.prompt-chip:hover {
+  background: #fed7aa;
+  color: #7c2d12;
+}
+
+/* BOQ Table Styles */
+.table-container {
+  overflow-x: auto;
+  margin-top: 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  text-align: left;
+}
+
+th {
+  background-color: #f1f5f9;
+  color: #334155;
+  font-weight: 600;
+  padding: 10px 12px;
+  border-bottom: 1px solid #cbd5e1;
+  white-space: nowrap;
+}
+
+td {
+  padding: 10px 12px;
+  border-bottom: 1px solid #e2e8f0;
+  vertical-align: top;
+}
+
+tr:hover {
+  background-color: #f8fafc;
+}
+
+/* Items and Quantities */
+.order-item-icon {
+  font-size: 13px;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.order-item-text {
+  color: #0f172a;
+  font-weight: 600;
+  word-break: break-word;
+}
+
+.edit-qty-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.input-qty {
+  width: 110px;
+  padding: 6px 8px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: bold;
+  color: #0f172a;
+  background: #ffffff;
+  outline: none;
+  transition: all 0.15s ease-in-out;
+}
+
+.input-qty:focus {
+  border-color: #0284c7;
+  box-shadow: 0 0 0 2px rgba(2, 132, 199, 0.2);
+}
+
+.input-qty.modified {
+  background: #fffbeb;
+  border-color: #f59e0b;
+  color: #b45309;
+}
+
+.manual-badge {
+  font-size: 10px;
+  color: #d97706;
+  font-weight: 600;
+}
+
+.status-text {
+  font-size: 14px;
+  color: #64748b;
+  margin-top: 10px;
+  text-align: center;
+  font-weight: 500;
+}
+
+.audit-text {
+  font-size: 12px;
+  color: #0369a1;
+  background: #f0f9ff;
+  padding: 6px 8px;
+  border-radius: 6px;
+  border-left: 3px solid #0284c7;
+  line-height: 1.4;
+}
+
+/* Export & Import Buttons Grid */
+.export-import-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+@media (min-width: 640px) {
+  .export-import-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (min-width: 1024px) {
+  .export-import-grid {
+    grid-template-columns: 1.2fr 1.2fr 1fr 1fr;
+  }
+}
+
+.export-import-grid button {
+  padding: 10px 14px;
+  color: #ffffff;
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease;
+  font-size: 13px;
+}
+
+.btn-export-excel { background: #16a34a; }
+.btn-export-excel:hover { background: #15803d; }
+.btn-export-pdf { background: #dc2626; }
+.btn-export-pdf:hover { background: #b91c1c; }
+.btn-export-json { background: #9333ea; }
+.btn-export-json:hover { background: #7e22ce; }
+.btn-import-json { background: #475569; }
+.btn-import-json:hover { background: #334155; }
+
+/* Modal Styles */
+.modal {
+  display: none;
+  position: fixed;
+  z-index: 1000;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  background-color: rgba(0, 0, 0, 0.5);
+}
+
+.custom-item-modal-content {
+  background-color: #ffffff;
+  margin: 6% auto;
+  padding: 24px;
+  border-radius: 10px;
+  width: 90%;
+  max-width: 650px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #e2e8f0;
+  padding-bottom: 12px;
+  margin-bottom: 16px;
+}
+
+.modal-header h3 {
+  margin: 0;
+  font-size: 18px;
+  color: #0f172a;
+}
+
+.close-btn {
+  color: #64748b;
+  font-size: 24px;
+  font-weight: bold;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.close-btn:hover {
+  color: #0f172a;
+}
+
+/* Print Optimization */
+@media print {
+  body {
+    background-color: #ffffff;
+    padding: 0;
+  }
+
+  .card, .container {
+    border: none;
+    box-shadow: none;
+    max-width: 100%;
+    margin: 0;
+    padding: 0;
+  }
+
+  .no-print,
+  .export-import-grid,
+  .custom-prompt-container,
+  .btn-custom-add,
+  .status-text {
+    display: none !important;
+  }
+
+  th, td {
+    border: 1px solid #cbd5e1;
+    font-size: 11px;
+    padding: 6px 8px;
+  }
+
+  @page {
+    size: A4 landscape;
+    margin: 10mm;
+  }
+}
