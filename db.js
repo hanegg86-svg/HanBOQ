@@ -6,6 +6,7 @@ const DB_VERSION = 1;
 const STORE_NAME = "projects";
 let dbInstance = null;
 let currentProjectId = null;
+let currentProjectTab = "all"; // 'all' หรือ 'customer'
 
 function openDatabase() {
   return new Promise((resolve, reject) => {
@@ -58,6 +59,18 @@ async function deleteProjectFromDB(id) {
   });
 }
 
+function switchProjectTab(tab) {
+  currentProjectTab = tab;
+  const tabAll = document.getElementById("tabAllProjects");
+  const tabCustomer = document.getElementById("tabByCustomer");
+  if (tabAll && tabCustomer) {
+    tabAll.classList.toggle("active", tab === "all");
+    tabCustomer.classList.toggle("active", tab === "customer");
+  }
+  const currentQuery = document.getElementById("projectSearchInput") ? document.getElementById("projectSearchInput").value : "";
+  renderProjectList(currentQuery);
+}
+
 function createNewProjectPrompt() {
   const cust = prompt("ระบุชื่อลูกค้า / เจ้าของโครงการ:", "คุณสมชาย ใจดี");
   if (cust === null) return;
@@ -98,7 +111,8 @@ function createNewProjectPrompt() {
 }
 
 function openProjectManagerModal() {
-  renderProjectList();
+  const currentQuery = document.getElementById("projectSearchInput") ? document.getElementById("projectSearchInput").value : "";
+  renderProjectList(currentQuery);
   document.getElementById("projectManagerModal").style.display = "flex";
 }
 
@@ -108,7 +122,15 @@ async function renderProjectList(filter = "") {
   const projects = await getAllProjectsFromDB();
   projects.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
 
-  const query = filter.toLowerCase().trim();
+  const query = (filter || "").toLowerCase().trim();
+
+  // แยกการแสดงผลตามแท็บที่เลือก (all vs customer)
+  if (currentProjectTab === "customer") {
+    renderCustomerGroupedList(projects, query);
+    return;
+  }
+
+  // --- มุมมอง: โครงการทั้งหมด (Flat List) ---
   const filtered = projects.filter(p => 
     (p.customerName || "").toLowerCase().includes(query) ||
     (p.projectName || "").toLowerCase().includes(query) ||
@@ -153,6 +175,103 @@ async function renderProjectList(filter = "") {
   });
 }
 
+function renderCustomerGroupedList(projects, query) {
+  const container = document.getElementById("projectListContainer");
+  container.innerHTML = "";
+
+  // จัดกลุ่มโครงการตามชื่อลูกค้า (Group by Customer Name)
+  const customerMap = {};
+  projects.forEach(p => {
+    const custKey = (p.customerName || "ไม่ระบุชื่อลูกค้า").trim();
+    if (!customerMap[custKey]) {
+      customerMap[custKey] = [];
+    }
+    customerMap[custKey].push(p);
+  });
+
+  const customerNames = Object.keys(customerMap);
+
+  // กรองตามคำค้นหา
+  const filteredCustomers = customerNames.filter(cust => {
+    if (!query) return true;
+    if (cust.toLowerCase().includes(query)) return true;
+    // หากมีโครงการใดของลูกค้าตรงกับ query ให้แสดงด้วย
+    return customerMap[cust].some(p => 
+      (p.projectName || "").toLowerCase().includes(query) ||
+      (p.planFileName || "").toLowerCase().includes(query) ||
+      (p.projectCode || "").toLowerCase().includes(query)
+    );
+  });
+
+  if (filteredCustomers.length === 0) {
+    container.innerHTML = `<div style="text-align:center; padding:30px; color:#64748b;">ไม่พบรายชื่อลูกค้าหรือโครงการที่ค้นหา</div>`;
+    return;
+  }
+
+  filteredCustomers.forEach(cust => {
+    let prjList = customerMap[cust];
+    if (query && !cust.toLowerCase().includes(query)) {
+      prjList = prjList.filter(p => 
+        (p.projectName || "").toLowerCase().includes(query) ||
+        (p.planFileName || "").toLowerCase().includes(query) ||
+        (p.projectCode || "").toLowerCase().includes(query)
+      );
+    }
+
+    const groupCard = document.createElement("div");
+    groupCard.className = "customer-group-card";
+
+    // ส่วนหัวของลูกค้า
+    const header = document.createElement("div");
+    header.className = "customer-group-header";
+    header.innerHTML = `
+      <div>
+        <span style="font-size: 15px; font-weight: bold; color: #0f172a;">👤 ${cust}</span>
+        <span class="customer-badge-count" style="margin-left: 8px;">${prjList.length} โครงการ</span>
+      </div>
+      <div style="font-size: 11px; color: #64748b;">
+        อัปเดตล่าสุด: ${new Date(prjList[0].updatedAt).toLocaleDateString('th-TH')}
+      </div>
+    `;
+    groupCard.appendChild(header);
+
+    // รายการโครงการย่อยของลูกค้ารายนี้
+    const prjContainer = document.createElement("div");
+    prjContainer.className = "customer-projects-list";
+
+    prjList.forEach(p => {
+      const isCurrent = p.id === currentProjectId;
+      const itemDiv = document.createElement("div");
+      itemDiv.className = `project-card-item ${isCurrent ? "active-project" : ""}`;
+      itemDiv.style.margin = "0";
+      itemDiv.innerHTML = `
+        <div>
+          <div style="font-size: 14px; font-weight: bold; color: #0f172a;">
+            🏢 ${p.projectName} 
+            <span style="font-size: 11px; font-weight: normal; color: #dc2626; margin-left: 4px;">[${p.projectCode || "-"}]</span>
+          </div>
+          <div style="font-size: 12px; color: #0284c7; margin-top: 2px; font-weight: 600;">
+            📄 แบบแปลน: ${p.planFileName || "ไม่ระบุ"}
+          </div>
+          <div style="font-size: 11px; color: #64748b; margin-top: 2px;">
+            📦 ${p.items ? p.items.length : 0} รายการ BOQ | อัปเดต: ${new Date(p.updatedAt).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })}
+          </div>
+        </div>
+        <div style="display: flex; gap: 6px; align-items: center;">
+          ${isCurrent ? '<span style="font-size: 11px; font-weight: bold; color: #16a34a; margin-right: 6px;">กำลังเปิด</span>' : 
+          `<button type="button" style="background: #0284c7; padding: 5px 10px; font-size: 11px; flex: none;" onclick="selectProject('${p.id}')">📂 เปิด</button>`}
+          <button type="button" style="background: #475569; padding: 5px 8px; font-size: 11px; flex: none;" onclick="duplicateProject('${p.id}')">📋</button>
+          <button type="button" class="btn-delete" style="padding: 5px 8px; font-size: 11px;" onclick="removeProject('${p.id}', '${p.projectName}')">🗑️</button>
+        </div>
+      `;
+      prjContainer.appendChild(itemDiv);
+    });
+
+    groupCard.appendChild(prjContainer);
+    container.appendChild(groupCard);
+  });
+}
+
 function filterProjectList() {
   const q = document.getElementById("projectSearchInput").value;
   renderProjectList(q);
@@ -177,7 +296,8 @@ async function duplicateProject(id) {
   copy.projectCode += "-COPY";
   copy.updatedAt = new Date().toISOString();
   await saveProjectToDB(copy);
-  renderProjectList();
+  const currentQuery = document.getElementById("projectSearchInput") ? document.getElementById("projectSearchInput").value : "";
+  renderProjectList(currentQuery);
 }
 
 async function removeProject(id, name) {
@@ -187,7 +307,8 @@ async function removeProject(id, name) {
       currentProjectId = null;
       updateActiveBarDisplay("โครงการทั่วไป (ยังไม่ได้บันทึก)", "ไม่ระบุ", "ยังไม่ได้เลือกแบบ");
     }
-    renderProjectList();
+    const currentQuery = document.getElementById("projectSearchInput") ? document.getElementById("projectSearchInput").value : "";
+    renderProjectList(currentQuery);
   }
 }
 

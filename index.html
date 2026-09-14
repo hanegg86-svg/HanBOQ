@@ -245,13 +245,20 @@
     </div>
   </div>
 
-  <!-- Modal จัดการโปรเจกต์และรายชื่อลูกค้า (IndexedDB Dashboard) -->
+  <!-- Modal จัดการโปรเจกต์และรายชื่อลูกค้า (IndexedDB Dashboard มีระบบแท็บรายโครงการ & รายลูกค้า) -->
   <div id="projectManagerModal" class="modal">
     <div class="project-manager-modal-content">
       <div class="modal-header">
         <div class="modal-title">📂 รายการโครงการและฐานข้อมูลลูกค้า (IndexedDB Local Storage)</div>
         <span class="close-btn" onclick="closeModal('projectManagerModal')">&times;</span>
       </div>
+
+      <!-- แถบแท็บสลับมุมมอง (All Projects vs By Customer) -->
+      <div class="project-tab-bar">
+        <button type="button" class="tab-btn active" id="tabAllProjects" onclick="switchProjectTab('all')">🏢 โครงการทั้งหมด</button>
+        <button type="button" class="tab-btn" id="tabByCustomer" onclick="switchProjectTab('customer')">👤 ดูตามรายชื่อลูกค้า</button>
+      </div>
+
       <div style="display: flex; gap: 8px; margin: 10px 0; align-items: center;">
         <input type="text" id="projectSearchInput" placeholder="🔍 พิมพ์เพื่อค้นหาตามชื่อลูกค้า ชื่อโครงการ หรือชื่อไฟล์แบบ..." style="margin-bottom: 0;" oninput="filterProjectList()">
         <button type="button" style="background: #16a34a; flex: none; padding: 10px 16px;" onclick="createNewProjectPrompt()">➕ สร้างโครงการใหม่</button>
@@ -402,7 +409,7 @@
     </div>
   </div>
 
-  <!-- นำเข้าสคริปต์ตามลำดับสถาปัตยกรรม (Architecture Scripts) -->
+  <!-- Scripts -->
   <script src="db.js"></script>
   <script src="geometry.js"></script>
   <script src="app.js"></script>
