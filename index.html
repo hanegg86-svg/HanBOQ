@@ -4,26 +4,129 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>SCG AI BOQ & Concrete Structure Estimator</title>
+
+  <!-- Web App Manifest & Mobile Settings -->
+  <meta name="theme-color" content="#dc2626">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="SCG BOQ">
+
   <link rel="stylesheet" href="style.css">
-  <!-- ไลบรารีภายนอก -->
+
+  <!-- PDF.js CDN สำหรับเรนเดอร์แบบแปลน PDF หลายหน้า -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script>
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  </script>
+  <!-- SheetJS CDN สำหรับสร้างไฟล์ Excel (.xlsx) แท้ -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body>
 
   <div class="container">
     <h2>🏗️ SCG AI BOQ & Concrete Structure Estimator</h2>
-    
-    <!-- ส่วนตั้งค่า API Key -->
+
+    <!-- ตั้งค่า API Key -->
     <div class="card">
       <label for="apiKey">Gemini API Key:</label>
-      <input type="password" id="apiKey" placeholder="ใส่ Gemini API Key ของคุณที่นี่">
+      <input type="password" id="apiKey" placeholder="วางรหัส AIzaSy... ที่นี่">
+      <button type="button" style="width: 100%;" onclick="saveApiKey()">บันทึก API Key</button>
     </div>
 
-    <!-- ส่วนเลือกสเปกและไฟล์นำเข้า -->
+    <!-- เลือกวัสดุและอัปโหลดเอกสาร -->
     <div class="card">
-      <div class="spec-grid">
-        <!-- หมวดไม้ตกแต่ง Smartwood -->
+      <label>เลือกสเปกหรือวัสดุทดแทน (ระบบรองรับ Multi-Drawing ในหน้าเดียว, Symbol Schedule และ 3D Cross-Check):</label>
+
+      <!-- หมวดตัวเลือกสเปกวัสดุ 8 หมวดครบถ้วน -->
+      <div class="grid-options">
+        <!-- 1. คอนกรีตผสมเสร็จ CPAC และโครงสร้าง -->
+        <div>
+          <label for="concreteOption">1. งานโครงสร้างคอนกรีต CPAC:</label>
+          <select id="concreteOption">
+            <option value="auto">คำนวณตามแบบระบุ / ค่ามาตรฐาน (Default)</option>
+            <option value="cpac_240_cube">คอนกรีตผสมเสร็จ CPAC 240 ksc Cube (โครงสร้างทั่วไป)</option>
+            <option value="cpac_280_cube">คอนกรีตผสมเสร็จ CPAC 280 ksc Cube (โครงสร้างรับแรงสูง)</option>
+            <option value="cpac_waterproof">คอนกรีตผสมเสร็จ CPAC กันซึม (ห้องน้ำ/ดาดฟ้า/สระว่ายน้ำ)</option>
+            <option value="cpac_post_tension">ระบบแผ่นพื้น Post-tension CPAC</option>
+          </select>
+        </div>
+
+        <!-- 2. หลังคาและองศาความชัน -->
+        <div>
+          <label for="roofOption">2. วัสดุมุงหลังคา และองศา Slope:</label>
+          <select id="roofOption" onchange="onRoofSelectionChanged()">
+            <option value="auto">คำนวณตามแบบระบุ (Default)</option>
+            <option value="prestige">กระเบื้องหลังคาคอนกรีต SCG Prestige (สโลป 25-40°)</option>
+            <option value="cpac_monier">กระเบื้องหลังคาคอนกรีต SCG ซีแพค โมเนีย (สโลป 17-40°)</option>
+            <option value="excella">กระเบื้องหลังคาเซรามิก SCG EXCELLA (สโลป 17-40°)</option>
+            <option value="ayara">กระเบื้องหลังคาไฟเบอร์ซีเมนต์ SCG ไอยรา (สโลป 20-45°)</option>
+            <option value="shinkolite">แผ่นอะคริลิกโปร่งแสง SCG Shinkolite (สโลป 5-14°)</option>
+            <option value="metal_sheet">หลังคา Metal Sheet บุฉนวน (สโลป 3-10°)</option>
+          </select>
+          <div class="slope-input-group">
+            <label for="roofSlopeDeg" style="font-size: 12px; margin-bottom: 0;">องศาหลังคา (°):</label>
+            <input type="number" id="roofSlopeDeg" value="30" min="1" max="89" step="0.5" onchange="onRoofSlopeInputChanged()">
+            <span id="slopeFactorBadge" style="font-size: 12px; font-weight: bold; color: #0284c7;">ตัวคูณลาดเอียง: 1.155</span>
+          </div>
+          <div id="slopeWarning" class="slope-warning-badge">⚠️ สโลปที่ระบุไม่อยู่ในช่วงแนะนำของรุ่นกระเบื้องที่เลือก</div>
+        </div>
+
+        <!-- 3. ฉนวนกันความร้อนใต้หลังคา SCG FSO -->
+        <div>
+          <label for="roofInsulationOption">3. ฉนวนกันความร้อนใต้หลังคา:</label>
+          <select id="roofInsulationOption">
+            <option value="auto">คำนวณตามแบบระบุ (Default)</option>
+            <option value="scg_fso_foil">ฉนวนใยแก้วกันความร้อน SCG FSO ปูใต้แผ่นหลังคา (ฟอยล์ 2 ด้าน)</option>
+            <option value="none">ไม่ระบุ / ไม่ปูฉนวนใต้หลังคา</option>
+          </select>
+        </div>
+
+        <!-- 4. ฉนวนปูเหนือฝ้าเพดาน SCG STAY COOL -->
+        <div>
+          <label for="ceilingInsulationOption">4. ฉนวนปูเหนือฝ้าเพดาน STAY COOL:</label>
+          <select id="ceilingInsulationOption">
+            <option value="auto">คำนวณตามแบบระบุ (Default)</option>
+            <option value="staycool_75">ฉนวนกันความร้อน SCG STAY COOL หนา 75 มม. (3 นิ้ว)</option>
+            <option value="staycool_100">ฉนวนกันความร้อน SCG STAY COOL หนา 100 มม. (4 นิ้ว) - พรีเมียม</option>
+            <option value="none">ไม่ระบุ / ไม่ปูฉนวนเหนือฝ้า</option>
+          </select>
+        </div>
+
+        <!-- 5. หมวดงานผนังและโครงสร้างเบา -->
+        <div>
+          <label for="wallOption">5. หมวดงานผนัง / ก่ออิฐ / ผนังเบา:</label>
+          <select id="wallOption">
+            <option value="auto">คำนวณตามแบบระบุ / สัญลักษณ์ △ (Default)</option>
+            <option value="qcon_75">อิฐมวลเบา Q-CON ขนาด 7.5 ซม. + ปูนก่อ/ฉาบสูตรเฉพาะ</option>
+            <option value="qcon_100">อิฐมวลเบา Q-CON ขนาด 10.0 ซม. (กันเสียง/กันความร้อนสูง)</option>
+            <option value="smartboard_wall">ผนังเบา SCG สมาร์ทบอร์ด หนา 8 มม. (2 ด้าน) + โครงกัลวาไนซ์</option>
+            <option value="red_brick">อิฐมอญก่อ 1/2 แผ่น + ปูนฉาบเสือมอร์ตาร์</option>
+          </select>
+        </div>
+
+        <!-- 6. หมวดงานพื้น -->
+        <div>
+          <label for="floorOption">6. หมวดงานพื้น / แผ่นพื้นสำเร็จรูป:</label>
+          <select id="floorOption">
+            <option value="auto">คำนวณตามแบบระบุ / สัญลักษณ์ F (Default)</option>
+            <option value="cpac_plank">แผ่นพื้นคอนกรีตสำเร็จรูป CPAC + Topping 5 ซม. + ตะแกรงวายเมช</option>
+            <option value="cpac_hollowcore">แผ่นพื้นคอนกรีตกลวง CPAC Hollow Core</option>
+            <option value="smartboard_floor">แผ่นพื้น SCG สมาร์ทบอร์ด หนา 18-20 มม. (งานพื้นโครงสร้างเหล็ก)</option>
+          </select>
+        </div>
+
+        <!-- 7. หมวดงานฝ้าเพดาน -->
+        <div>
+          <label for="ceilingOption">7. หมวดงานฝ้าเพดานภายใน / ภายนอก:</label>
+          <select id="ceilingOption">
+            <option value="auto">คำนวณตามแบบระบุ / สัญลักษณ์ C (Default)</option>
+            <option value="smartboard_ceiling">ฝ้าสมาร์ทบอร์ด SCG ระบายอากาศ (ลดร้อน)</option>
+            <option value="gypsum_ceiling">แผ่นยิปซัม SCG ตราช้าง ขอบลาด หนา 9 มม. + โครงพลัสไลน์</option>
+          </select>
+        </div>
+
+        <!-- 8. ไม้สังเคราะห์ตกแต่ง Smartwood -->
         <div>
           <label for="woodOption">8. หมวดไม้ตกแต่ง Smartwood:</label>
           <select id="woodOption">
@@ -35,19 +138,20 @@
         </div>
       </div>
 
+      <!-- ช่องอัปโหลดไฟล์แบบและเอกสาร -->
       <label for="planFile">1. แบบแปลน (Floor Plan & Roof Plan - PDF/รูปภาพ มีหลายผังในหน้าเดียวหรือหลายหน้าได้):</label>
       <input type="file" id="planFile" accept="image/*,application/pdf" onchange="onFileSelected()">  
-      
+
       <label for="sectionFile" style="color: #0369a1;">📐 2. แบบรูปตัด / รูปด้าน (Section & Elevation - สำหรับตรวจสอบความสูงผนัง & Slope 3D):</label>
       <input type="file" id="sectionFile" accept="image/*,application/pdf">
-      
+
       <label for="specFile">3. รายการประกอบแบบ/สเปก / ตารางสัญลักษณ์ Schedule (ถ้ามี):</label>
       <input type="file" id="specFile" accept="image/*,application/pdf">
 
-      <!-- ซ่อน input file สำหรับนำเข้า JSON -->
+      <!-- ซ่อน input file สำหรับกดนำเข้า JSON -->
       <input type="file" id="jsonFileInput" accept=".json" style="display: none;" onchange="handleJsonFileImport(event)">
 
-      <!-- กล่องข้อความสั่งการ AI เจาะจง -->
+      <!-- กล่องใส่ข้อความสั่งให้ AI ประเมินพื้นที่เจาะจง -->
       <div class="custom-prompt-container">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
           <label for="customInstructionPrompt" style="color: #c2410c; margin-bottom: 0;">
@@ -55,7 +159,7 @@
           </label>
           <button type="button" class="btn-custom-add" style="padding: 5px 12px; font-size: 13px; flex: none;" onclick="openCustomItemModal()">➕ เพิ่มรายการเฉพาะเจาะจงลงในตาราง</button>
         </div>
-        <textarea id="customInstructionPrompt" placeholder="เช่น: หน้านี้มีทั้งแปลนพื้นและแปลนหลังคา ให้ถอดทั้ง 2 ส่วนแยกรายการกัน หรือ ตรวจสอบสัญลักษณ์ผนัง △1 และ △5 ตามตารางรายการประกอบแบบ"></textarea>  
+        <textarea id="customInstructionPrompt" placeholder="เช่น: หน้านี้มีทั้งแปลนพื้นและแปลนหลังคา ให้ถอดทั้ง 2 ส่วนแยกรายการกัน หรือ ตรวจสอบสัญลักษณ์ผนัง △1 และ △5 ตามตารางรายการประกอบแบบ"></textarea>
         <div style="font-size: 12px; color: #7c2d12; font-weight: 600;">⚡ ปุ่มคำสั่งด่วน (คลิกเพื่อเติมข้อความ):</div>
         <div class="prompt-chip-group">
           <span class="prompt-chip" onclick="applyQuickPrompt('สแกนแยกทั้งแปลนพื้นและแปลนหลังคาที่อยู่ในหน้าเดียวกันให้ครบทุกหมวดงาน')">📑 สแกนทั้งพื้น & หลังคาในหน้าเดียว</span>
@@ -64,10 +168,18 @@
           <span class="prompt-chip" onclick="applyQuickPrompt('ถอดแบบเฉพาะงานโครงสร้างคอนกรีต')">🧱 โครงสร้างคอนกรีต</span>
         </div>
       </div>
+
+      <!-- ชุดปุ่มคำสั่งหลักสำหรับประมวลผล -->
+      <div class="btn-group">
+        <button type="button" id="processBtn" onclick="processDocuments()">🚀 เริ่มวิเคราะห์และ Cross-Check 3D (สแกนครบทุกผังในหน้าเดียว)</button>
+        <button type="button" id="drawBtn" class="btn-draw" onclick="openManualDrawModal()" disabled>📐 สร้างรายการใหม่ด้วย Precision Geometry Tool</button>
+        <button type="button" id="recalcBtn" class="btn-recalc" onclick="recalculateWithNewSpecs()" disabled>🔄 คำนวณใหม่ตามสเปกที่เลือก</button>
+      </div>
+      <div id="status" class="status-text"></div>
     </div>
 
-    <!-- ส่วนตารางแสดงผล BOQ -->
-    <div class="card">
+    <!-- ตารางแสดงผล BOQ -->
+    <div class="card" id="resultCard" style="display: none;">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
         <div>
           <span style="font-weight: bold; font-size: 15px;">📊 ผลการประเมินปริมาณวัสดุและ BOQ</span>
@@ -107,9 +219,7 @@
         <button type="button" class="btn-import-json" onclick="document.getElementById('jsonFileInput').click()">📂 นำเข้าโปรเจกต์ (Import JSON)</button>
       </div>
     </div>
-
-    <div id="statusElem" class="status-text"></div>
-  </div>  
+  </div>
 
   <!-- Modal สำหรับวาดและวัดขนาดบนแปลน (Precision Geometry Tool) -->
   <div id="drawModal" class="modal">
@@ -118,7 +228,6 @@
         <div id="drawModalHeaderTitle" style="font-weight: bold; font-size: 16px;">📐 เครื่องมือวัดขนาด Precision Geometry Tool</div>
         <span class="close-btn" onclick="closeModal('drawModal')">&times;</span>
       </div>
-      
       <div class="draw-controls">
         <label for="drawPageSelect">หน้า:</label>
         <select id="drawPageSelect" onchange="onDrawPageChange()"></select>
@@ -133,17 +242,14 @@
         <div id="boxCounter" class="box-counter">0 รูป</div>
         <span id="zoomLevelDisplay" style="font-size: 12px; font-weight: bold; margin-left: 8px;">100%</span>
       </div>
-
       <div id="drawStatus" style="font-size: 12px; color: #475569; margin-bottom: 6px;"></div>
-
-      <!-- พื้นที่แสดงผล Canvas แปลน -->
       <div id="canvasViewport" style="flex: 1; overflow: hidden; position: relative; background: #334155; border-radius: 6px; cursor: default;">
         <canvas id="drawCanvas"></canvas>
       </div>
     </div>
   </div>
 
-  <!-- Modal สำหรับเพิ่มรายการเฉพาะเจาะจง (Add Custom Item Dialog พร้อมสวิตช์เลือกทุกหน้า) [1] -->
+  <!-- Modal สำหรับเพิ่มรายการเฉพาะเจาะจง -->
   <div id="customItemModal" class="modal">
     <div class="custom-item-modal-content">
       <div class="modal-header">
@@ -151,7 +257,6 @@
         <span class="close-btn" onclick="closeModal('customItemModal')">&times;</span>
       </div>
       <div style="margin-top: 10px;">
-        <!-- ตัวเลือกขอบเขต: สแกนทุกหน้า vs เลือกเฉพาะหน้า [1] -->
         <div class="scope-selector-card">
           <label style="margin-bottom: 4px; color: #0f172a;">🎯 ขอบเขตการค้นหา & วิเคราะห์ในแบบแปลน:</label>
           <div class="scope-radio-group">
@@ -164,11 +269,11 @@
               <span>📄 ระบุเฉพาะเจาะจงหน้า</span>
             </label>
           </div>
-        </div>  
+        </div>
         <div id="customPageSelectContainer" style="display: none;">
           <label for="customItemPageSelect">เลือกหน้าแปลนที่ต้องการโฟกัส:</label>
           <select id="customItemPageSelect"></select>
-        </div>  
+        </div>
         <label for="customItemCategorySelect">หมวดงาน:</label>
         <select id="customItemCategorySelect">
           <option value="งานผนัง">งานผนัง</option>
