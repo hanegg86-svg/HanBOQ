@@ -75,7 +75,7 @@
     }
     input[type="file"] {
       width: 100%;
-      margin-bottom: 12px;
+      margin-bottom: 6px;
       padding: 6px;
       border: 1px dashed var(--border);
       border-radius: 6px;
@@ -117,6 +117,27 @@
       .grid-project-meta {
         grid-template-columns: 1.5fr 1.5fr 1fr 1fr;
       }
+    }
+    /* Attached Files History Banner */
+    .attached-files-box {
+      background: #f1f5f9;
+      border-radius: 8px;
+      padding: 10px 14px;
+      margin-bottom: 12px;
+      font-size: 12px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      border: 1px solid #cbd5e1;
+    }
+    .attached-file-pill {
+      background: white;
+      padding: 4px 10px;
+      border-radius: 6px;
+      border: 1px solid #e2e8f0;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
     }
     .grid-options {
       display: grid;
@@ -688,43 +709,79 @@
       max-width: 620px;
       box-shadow: 0 10px 25px rgba(0,0,0,0.3);
     }
+    /* Project Manager Modal & Tab Styles */
     .project-manager-modal-content {
       background: white;
       border-radius: 12px;
       padding: 20px;
       width: 94%;
-      max-width: 850px;
-      height: 80vh;
+      max-width: 900px;
+      height: 85vh;
       display: flex;
       flex-direction: column;
       box-shadow: 0 10px 25px rgba(0,0,0,0.3);
     }
-    .scope-selector-card {
-      background: #f8fafc;
-      border: 1px solid #e2e8f0;
-      border-radius: 8px;
-      padding: 10px 14px;
+    .tab-nav-bar {
+      display: flex;
+      gap: 8px;
+      border-bottom: 2px solid #e2e8f0;
       margin-bottom: 12px;
     }
-    .scope-radio-group {
-      display: flex;
-      gap: 16px;
-      margin-top: 6px;
-    }
-    .scope-radio-label {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 13px;
-      font-weight: 600;
+    .tab-btn {
+      padding: 8px 16px;
+      border-radius: 8px 8px 0 0;
+      font-size: 14px;
+      font-weight: bold;
+      background: #f1f5f9;
+      color: #64748b;
+      border: none;
       cursor: pointer;
-      color: #1e293b;
+      flex: none;
+    }
+    .tab-btn.active {
+      background: #dc2626;
+      color: white;
+    }
+    .customer-group-card {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      margin-bottom: 12px;
+      overflow: hidden;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+    .customer-group-header {
+      background: #f8fafc;
+      padding: 12px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+      user-select: none;
+      border-bottom: 1px solid #e2e8f0;
+    }
+    .customer-group-header:hover {
+      background: #f1f5f9;
+    }
+    .customer-timeline-badge {
+      background: #eff6ff;
+      color: #1d4ed8;
+      border: 1px solid #bfdbfe;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .customer-projects-list {
+      padding: 10px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
     }
     .project-card-item {
       border: 1px solid #e2e8f0;
       border-radius: 8px;
-      padding: 12px 16px;
-      margin-bottom: 10px;
+      padding: 10px 14px;
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -759,7 +816,7 @@
 
   <!-- การระบุข้อมูลโครงการและลูกค้า -->
   <div class="card">
-    <h3 style="margin-bottom: 12px; font-size: 15px; color: #1e293b;">📋 ข้อมูลโครงการและลูกค้า (สำหรับออกรายงานและจัดหมวดหมู่):</h3>
+    <h3 style="margin-bottom: 12px; font-size: 15px; color: #1e293b;">📋 ข้อมูลโครงการและลูกค้า:</h3>
     <div class="grid-project-meta">
       <div>
         <label for="metaCustomerName">👤 ชื่อลูกค้า / เจ้าของโครงการ:</label>
@@ -778,6 +835,15 @@
         <input type="text" id="metaEstimator" placeholder="ชื่อวิศวกร / QS">
       </div>
     </div>
+    <!-- กล่องแสดงประวัติไฟล์แบบแปลนที่เคยใช้กับโปรเจกต์นี้ -->
+    <div class="attached-files-box" id="attachedFilesBox">
+      <div style="font-weight: bold; color: #475569; display: flex; align-items: center; gap: 4px;">
+        📁 ประวัติไฟล์แบบที่ผูกกับโปรเจกต์นี้:
+      </div>
+      <div class="attached-file-pill" id="lblPlanFile">📄 แปลนพื้น: <em>ยังไม่ได้อัปโหลด</em></div>
+      <div class="attached-file-pill" id="lblSectionFile">📐 รูปตัด/ด้าน: <em>ยังไม่ได้อัปโหลด</em></div>
+      <div class="attached-file-pill" id="lblSpecFile">📑 สเปก/Schedule: <em>ยังไม่ได้อัปโหลด</em></div>
+    </div>
   </div>
 
   <!-- ตั้งค่า API Key -->
@@ -789,7 +855,7 @@
 
   <!-- เลือกวัสดุและอัปโหลดเอกสาร -->
   <div class="card">
-    <label>เลือกสเปกหรือวัสดุทดแทน (ระบบรองรับ Multi-Drawing ในหน้าเดียว, Symbol Legend Mapping, ภาษาไทย 100%, แยกหน้าอัตโนมัติ, Auto-Edge Panning, OSNAP, Ortho Lock และ Cross-Check 3D):</label>
+    <label>เลือกสเปกหรือวัสดุทดแทน:</label>
     <div class="grid-options">
       <!-- 1. คอนกรีตและแผ่นพื้นโครงสร้าง CPAC -->
       <div>
@@ -811,8 +877,8 @@
         <select id="roofOption" onchange="autoAdjustDefaultSlope()">
           <option value="auto">คำนวณตามแบบระบุ / สัญลักษณ์ (Default)</option>
           <option value="metal_lumax">SCG Roof Metal Sheet ลอน LumaX (ขั้นต่ำ 0.3° สไตล์โมเดิร์น)</option>
-          <option value="scg_prestige">หลังคาคอนกรีตแผ่นเรียบ SCG Prestige (ขั้นต่ำ 25° + ระบบครอบแห้ง Dry Tech)</option>
-          <option value="scg_neustile">หลังคาคอนกรีตแผ่นเรียบ SCG Neustile (ขั้นต่ำ 22° + ระบบครอบแห้ง Dry Tech)</option>
+          <option value="scg_prestige">หลังคาคอนกรีตแผ่นเรียบ SCG Prestige (ขั้นต่ำ 25° + Dry Tech)</option>
+          <option value="scg_neustile">หลังคาคอนกรีตแผ่นเรียบ SCG Neustile (ขั้นต่ำ 22° + Dry Tech)</option>
           <option value="cpac">หลังคาคอนกรีต SCG CPAC ลอนมาตรฐาน (ขั้นต่ำ 17° + ครอบแห้ง)</option>
           <option value="roman">กระเบื้องหลังคาลอนคู่ SCG (ขั้นต่ำ 15°)</option>
           <option value="metal_snaplock">SCG Metal Sheet ลอน Snap Lock (ขั้นต่ำ 3°)</option>
@@ -824,7 +890,7 @@
           <input type="number" id="roofSlopeDeg" value="0.3" min="0" max="75" step="0.1" title="องศาความชันหลังคา">
           <span style="font-size: 14px; font-weight: bold; color: #475569;">องศา (°)</span>
           <span style="font-size: 12px; color: #64748b;" id="slopeFactorLabel">(ขั้นต่ำ: 0.3° | ตัวคูณ: 1.000)</span>
-          <div id="slopeWarning" class="slope-warning-badge">⚠️ องศาต่ำกว่าเกณฑ์มาตรฐาน SCG เสี่ยงน้ำไหลย้อนซึมเข้าใต้หลังคา</div>
+          <div id="slopeWarning" class="slope-warning-badge">⚠️ องศาต่ำกว่าเกณฑ์มาตรฐาน SCG เสี่ยงน้ำไหลย้อนซึม</div>
         </div>
       </div>
       <!-- 3. ฉนวนปูเหนือฝ้าเพดาน (SCG STAY COOL) -->
@@ -889,18 +955,18 @@
         </select>
       </div>
     </div>
-    <label for="planFile">1. แบบแปลน (Floor Plan & Roof Plan - PDF/รูปภาพ มีหลายผังในหน้าเดียวหรือหลายหน้าได้):</label>
-    <input type="file" id="planFile" accept="image/*,application/pdf" onchange="onFileSelected()">
-    <label for="sectionFile" style="color: #0369a1;">📐 2. แบบรูปตัด / รูปด้าน (Section & Elevation - สำหรับตรวจสอบความสูงผนัง & Slope 3D):</label>
-    <input type="file" id="sectionFile" accept="image/*,application/pdf">
+    <label for="planFile">1. แบบแปลน (Floor Plan & Roof Plan - PDF/รูปภาพ):</label>
+    <input type="file" id="planFile" accept="image/*,application/pdf" onchange="onPlanFileSelected(event)">
+    <label for="sectionFile" style="color: #0369a1;">📐 2. แบบรูปตัด / รูปด้าน (Section & Elevation):</label>
+    <input type="file" id="sectionFile" accept="image/*,application/pdf" onchange="onSectionFileSelected(event)">
     <label for="specFile">3. รายการประกอบแบบ/สเปก / ตารางสัญลักษณ์ Schedule (ถ้ามี):</label>
-    <input type="file" id="specFile" accept="image/*,application/pdf">
+    <input type="file" id="specFile" accept="image/*,application/pdf" onchange="onSpecFileSelected(event)">
     <input type="file" id="jsonFileInput" accept=".json" style="display: none;" onchange="handleJsonFileImport(event)">
 
     <div class="custom-prompt-container">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
         <label for="customInstructionPrompt" style="color: #c2410c; margin-bottom: 0;">
-          💬 คำสั่งเฉพาะเจาะจงสำหรับ AI (สั่งโฟกัสกรอบสี จุด หรือเงื่อนไขพิเศษในแบบ):
+          💬 คำสั่งเฉพาะเจาะจงสำหรับ AI:
         </label>
         <button type="button" class="btn-custom-add" style="padding: 5px 12px; font-size: 13px; flex: none;" onclick="openCustomItemModal()">➕ เพิ่มรายการเฉพาะเจาะจงลงในตาราง</button>
       </div>
@@ -929,7 +995,7 @@
   <div class="card" id="resultCard" style="display: none;">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 8px;">
       <div>
-        <h3 style="margin: 0;">รายการประเมินปริมาณงานและสินค้า SCG & คอนกรีต CPAC (แยกแถวรายผัง/หมวดงาน)</h3>
+        <h3 style="margin: 0;">รายการประเมินปริมาณงานและสินค้า SCG & คอนกรีต CPAC</h3>
         <span style="font-size: 12px; color: #64748b;">💡 แต่ละแถวจะโฟกัสตำแหน่งผังจริงในแบบ กด "ดู/แก้ไขในแบบ" เพื่อกระโดดไปกรอบผังนั้นได้ทันที</span>
       </div>
       <button type="button" class="btn-custom-add" style="padding: 6px 14px; font-size: 13px; flex: none;" onclick="openCustomItemModal()">➕ เพิ่มรายการเฉพาะเจาะจงใหม่</button>
@@ -964,19 +1030,24 @@
     </div>
   </div>
 
-  <!-- Modal จัดการโปรเจกต์และรายชื่อลูกค้า (IndexedDB Dashboard) -->
+  <!-- Modal จัดการโปรเจกต์และรายชื่อลูกค้า (IndexedDB Dashboard พร้อม 2 Tabs) -->
   <div id="projectManagerModal" class="modal">
     <div class="project-manager-modal-content">
       <div class="modal-header">
-        <div class="modal-title">📂 รายการโครงการและฐานข้อมูลลูกค้า (IndexedDB Local Storage)</div>
+        <div class="modal-title">📂 ศูนย์จัดการโครงการและฐานข้อมูลลูกค้า (IndexedDB Local)</div>
         <span class="close-btn" onclick="closeModal('projectManagerModal')">&times;</span>
       </div>
-      <div style="display: flex; gap: 8px; margin: 10px 0; align-items: center;">
-        <input type="text" id="projectSearchInput" placeholder="🔍 พิมพ์เพื่อค้นหาตามชื่อลูกค้า หรือชื่อโครงการ..." style="margin-bottom: 0;" oninput="filterProjectList()">
+      <!-- Tab Navigation -->
+      <div class="tab-nav-bar">
+        <button type="button" class="tab-btn active" id="tabBtnCustomers" onclick="switchProjectTab('customers')">👥 รายชื่อลูกค้า & ไทม์ไลน์โครงการ</button>
+        <button type="button" class="tab-btn" id="tabBtnAllProjects" onclick="switchProjectTab('allProjects')">📋 รายการโครงการทั้งหมด</button>
+      </div>
+      <div style="display: flex; gap: 8px; margin-bottom: 12px; align-items: center;">
+        <input type="text" id="projectSearchInput" placeholder="🔍 พิมพ์เพื่อค้นหาตามชื่อลูกค้า ชื่อโครงการ หรือชื่อไฟล์แบบ..." style="margin-bottom: 0;" oninput="filterProjectList()">
         <button type="button" style="background: #16a34a; flex: none; padding: 10px 16px;" onclick="createNewProjectPrompt()">➕ สร้างโครงการใหม่</button>
       </div>
       <div id="projectListContainer" style="flex: 1; overflow-y: auto; padding-right: 4px;">
-        <!-- รายการโปรเจกต์จะถูกสร้างผ่าน JS -->
+        <!-- คอนเทนต์จะเรนเดอร์สลับตาม Tab -->
       </div>
     </div>
   </div>
@@ -1125,13 +1196,21 @@
 
   <script>
     /* ==========================================================
-       ระบบ INDEXEDDB จัดการโปรเจกต์และลูกค้า (PROJECT MANAGEMENT)
+       ระบบ INDEXEDDB + MULTI-TAB & FILE ATTACHMENT TRACKING
        ========================================================== */
     const DB_NAME = "SCG_BOQ_DB";
     const DB_VERSION = 1;
     const STORE_NAME = "projects";
     let dbInstance = null;
     let currentProjectId = null;
+    let activeProjectTab = "customers"; // 'customers' หรือ 'allProjects'
+
+    // เก็บชื่อไฟล์ที่กำลังใช้งานใน Session ปัจจุบัน
+    let currentAttachedFiles = {
+      planFileName: "",
+      sectionFileName: "",
+      specFileName: ""
+    };
 
     function openDatabase() {
       return new Promise((resolve, reject) => {
@@ -1183,6 +1262,54 @@
       });
     }
 
+    /* ติดตามและอัปเดตชื่อไฟล์แนบ */
+    function onPlanFileSelected(e) {
+      const file = e.target.files[0];
+      if (file) {
+        currentAttachedFiles.planFileName = file.name;
+        updateAttachedFilesUI();
+        onFileSelected();
+      }
+    }
+
+    function onSectionFileSelected(e) {
+      const file = e.target.files[0];
+      if (file) {
+        currentAttachedFiles.sectionFileName = file.name;
+        updateAttachedFilesUI();
+      }
+    }
+
+    function onSpecFileSelected(e) {
+      const file = e.target.files[0];
+      if (file) {
+        currentAttachedFiles.specFileName = file.name;
+        updateAttachedFilesUI();
+      }
+    }
+
+    function updateAttachedFilesUI() {
+      const pLbl = document.getElementById("lblPlanFile");
+      const sLbl = document.getElementById("lblSectionFile");
+      const spLbl = document.getElementById("lblSpecFile");
+
+      pLbl.innerHTML = `📄 แปลนพื้น: <strong>${currentAttachedFiles.planFileName || "ยังไม่ได้อัปโหลด"}</strong>`;
+      pLbl.style.borderColor = currentAttachedFiles.planFileName ? "#3b82f6" : "#e2e8f0";
+
+      sLbl.innerHTML = `📐 รูปตัด/ด้าน: <strong>${currentAttachedFiles.sectionFileName || "ยังไม่ได้อัปโหลด"}</strong>`;
+      sLbl.style.borderColor = currentAttachedFiles.sectionFileName ? "#0284c7" : "#e2e8f0";
+
+      spLbl.innerHTML = `📑 สเปก/Schedule: <strong>${currentAttachedFiles.specFileName || "ยังไม่ได้อัปโหลด"}</strong>`;
+      spLbl.style.borderColor = currentAttachedFiles.specFileName ? "#d97706" : "#e2e8f0";
+    }
+
+    function switchProjectTab(tabName) {
+      activeProjectTab = tabName;
+      document.getElementById("tabBtnCustomers").classList.toggle("active", tabName === "customers");
+      document.getElementById("tabBtnAllProjects").classList.toggle("active", tabName === "allProjects");
+      renderProjectList(document.getElementById("projectSearchInput").value);
+    }
+
     function createNewProjectPrompt() {
       const cust = prompt("ระบุชื่อลูกค้า / เจ้าของโครงการ:", "คุณสมชาย ใจดี");
       if (cust === null) return;
@@ -1196,6 +1323,7 @@
         projectName: prj.trim() || "โครงการใหม่",
         projectCode: "PRJ-" + new Date().getFullYear() + "-" + Math.floor(100 + Math.random() * 900),
         estimatorName: document.getElementById("metaEstimator").value || "",
+        attachedFiles: { ...currentAttachedFiles },
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         settings: {
@@ -1227,49 +1355,143 @@
 
     async function renderProjectList(filter = "") {
       const container = document.getElementById("projectListContainer");
-      container.innerHTML = "<div style='text-align:center; padding:20px; color:#64748b;'>กำลังโหลด...</div>";
+      container.innerHTML = "<div style='text-align:center; padding:20px; color:#64748b;'>กำลังโหลดข้อมูล...</div>";
       const projects = await getAllProjectsFromDB();
-      projects.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
-
       const query = filter.toLowerCase().trim();
-      const filtered = projects.filter(p => 
-        (p.customerName || "").toLowerCase().includes(query) ||
-        (p.projectName || "").toLowerCase().includes(query) ||
-        (p.projectCode || "").toLowerCase().includes(query)
-      );
+
+      const filtered = projects.filter(p => {
+        const files = p.attachedFiles || {};
+        return (p.customerName || "").toLowerCase().includes(query) ||
+               (p.projectName || "").toLowerCase().includes(query) ||
+               (p.projectCode || "").toLowerCase().includes(query) ||
+               (files.planFileName || "").toLowerCase().includes(query) ||
+               (files.sectionFileName || "").toLowerCase().includes(query) ||
+               (files.specFileName || "").toLowerCase().includes(query);
+      });
 
       if (filtered.length === 0) {
-        container.innerHTML = `<div style="text-align:center; padding:30px; color:#64748b;">ไม่พบโครงการที่ค้นหา หรือยังไม่มีโครงการที่ถูกบันทึก</div>`;
+        container.innerHTML = `<div style="text-align:center; padding:30px; color:#64748b;">ไม่พบโครงการที่ค้นหา</div>`;
         return;
       }
 
       container.innerHTML = "";
-      filtered.forEach(p => {
-        const isCurrent = p.id === currentProjectId;
-        const div = document.createElement("div");
-        div.className = `project-card-item ${isCurrent ? "active-project" : ""}`;
-        div.innerHTML = `
-          <div>
-            <div style="font-size:15px; font-weight:bold; color:#0f172a;">
-              🏢 ${p.projectName} 
-              <span style="font-size:12px; font-weight:normal; color:#dc2626; margin-left:6px;">[${p.projectCode || "-"}]</span>
+
+      if (activeProjectTab === "customers") {
+        // จัดกลุ่มตามลูกค้า
+        const customerMap = {};
+        filtered.forEach(p => {
+          const cust = p.customerName || "ไม่ระบุชื่อลูกค้า";
+          if (!customerMap[cust]) {
+            customerMap[cust] = [];
+          }
+          customerMap[cust].push(p);
+        });
+
+        Object.keys(customerMap).forEach(cust => {
+          const prjList = customerMap[cust];
+          prjList.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+
+          // คำนวณช่วงเวลา (Timeline)
+          const dates = prjList.map(p => new Date(p.updatedAt || p.createdAt || Date.now())).filter(d => !isNaN(d.getTime()));
+          let timelineText = "ไม่ระบุเวลา";
+          if (dates.length > 0) {
+            dates.sort((a, b) => a - b);
+            const firstDate = dates[0].toLocaleDateString('th-TH', { month: 'short', year: '2-digit' });
+            const lastDate = dates[dates.length - 1].toLocaleDateString('th-TH', { month: 'short', year: '2-digit' });
+            timelineText = (firstDate === lastDate) ? `ช่วงเวลา: ${firstDate}` : `ช่วงเวลา: ${firstDate} - ${lastDate}`;
+          }
+
+          const groupCard = document.createElement("div");
+          groupCard.className = "customer-group-card";
+          
+          let projectsHTML = "";
+          prjList.forEach(p => {
+            const isCurrent = p.id === currentProjectId;
+            const files = p.attachedFiles || {};
+            const planText = files.planFileName ? `📄 แปลน: ${files.planFileName}` : "📄 ยังไม่ระบุไฟล์แปลน";
+            
+            projectsHTML += `
+              <div class="project-card-item ${isCurrent ? 'active-project' : ''}">
+                <div>
+                  <div style="font-size:14px; font-weight:bold; color:#0f172a;">
+                    🏢 ${p.projectName} 
+                    <span style="font-size:11px; color:#dc2626; margin-left:6px;">[${p.projectCode || '-'}]</span>
+                  </div>
+                  <div style="font-size:12px; color:#475569; margin-top:2px;">
+                    ${planText} | 📦 ${p.items ? p.items.length : 0} รายการ
+                  </div>
+                  <div style="font-size:10px; color:#94a3b8; margin-top:2px;">
+                    อัปเดต: ${new Date(p.updatedAt).toLocaleString('th-TH')}
+                  </div>
+                </div>
+                <div style="display:flex; gap:6px; align-items:center;">
+                  ${isCurrent ? '<span style="font-size:11px; font-weight:bold; color:#16a34a; margin-right:6px;">เปิดอยู่</span>' : 
+                  `<button type="button" style="background:#0284c7; padding:5px 10px; font-size:11px; flex:none;" onclick="selectProject('${p.id}')">📂 เปิด</button>`}
+                  <button type="button" style="background:#475569; padding:5px 8px; font-size:11px; flex:none;" onclick="duplicateProject('${p.id}')">📋 สำเนา</button>
+                  <button type="button" class="btn-delete" style="padding:5px 8px; font-size:11px;" onclick="removeProject('${p.id}', '${p.projectName}')">🗑️</button>
+                </div>
+              </div>
+            `;
+          });
+
+          groupCard.innerHTML = `
+            <div class="customer-group-header" onclick="toggleCustomerCollapse('${cust.replace(/\s+/g, '_')}')">
+              <div style="display:flex; align-items:center; gap:8px;">
+                <span style="font-size:16px;">👤</span>
+                <div>
+                  <strong style="font-size:15px; color:#0f172a;">${cust}</strong>
+                  <span style="font-size:12px; color:#64748b; margin-left:6px;">(${prjList.length} โครงการ)</span>
+                </div>
+              </div>
+              <span class="customer-timeline-badge">📅 ${timelineText}</span>
             </div>
-            <div style="font-size:13px; color:#475569; margin-top:2px;">
-              👤 ลูกค้า: <strong>${p.customerName}</strong> | 📦 รายการ BOQ: ${p.items ? p.items.length : 0} รายการ
+            <div class="customer-projects-list" id="group_${cust.replace(/\s+/g, '_')}">
+              ${projectsHTML}
             </div>
-            <div style="font-size:11px; color:#94a3b8; margin-top:3px;">
-              อัปเดตล่าสุด: ${new Date(p.updatedAt).toLocaleString('th-TH')}
+          `;
+          container.appendChild(groupCard);
+        });
+      } else {
+        // Tab รายการโครงการทั้งหมด เรียงตามวันที่
+        filtered.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+        filtered.forEach(p => {
+          const isCurrent = p.id === currentProjectId;
+          const files = p.attachedFiles || {};
+          const planText = files.planFileName ? `📄 แปลน: ${files.planFileName}` : "📄 ยังไม่ระบุไฟล์แปลน";
+
+          const div = document.createElement("div");
+          div.className = `project-card-item ${isCurrent ? 'active-project' : ''}`;
+          div.style.marginBottom = "10px";
+          div.innerHTML = `
+            <div>
+              <div style="font-size:15px; font-weight:bold; color:#0f172a;">
+                🏢 ${p.projectName} 
+                <span style="font-size:12px; color:#dc2626; margin-left:6px;">[${p.projectCode || '-'}]</span>
+              </div>
+              <div style="font-size:13px; color:#475569; margin-top:2px;">
+                👤 ลูกค้า: <strong>${p.customerName}</strong> | ${planText}
+              </div>
+              <div style="font-size:11px; color:#94a3b8; margin-top:3px;">
+                อัปเดต: ${new Date(p.updatedAt).toLocaleString('th-TH')} | 📦 ${p.items ? p.items.length : 0} รายการ
+              </div>
             </div>
-          </div>
-          <div style="display:flex; gap:6px; align-items:center;">
-            ${isCurrent ? '<span style="font-size:12px; font-weight:bold; color:#16a34a; margin-right:8px;">กำลังเปิดใช้งาน</span>' : 
-            `<button type="button" style="background:#0284c7; padding:6px 12px; font-size:12px; flex:none;" onclick="selectProject('${p.id}')">📂 เปิด</button>`}
-            <button type="button" style="background:#475569; padding:6px 10px; font-size:12px; flex:none;" onclick="duplicateProject('${p.id}')">📋 สำเนา</button>
-            <button type="button" class="btn-delete" style="padding:6px 10px; font-size:12px;" onclick="removeProject('${p.id}', '${p.projectName}')">🗑️</button>
-          </div>
-        `;
-        container.appendChild(div);
-      });
+            <div style="display:flex; gap:6px; align-items:center;">
+              ${isCurrent ? '<span style="font-size:12px; font-weight:bold; color:#16a34a; margin-right:8px;">เปิดอยู่</span>' : 
+              `<button type="button" style="background:#0284c7; padding:6px 12px; font-size:12px; flex:none;" onclick="selectProject('${p.id}')">📂 เปิด</button>`}
+              <button type="button" style="background:#475569; padding:6px 10px; font-size:12px; flex:none;" onclick="duplicateProject('${p.id}')">📋 สำเนา</button>
+              <button type="button" class="btn-delete" style="padding:6px 10px; font-size:12px;" onclick="removeProject('${p.id}', '${p.projectName}')">🗑️</button>
+            </div>
+          `;
+          container.appendChild(div);
+        });
+      }
+    }
+
+    function toggleCustomerCollapse(groupId) {
+      const elem = document.getElementById("group_" + groupId);
+      if (elem) {
+        elem.style.display = (elem.style.display === "none") ? "flex" : "none";
+      }
     }
 
     function filterProjectList() {
@@ -1317,6 +1539,14 @@
       document.getElementById("metaProjectCode").value = p.projectCode || "";
       document.getElementById("metaEstimator").value = p.estimatorName || "";
 
+      // คืนค่าประวัติชื่อไฟล์แบบ
+      currentAttachedFiles = p.attachedFiles || {
+        planFileName: "",
+        sectionFileName: "",
+        specFileName: ""
+      };
+      updateAttachedFilesUI();
+
       if (p.settings) {
         const s = p.settings;
         if (s.concreteOption) document.getElementById("concreteOption").value = s.concreteOption;
@@ -1358,6 +1588,7 @@
         projectName: prj,
         projectCode: code,
         estimatorName: estimator,
+        attachedFiles: { ...currentAttachedFiles },
         updatedAt: new Date().toISOString(),
         settings: {
           concreteOption: document.getElementById("concreteOption").value,
@@ -1376,11 +1607,11 @@
 
       await saveProjectToDB(projectData);
       updateActiveBarDisplay(prj, cust);
-      alert(`บันทึกโครงการ "${prj}" ของลูกค้า "${cust}" ลงใน IndexedDB เรียบร้อยแล้ว!`);
+      alert(`บันทึกโครงการ "${prj}" ของลูกค้า "${cust}" พร้อมประวัติไฟล์แบบแปลนเรียบร้อยแล้ว!`);
     }
 
     /* ==========================================================
-       ตรรกะเดิมของแอปและแก้ไข SYNTAX ERROR
+       ตรรกะเดิมของแอป
        ========================================================== */
     let currentUploadedFile = null;
     let pdfDocumentInstance = null;
@@ -1538,7 +1769,6 @@
       setupSlopeFactorListener();
       autoAdjustDefaultSlope();
 
-      // โหลดโปรเจกต์ล่าสุด (ถ้ามี)
       const projects = await getAllProjectsFromDB();
       if (projects.length > 0) {
         projects.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
@@ -1574,7 +1804,7 @@
         label.innerText = `(ขั้นต่ำ: ${minDeg}° | ตัวคูณ: ${mult.toFixed(3)})`;
         if (currentDeg < minDeg) {
           warning.style.display = "block";
-          warning.innerText = `⚠️ องศา ${currentDeg}° ต่ำกว่าเกณฑ์มาตรฐาน SCG (ขั้นต่ำ ${minDeg}°) เสี่ยงน้ำไหลย้อนซึม`;
+          warning.innerText = `⚠️ องศา ${currentDeg}° ต่ำกว่าเกณฑ์มาตรฐาน SCG (ขั้นต่ำ ${minDeg}°)`;
         } else {
           warning.style.display = "none";
         }
@@ -2660,7 +2890,7 @@
         return;
       }
       const category = document.getElementById("drawCategorySelect").value;
-      const isRoofRelated = (category.includes("หลังคา") || category.includes("FSO") || category.includes("Dry Tech"));
+      const isRoofRelated = (category.includes("หลังคา") || category.includes("FSO") || cat.includes("Dry Tech"));
       const chosenProduct = document.getElementById("drawProductSelect").value;
       const pageNum = parseInt(document.getElementById("drawPageSelect").value);
       const slopeDeg = document.getElementById("modalSlopeDeg").value;
@@ -2766,10 +2996,10 @@
             item.source_location = {
               page_number: pageNum,
               box_2d: mainBox,
-              location_description: `วัดขนาดด้วย Geometry/Polygon Tool และเลือกสินค้า "${chosenProduct}" บนหน้า ${pageNum}`
+              location_description: `วัดขนาดด้วย Geometry/Polygon Tool บนหน้า ${pageNum}`
             };
           }
-          statusElem.innerText = `✅ อัปเดตรายการ "${item ? item.item_name : ''}" บนหน้า ${pageNum} สำเร็จ!`;
+          statusElem.innerText = `✅ อัปเดตรายการ "${item ? item.item_name : ''}" สำเร็จ!`;
         } else {
           const newItem = {
             _id: "item_" + Date.now() + "_" + Math.floor(Math.random() * 10000),
@@ -2790,7 +3020,7 @@
             }
           };
           lastRawBOQItems.push(newItem);
-          statusElem.innerText = `✅ เพิ่มรายการใหม่ของหน้า ${pageNum} ลงในตาราง BOQ สำเร็จ!`;
+          statusElem.innerText = `✅ เพิ่มรายการใหม่ลงในตาราง BOQ สำเร็จ!`;
         }
         renderBOQTable(lastRawBOQItems);
         setTimeout(() => {
@@ -2843,11 +3073,9 @@
         return;
       }
       submitBtn.disabled = true;
-      if (isAllPages) {
-        statusElem.innerText = `Gemini 3.5 Flash Lite กำลังสแกนหา "${category}" และจับคู่สัญลักษณ์ Schedule เป็นภาษาไทยจากแบบแปลนครบทุกหน้า...`;
-      } else {
-        statusElem.innerText = `กำลังวิเคราะห์คำสั่งเฉพาะเจาะจงสำหรับหน้า ${pageNum} เป็นภาษาไทย...`;
-      }
+      statusElem.innerText = isAllPages 
+        ? `Gemini 3.5 Flash Lite กำลังสแกนหา "${category}" ทุกหน้า...`
+        : `กำลังวิเคราะห์คำสั่งเฉพาะเจาะจงสำหรับหน้า ${pageNum}...`;
       try {
         const parts = [];
         if (planFile) {
@@ -2874,8 +3102,7 @@
 1. สำหรับทุกชั้น/โซนที่พบหมวดงานหรือสัญลักษณ์นี้ ให้สร้างเป็นรายการแยกแถวใน Array
 2. ระบุเลขหน้าที่พบจริงลงใน "source_location.page_number"
 3. ใน "order_estimate" ให้แจกแจงรายการสินค้าสั่งซื้อและอุปกรณ์แพ็กเกจระบบเป็นภาษาไทย แต่ละบรรทัดขึ้นต้นด้วย "- "
-4. ใน "calculation_note" และ "verification_method" ให้อธิบายสูตรและการคำนวณเป็นภาษาไทย
-5. ส่งออกเฉพาะ JSON Array
+4. ส่งออกเฉพาะ JSON Array
 `;
         } else {
           promptText = `
@@ -2934,7 +3161,7 @@
           return pA - pB;
         });
         renderBOQTable(lastRawBOQItems);
-        statusElem.innerText = `✅ เพิ่มรายการเฉพาะเจาะจง (${itemsToAdd.length} รายการ) สำเร็จ!`;
+        statusElem.innerText = `✅ เพิ่มรายการเฉพาะเจาะจงสำเร็จ!`;
         setTimeout(() => {
           closeModal("customItemModal");
         }, 900);
@@ -3352,6 +3579,7 @@ ${JSON.stringify(lastRawBOQItems.map(it => ({
       const prj = document.getElementById("metaProjectName").value || "โครงการทั่วไป";
       const code = document.getElementById("metaProjectCode").value || "-";
       const estimator = document.getElementById("metaEstimator").value || "-";
+      const planName = currentAttachedFiles.planFileName ? ` | แบบแปลนอ้างอิง: ${currentAttachedFiles.planFileName}` : "";
 
       const headerHTML = `
         <div style="border-bottom: 3px solid #dc2626; padding-bottom: 12px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: flex-end;">
@@ -3361,7 +3589,7 @@ ${JSON.stringify(lastRawBOQItems.map(it => ({
               🏢 โครงการ: ${prj} | 👤 ลูกค้า: ${cust}
             </div>
             <div style="font-size: 11px; color: #64748b; margin-top: 3px;">
-              รหัสโครงการ: ${code} | ผู้ประมาณราคา: ${estimator}
+              รหัสโครงการ: ${code} | ผู้ประมาณราคา: ${estimator} ${planName}
             </div>
           </div>
           <div style="text-align: right; font-size: 11px; color: #475569; line-height: 1.4;">
@@ -3511,7 +3739,8 @@ ${JSON.stringify(lastRawBOQItems.map(it => ({
           customerName: cust,
           projectName: prj,
           projectCode: document.getElementById("metaProjectCode").value,
-          estimatorName: document.getElementById("metaEstimator").value
+          estimatorName: document.getElementById("metaEstimator").value,
+          attachedFiles: currentAttachedFiles
         },
         settings: {
           concreteOption: document.getElementById("concreteOption").value,
@@ -3556,6 +3785,10 @@ ${JSON.stringify(lastRawBOQItems.map(it => ({
               if (imported.meta.projectName) document.getElementById("metaProjectName").value = imported.meta.projectName;
               if (imported.meta.projectCode) document.getElementById("metaProjectCode").value = imported.meta.projectCode;
               if (imported.meta.estimatorName) document.getElementById("metaEstimator").value = imported.meta.estimatorName;
+              if (imported.meta.attachedFiles) {
+                currentAttachedFiles = imported.meta.attachedFiles;
+                updateAttachedFilesUI();
+              }
               updateActiveBarDisplay(imported.meta.projectName, imported.meta.customerName);
             }
             if (imported.settings) {
