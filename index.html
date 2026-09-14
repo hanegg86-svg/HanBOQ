@@ -12,7 +12,8 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="SCG BOQ">
 
-  <link rel="stylesheet" href="style.css">
+  <!-- ล้างแคชไฟล์ CSS ด้วย Version Query Parameter -->
+  <link rel="stylesheet" href="style.css?v=1.0.1">
 
   <!-- PDF.js CDN สำหรับเรนเดอร์แบบแปลน PDF หลายหน้า -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
@@ -293,9 +294,9 @@
     </div>
   </div>
 
-  <!-- โหลดสคริปต์การทำงาน 3 ไฟล์ย่อยตามลำดับ -->
-  <script src="canvas-draw.js"></script>
-  <script src="ai-service.js"></script>
-  <script src="boq-manager.js"></script>
+  <!-- โหลดสคริปต์ 3 ไฟล์ย่อย พร้อมแนบ Version Query Parameter เพื่อล้างแคชทันที -->
+  <script src="canvas-draw.js?v=1.0.1"></script>
+  <script src="ai-service.js?v=1.0.1"></script>
+  <script src="boq-manager.js?v=1.0.1"></script>
 </body>
 </html>
