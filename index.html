@@ -14,8 +14,8 @@
   <link rel="icon" type="image/png" sizes="512x512" href="icon.png">
   <link rel="apple-touch-icon" href="icon.png">
   
-  <!-- CSS Stylesheet (Cache Buster ?v=3) -->
-  <link rel="stylesheet" href="style.css?v=3">
+  <!-- CSS Stylesheet (Cache Buster ?v=4) -->
+  <link rel="stylesheet" href="style.css?v=4">
 
   <!-- PDF.js CDN -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
@@ -208,6 +208,18 @@
 
   <!-- ตาราง BOQ -->
   <div class="card" id="resultCard" style="display: none;">
+    <!-- แผงสรุปมูลค่ารวมและจำนวนรายการ (Project Dashboard Stat Bar) -->
+    <div class="project-summary-bar">
+      <div class="summary-stat-box">
+        <span class="stat-label">💰 มูลค่ารวมโครงการ:</span>
+        <span class="stat-value-highlight" id="totalProjectValueDisplay">0.00 MB</span>
+      </div>
+      <div class="summary-stat-box">
+        <span class="stat-label">📦 จำนวนรายการทั้งหมด:</span>
+        <span class="stat-value" id="totalItemsCountDisplay">0 รายการ</span>
+      </div>
+    </div>
+
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 8px;">
       <div>
         <h3 style="margin: 0;">รายการประเมินปริมาณงานและสินค้า SCG & คอนกรีต CPAC (แยกแถวรายผัง/หมวดงาน)</h3>
@@ -224,6 +236,7 @@
             <th>รหัสอ้างอิง / สัญลักษณ์</th>
             <th>รายการงานตามแบบ (แยกชั้น/ผัง/โซน)</th>
             <th>ปริมาณสุทธิ (แก้ไขได้)</th>
+            <th>มูลค่า (MB)</th>
             <th>สินค้า SCG / CPAC ที่แนะนำ</th>
             <th>ประมาณการสั่งซื้อจริง (พร้อมแพ็กเกจระบบ)</th>
             <th>ความมั่นใจ</th>
@@ -409,9 +422,9 @@
     </div>
   </div>
 
-  <!-- Scripts (Cache Buster ?v=3) -->
-  <script src="db.js?v=3"></script>
+  <!-- Scripts (Cache Buster ?v=4) -->
+  <script src="db.js?v=4"></script>
   <script src="geometry.js"></script>
-  <script src="app.js"></script>
+  <script src="app.js?v=4"></script>
 </body>
 </html>

@@ -59,6 +59,27 @@ async function deleteProjectFromDB(id) {
   });
 }
 
+// แปลงรูปแบบวัน-เวลาละเอียดระดับวินาที
+function formatDateTimeDetail(isoStr) {
+  if (!isoStr) return "-";
+  const d = new Date(isoStr);
+  return d.toLocaleDateString('th-TH', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }) + " เวลา " + d.toLocaleTimeString('th-TH', {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit'
+  }) + " น.";
+}
+
+// คำนวณมูลค่ารวม (MB) ของโปรเจกต์
+function getProjectTotalMB(p) {
+  if (!p.items || !Array.isArray(p.items)) return 0;
+  return p.items.reduce((sum, it) => sum + (parseFloat(it.value_mb) || 0), 0);
+}
+
 // ผูกเข้ากับ window โดยตรงเพื่อไม่ให้แคชหรือ scope บล็อกการเรียกใช้งาน
 window.switchProjectTab = function(tab) {
   window.currentProjectTab = tab;
@@ -184,6 +205,7 @@ async function renderProjectList(filter = "") {
   container.innerHTML = "";
   filtered.forEach(p => {
     const isCurrent = p.id === currentProjectId;
+    const totalMb = getProjectTotalMB(p);
     const div = document.createElement("div");
     div.className = `project-card-item ${isCurrent ? "active-project" : ""}`;
     div.innerHTML = `
@@ -198,8 +220,9 @@ async function renderProjectList(filter = "") {
         <div style="font-size:12px; color:#0284c7; margin-top:3px; font-weight:600;">
           📄 ชื่อแบบแปลน: ${p.planFileName || "ไม่ระบุ"}
         </div>
-        <div style="font-size:11px; color:#94a3b8; margin-top:3px;">
-          อัปเดตล่าสุด: ${new Date(p.updatedAt).toLocaleString('th-TH')}
+        <div style="display:flex; gap:8px; align-items:center; margin-top:5px; flex-wrap:wrap;">
+          <span class="timestamp-pill">🕒 ${formatDateTimeDetail(p.updatedAt)}</span>
+          ${totalMb > 0 ? `<span class="project-value-pill">💰 มูลค่า: ${totalMb.toFixed(2)} MB</span>` : ''}
         </div>
       </div>
       <div style="display:flex; gap:6px; align-items:center;">
@@ -255,6 +278,8 @@ function renderCustomerGroupedList(projects, query) {
       );
     }
 
+    const customerTotalMb = prjList.reduce((sum, p) => sum + getProjectTotalMB(p), 0);
+
     const groupCard = document.createElement("div");
     groupCard.className = "customer-master-card";
 
@@ -265,6 +290,7 @@ function renderCustomerGroupedList(projects, query) {
       <div class="customer-header-title">
         <span>👤 ลูกค้า: ${cust}</span>
         <span class="customer-count-badge">${prjList.length} โครงการ</span>
+        ${customerTotalMb > 0 ? `<span style="font-size:12px; font-weight:800; color:#38bdf8; margin-left:6px;">(รวม ${customerTotalMb.toFixed(2)} MB)</span>` : ''}
       </div>
       <div style="display: flex; gap: 8px; align-items: center;">
         <button type="button" class="btn-add-for-customer" onclick="createNewProjectForCustomer('${cust}')">➕ เพิ่มโครงการให้ลูกค้านี้</button>
@@ -278,6 +304,7 @@ function renderCustomerGroupedList(projects, query) {
 
     prjList.forEach(p => {
       const isCurrent = p.id === currentProjectId;
+      const subTotalMb = getProjectTotalMB(p);
       const itemDiv = document.createElement("div");
       itemDiv.className = `customer-subproject-row ${isCurrent ? "active-project" : ""}`;
       itemDiv.innerHTML = `
@@ -289,8 +316,10 @@ function renderCustomerGroupedList(projects, query) {
           <div style="font-size: 12px; color: #0284c7; margin-top: 2px; font-weight: 600;">
             📄 แบบแปลน: ${p.planFileName || "ไม่ระบุชื่อไฟล์แบบ"}
           </div>
-          <div style="font-size: 11px; color: #64748b; margin-top: 2px;">
-            📦 ${p.items ? p.items.length : 0} รายการ BOQ | อัปเดตล่าสุด: ${new Date(p.updatedAt).toLocaleString('th-TH')}
+          <div style="display: flex; gap: 8px; align-items: center; margin-top: 4px; flex-wrap: wrap;">
+            <span class="timestamp-pill">🕒 ${formatDateTimeDetail(p.updatedAt)}</span>
+            <span style="font-size: 11px; color: #64748b;">📦 ${p.items ? p.items.length : 0} รายการ</span>
+            ${subTotalMb > 0 ? `<span class="project-value-pill">💰 ${subTotalMb.toFixed(2)} MB</span>` : ''}
           </div>
         </div>
         <div style="display: flex; gap: 6px; align-items: center;">

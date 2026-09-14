@@ -823,3 +823,79 @@ th {
   border-left: 5px solid #dc2626;
   background: #fef2f2;
 }
+
+/* ==========================================================
+   มูลค่าโครงการ (MB) & วัน-เวลาละเอียด (PROJECT VALUES & TIMESTAMPS)
+   ========================================================== */
+.project-summary-bar {
+  display: flex;
+  gap: 16px;
+  background: #0f172a;
+  color: white;
+  padding: 12px 18px;
+  border-radius: 8px;
+  margin-bottom: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.summary-stat-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.stat-label {
+  font-size: 13px;
+  color: #94a3b8;
+  font-weight: 600;
+}
+.stat-value {
+  font-size: 15px;
+  font-weight: bold;
+  color: #f8fafc;
+}
+.stat-value-highlight {
+  font-size: 18px;
+  font-weight: 800;
+  color: #38bdf8;
+}
+.input-value-mb {
+  width: 95px;
+  padding: 6px 8px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: bold;
+  color: #047857;
+  background: #f0fdf4;
+  outline: none;
+  text-align: right;
+  transition: all 0.15s ease;
+}
+.input-value-mb:focus {
+  border-color: #10b981;
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
+}
+.timestamp-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #f1f5f9;
+  color: #334155;
+  border: 1px solid #cbd5e1;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+}
+.project-value-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #ecfdf5;
+  color: #065f46;
+  border: 1px solid #a7f3d0;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 700;
+}
