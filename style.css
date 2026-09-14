@@ -668,8 +668,8 @@ th {
   border-radius: 12px;
   padding: 20px;
   width: 94%;
-  max-width: 850px;
-  height: 80vh;
+  max-width: 900px;
+  height: 85vh;
   display: flex;
   flex-direction: column;
   box-shadow: 0 10px 25px rgba(0,0,0,0.3);
@@ -716,66 +716,110 @@ th {
 }
 
 /* ==========================================================
-   แถบแท็บและสไตล์มุมมองรายลูกค้า (CUSTOMER GROUPING VIEW)
+   แถบแท็บสลับมุมมองแบบ SEGMENTED CONTROL (ป้องกันปุ่มแดงทับ)
    ========================================================== */
 .project-tab-bar {
-  display: flex;
-  gap: 8px;
-  margin-top: 6px;
-  border-bottom: 2px solid #e2e8f0;
-  padding-bottom: 4px;
+  display: flex !important;
+  gap: 6px !important;
+  margin: 10px 0 14px 0 !important;
+  background: #e2e8f0 !important;
+  padding: 5px !important;
+  border-radius: 10px !important;
+  border: none !important;
 }
-.tab-btn {
-  background: transparent;
-  color: #64748b;
-  border: none;
-  padding: 8px 16px;
-  font-size: 14px;
-  font-weight: 700;
-  border-radius: 6px 6px 0 0;
-  cursor: pointer;
-  transition: all 0.15s ease-in-out;
-  flex: none;
-  border-bottom: 3px solid transparent;
+.project-tab-bar button.tab-btn {
+  background: transparent !important;
+  color: #475569 !important;
+  border: none !important;
+  padding: 10px 16px !important;
+  font-size: 14px !important;
+  font-weight: 700 !important;
+  border-radius: 8px !important;
+  cursor: pointer !important;
+  flex: 1 !important;
+  text-align: center !important;
+  transition: all 0.2s ease-in-out !important;
+  box-shadow: none !important;
 }
-.tab-btn:hover {
-  color: #dc2626;
-  background: #fef2f2;
+.project-tab-bar button.tab-btn:hover {
+  color: #0f172a !important;
+  background: rgba(255, 255, 255, 0.5) !important;
 }
-.tab-btn.active {
-  color: #dc2626;
-  border-bottom: 3px solid #dc2626;
-  background: #ffffff;
+.project-tab-bar button.tab-btn.active {
+  background: #ffffff !important;
+  color: #dc2626 !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12) !important;
 }
-.customer-group-card {
+
+/* ==========================================================
+   การ์ดจัดกลุ่มโปรเจกต์รายลูกค้า (CUSTOMER FOLDER DIRECTORY)
+   ========================================================== */
+.customer-master-card {
   border: 1px solid #cbd5e1;
   border-radius: 10px;
-  margin-bottom: 14px;
+  margin-bottom: 18px;
   background: #ffffff;
   overflow: hidden;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  box-shadow: 0 2px 5px rgba(0,0,0,0.06);
 }
-.customer-group-header {
-  background: #f1f5f9;
+.customer-master-header {
+  background: #0f172a;
+  color: #ffffff;
+  padding: 10px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.customer-header-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: bold;
+  color: #f8fafc;
+}
+.customer-count-badge {
+  background: #f59e0b;
+  color: #000000;
+  font-size: 12px;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 12px;
+}
+.btn-add-for-customer {
+  background: #16a34a !important;
+  color: white !important;
+  padding: 5px 12px !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  border-radius: 6px !important;
+  flex: none !important;
+}
+.customer-project-sublist {
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: #f8fafc;
+}
+.customer-subproject-row {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
   padding: 10px 14px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-bottom: 1px solid #e2e8f0;
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+  transition: all 0.15s ease;
 }
-.customer-badge-count {
-  background: #e0f2fe;
-  color: #0284c7;
-  font-size: 11px;
-  font-weight: 700;
-  padding: 3px 8px;
-  border-radius: 12px;
-  border: 1px solid #bae6fd;
+.customer-subproject-row:hover {
+  border-color: #0284c7;
+  background: #f0f9ff;
 }
-.customer-projects-list {
-  padding: 10px 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  background: #fafafa;
+.customer-subproject-row.active-project {
+  border-left: 5px solid #dc2626;
+  background: #fef2f2;
 }

@@ -6,7 +6,7 @@ const DB_VERSION = 1;
 const STORE_NAME = "projects";
 let dbInstance = null;
 let currentProjectId = null;
-let currentProjectTab = "all"; // 'all' หรือ 'customer'
+window.currentProjectTab = "all"; // 'all' หรือ 'customer'
 
 function openDatabase() {
   return new Promise((resolve, reject) => {
@@ -59,8 +59,9 @@ async function deleteProjectFromDB(id) {
   });
 }
 
-function switchProjectTab(tab) {
-  currentProjectTab = tab;
+// ผูกเข้ากับ window โดยตรงเพื่อไม่ให้แคชหรือ scope บล็อกการเรียกใช้งาน
+window.switchProjectTab = function(tab) {
+  window.currentProjectTab = tab;
   const tabAll = document.getElementById("tabAllProjects");
   const tabCustomer = document.getElementById("tabByCustomer");
   if (tabAll && tabCustomer) {
@@ -69,7 +70,7 @@ function switchProjectTab(tab) {
   }
   const currentQuery = document.getElementById("projectSearchInput") ? document.getElementById("projectSearchInput").value : "";
   renderProjectList(currentQuery);
-}
+};
 
 function createNewProjectPrompt() {
   const cust = prompt("ระบุชื่อลูกค้า / เจ้าของโครงการ:", "คุณสมชาย ใจดี");
@@ -110,6 +111,43 @@ function createNewProjectPrompt() {
   });
 }
 
+window.createNewProjectForCustomer = function(customerName) {
+  const prj = prompt(`ระบุชื่อโครงการใหม่สำหรับลูกค้า "${customerName}":`, "อาคารพักอาศัย / ส่วนต่อเติม");
+  if (prj === null || !prj.trim()) return;
+
+  const currentPlanName = document.getElementById("metaPlanFileName") ? document.getElementById("metaPlanFileName").value.trim() : "";
+  const newId = "prj_" + Date.now();
+  const newProject = {
+    id: newId,
+    customerName: customerName,
+    projectName: prj.trim(),
+    planFileName: currentPlanName || "ยังไม่ได้เลือกไฟล์แบบแปลน",
+    projectCode: "PRJ-" + new Date().getFullYear() + "-" + Math.floor(100 + Math.random() * 900),
+    estimatorName: document.getElementById("metaEstimator").value || "",
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    settings: {
+      concreteOption: "auto",
+      roofOption: "auto",
+      roofSlopeDeg: "0.3",
+      ceilingInsulationOption: "auto",
+      roofInsulationOption: "auto",
+      wallOption: "auto",
+      floorOption: "auto",
+      ceilingOption: "auto",
+      woodOption: "auto",
+      customInstructionPrompt: ""
+    },
+    items: []
+  };
+
+  saveProjectToDB(newProject).then(() => {
+    loadProjectIntoUI(newProject);
+    renderProjectList();
+    closeModal("projectManagerModal");
+  });
+};
+
 function openProjectManagerModal() {
   const currentQuery = document.getElementById("projectSearchInput") ? document.getElementById("projectSearchInput").value : "";
   renderProjectList(currentQuery);
@@ -125,7 +163,7 @@ async function renderProjectList(filter = "") {
   const query = (filter || "").toLowerCase().trim();
 
   // แยกการแสดงผลตามแท็บที่เลือก (all vs customer)
-  if (currentProjectTab === "customer") {
+  if (window.currentProjectTab === "customer") {
     renderCustomerGroupedList(projects, query);
     return;
   }
@@ -195,7 +233,6 @@ function renderCustomerGroupedList(projects, query) {
   const filteredCustomers = customerNames.filter(cust => {
     if (!query) return true;
     if (cust.toLowerCase().includes(query)) return true;
-    // หากมีโครงการใดของลูกค้าตรงกับ query ให้แสดงด้วย
     return customerMap[cust].some(p => 
       (p.projectName || "").toLowerCase().includes(query) ||
       (p.planFileName || "").toLowerCase().includes(query) ||
@@ -219,31 +256,30 @@ function renderCustomerGroupedList(projects, query) {
     }
 
     const groupCard = document.createElement("div");
-    groupCard.className = "customer-group-card";
+    groupCard.className = "customer-master-card";
 
-    // ส่วนหัวของลูกค้า
+    // ส่วนหัวของลูกค้า (Customer Folder Header)
     const header = document.createElement("div");
-    header.className = "customer-group-header";
+    header.className = "customer-master-header";
     header.innerHTML = `
-      <div>
-        <span style="font-size: 15px; font-weight: bold; color: #0f172a;">👤 ${cust}</span>
-        <span class="customer-badge-count" style="margin-left: 8px;">${prjList.length} โครงการ</span>
+      <div class="customer-header-title">
+        <span>👤 ลูกค้า: ${cust}</span>
+        <span class="customer-count-badge">${prjList.length} โครงการ</span>
       </div>
-      <div style="font-size: 11px; color: #64748b;">
-        อัปเดตล่าสุด: ${new Date(prjList[0].updatedAt).toLocaleDateString('th-TH')}
+      <div style="display: flex; gap: 8px; align-items: center;">
+        <button type="button" class="btn-add-for-customer" onclick="createNewProjectForCustomer('${cust}')">➕ เพิ่มโครงการให้ลูกค้านี้</button>
       </div>
     `;
     groupCard.appendChild(header);
 
-    // รายการโครงการย่อยของลูกค้ารายนี้
+    // รายการโครงการย่อยของลูกค้ารายนี้ (Subproject List)
     const prjContainer = document.createElement("div");
-    prjContainer.className = "customer-projects-list";
+    prjContainer.className = "customer-project-sublist";
 
     prjList.forEach(p => {
       const isCurrent = p.id === currentProjectId;
       const itemDiv = document.createElement("div");
-      itemDiv.className = `project-card-item ${isCurrent ? "active-project" : ""}`;
-      itemDiv.style.margin = "0";
+      itemDiv.className = `customer-subproject-row ${isCurrent ? "active-project" : ""}`;
       itemDiv.innerHTML = `
         <div>
           <div style="font-size: 14px; font-weight: bold; color: #0f172a;">
@@ -251,17 +287,17 @@ function renderCustomerGroupedList(projects, query) {
             <span style="font-size: 11px; font-weight: normal; color: #dc2626; margin-left: 4px;">[${p.projectCode || "-"}]</span>
           </div>
           <div style="font-size: 12px; color: #0284c7; margin-top: 2px; font-weight: 600;">
-            📄 แบบแปลน: ${p.planFileName || "ไม่ระบุ"}
+            📄 แบบแปลน: ${p.planFileName || "ไม่ระบุชื่อไฟล์แบบ"}
           </div>
           <div style="font-size: 11px; color: #64748b; margin-top: 2px;">
-            📦 ${p.items ? p.items.length : 0} รายการ BOQ | อัปเดต: ${new Date(p.updatedAt).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })}
+            📦 ${p.items ? p.items.length : 0} รายการ BOQ | อัปเดตล่าสุด: ${new Date(p.updatedAt).toLocaleString('th-TH')}
           </div>
         </div>
         <div style="display: flex; gap: 6px; align-items: center;">
-          ${isCurrent ? '<span style="font-size: 11px; font-weight: bold; color: #16a34a; margin-right: 6px;">กำลังเปิด</span>' : 
-          `<button type="button" style="background: #0284c7; padding: 5px 10px; font-size: 11px; flex: none;" onclick="selectProject('${p.id}')">📂 เปิด</button>`}
-          <button type="button" style="background: #475569; padding: 5px 8px; font-size: 11px; flex: none;" onclick="duplicateProject('${p.id}')">📋</button>
-          <button type="button" class="btn-delete" style="padding: 5px 8px; font-size: 11px;" onclick="removeProject('${p.id}', '${p.projectName}')">🗑️</button>
+          ${isCurrent ? '<span style="font-size: 12px; font-weight: bold; color: #16a34a; margin-right: 6px;">กำลังเปิดใช้งาน</span>' : 
+          `<button type="button" style="background: #0284c7; padding: 6px 12px; font-size: 12px; flex: none;" onclick="selectProject('${p.id}')">📂 เปิด</button>`}
+          <button type="button" style="background: #475569; padding: 6px 10px; font-size: 12px; flex: none;" onclick="duplicateProject('${p.id}')">📋 สำเนา</button>
+          <button type="button" class="btn-delete" style="padding: 6px 10px; font-size: 12px;" onclick="removeProject('${p.id}', '${p.projectName}')">🗑️</button>
         </div>
       `;
       prjContainer.appendChild(itemDiv);

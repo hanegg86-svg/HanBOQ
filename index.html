@@ -14,8 +14,8 @@
   <link rel="icon" type="image/png" sizes="512x512" href="icon.png">
   <link rel="apple-touch-icon" href="icon.png">
   
-  <!-- CSS Stylesheet -->
-  <link rel="stylesheet" href="style.css">
+  <!-- CSS Stylesheet (Cache Buster ?v=3) -->
+  <link rel="stylesheet" href="style.css?v=3">
 
   <!-- PDF.js CDN -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
@@ -253,7 +253,7 @@
         <span class="close-btn" onclick="closeModal('projectManagerModal')">&times;</span>
       </div>
 
-      <!-- แถบแท็บสลับมุมมอง (All Projects vs By Customer) -->
+      <!-- แถบแท็บสลับมุมมองแบบ Segmented Control -->
       <div class="project-tab-bar">
         <button type="button" class="tab-btn active" id="tabAllProjects" onclick="switchProjectTab('all')">🏢 โครงการทั้งหมด</button>
         <button type="button" class="tab-btn" id="tabByCustomer" onclick="switchProjectTab('customer')">👤 ดูตามรายชื่อลูกค้า</button>
@@ -409,8 +409,8 @@
     </div>
   </div>
 
-  <!-- Scripts -->
-  <script src="db.js"></script>
+  <!-- Scripts (Cache Buster ?v=3) -->
+  <script src="db.js?v=3"></script>
   <script src="geometry.js"></script>
   <script src="app.js"></script>
 </body>
