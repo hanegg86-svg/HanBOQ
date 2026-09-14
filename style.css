@@ -858,23 +858,33 @@ th {
   font-weight: 800;
   color: #38bdf8;
 }
+
+/* ปรับปรุงขยายขนาดช่องกรอกมูลค่า (MB) กว้างขึ้น 135px และซ่อน Spinner */
 .input-value-mb {
-  width: 95px;
-  padding: 6px 8px;
-  border: 1px solid #cbd5e1;
-  border-radius: 6px;
-  font-size: 13px;
-  font-weight: bold;
-  color: #047857;
-  background: #f0fdf4;
-  outline: none;
-  text-align: right;
-  transition: all 0.15s ease;
+  width: 135px !important;
+  min-width: 135px !important;
+  padding: 6px 10px !important;
+  border: 1px solid #cbd5e1 !important;
+  border-radius: 6px !important;
+  font-size: 13px !important;
+  font-weight: bold !important;
+  color: #047857 !important;
+  background: #f0fdf4 !important;
+  outline: none !important;
+  text-align: right !important;
+  transition: all 0.15s ease !important;
+  -moz-appearance: textfield !important; /* Firefox hide spin arrows */
+}
+.input-value-mb::-webkit-outer-spin-button,
+.input-value-mb::-webkit-inner-spin-button {
+  -webkit-appearance: none !important; /* Chrome / Safari / Edge hide spin arrows */
+  margin: 0 !important;
 }
 .input-value-mb:focus {
-  border-color: #10b981;
-  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
+  border-color: #10b981 !important;
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2) !important;
 }
+
 .timestamp-pill {
   display: inline-flex;
   align-items: center;

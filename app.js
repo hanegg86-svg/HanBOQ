@@ -826,10 +826,10 @@ function renderBOQTable(items) {
           ${manualBadge}
         </div>
       </td>
-      <td>
-        <div style="display: flex; align-items: center; gap: 4px;">
+      <td style="white-space: nowrap; min-width: 170px;">
+        <div style="display: flex; align-items: center; gap: 6px;">
           <input type="number" step="0.01" min="0" class="input-value-mb" id="val-input-${item._id}" value="${itemVal}" placeholder="0.00" onchange="updateItemValue('${item._id}', this.value)">
-          <span style="font-size: 11px; font-weight: bold; color: #047857;">MB</span>
+          <span style="font-size: 12px; font-weight: 800; color: #047857;">MB</span>
         </div>
       </td>
       <td style="color: #b91c1c; font-weight: 600;">${item.scg_product || "-"}</td>
@@ -1072,7 +1072,7 @@ function buildReportHTML() {
           <th style="padding: 8px;">รหัส/สัญลักษณ์</th>
           <th style="padding: 8px;">รายการงานตามแบบ</th>
           <th style="padding: 8px;">ปริมาณสุทธิ</th>
-          <th style="padding: 8px; text-align: right;">มูลค่า (MB)</th>
+          <th style="padding: 8px; text-align: right; min-width: 130px;">มูลค่า (MB)</th>
           <th style="padding: 8px;">สินค้าแนะนำ</th>
           <th style="padding: 8px;">ประมาณการสั่งซื้อจริง</th>
           <th style="padding: 8px;">หมายเหตุ/สูตรคำนวณ</th>
