@@ -2044,7 +2044,23 @@
       measuredShapes = [];
       measuredLines = [];
       currentPolygonPoints = [];
-      if (loc.box_2d && loc.box_2d.length === 4 && currentDrawPageImg) {
+
+      // คืนค่า Scale ที่เคยตั้งไว้ (ถ้ามี)
+      if (targetItem.pixels_per_meter) {
+        pixelsPerMeter = targetItem.pixels_per_meter;
+        if (targetItem.calibration_line) {
+          calibrationLine = JSON.parse(JSON.stringify(targetItem.calibration_line));
+        }
+        updateScaleBadge();
+      }
+
+      // โหลดรูปทรงจริง (Vector Polygons, Rectangles, Lines)
+      if (targetItem.measured_shapes && targetItem.measured_shapes.length > 0) {
+        measuredShapes = JSON.parse(JSON.stringify(targetItem.measured_shapes));
+        if (targetItem.measured_lines && targetItem.measured_lines.length > 0) {
+          measuredLines = JSON.parse(JSON.stringify(targetItem.measured_lines));
+        }
+      } else if (loc.box_2d && loc.box_2d.length === 4 && currentDrawPageImg) {
         const box = loc.box_2d;
         const ymin = (box[0] / 1000) * currentDrawPageImg.height;
         const xmin = (box[1] / 1000) * currentDrawPageImg.width;
@@ -2687,29 +2703,30 @@
       const statusElem = document.getElementById("drawStatus");
       statusElem.innerText = `กำลังคำนวณยอดสั่งซื้อสินค้าและระบบแพ็กเกจของ "${chosenProduct}" ...`;
 
+      // คำนวณ Bounding Box รวม
       let mainBox = [100, 100, 500, 500];
       if (measuredShapes.length > 0 && currentDrawPageImg) {
-        const primary = measuredShapes[0];
-        if (primary.type === 'rect') {
+        let allX = [];
+        let allY = [];
+        measuredShapes.forEach(sh => {
+          if (sh.type === 'rect') {
+            allX.push(sh.x, sh.x + sh.w);
+            allY.push(sh.y, sh.y + sh.h);
+          } else if (sh.type === 'polygon' && sh.points) {
+            sh.points.forEach(p => { allX.push(p.x); allY.push(p.y); });
+          }
+        });
+        if (allX.length > 0 && allY.length > 0) {
           mainBox = [
-            Math.round((primary.y / currentDrawPageImg.height) * 1000),
-            Math.round((primary.x / currentDrawPageImg.width) * 1000),
-            Math.round(((primary.y + primary.h) / currentDrawPageImg.height) * 1000),
-            Math.round(((primary.x + primary.w) / currentDrawPageImg.width) * 1000)
-          ];
-        } else if (primary.type === 'polygon' && primary.points.length > 0) {
-          const xs = primary.points.map(p => p.x);
-          const ys = primary.points.map(p => p.y);
-          mainBox = [
-            Math.round((Math.min(...ys) / currentDrawPageImg.height) * 1000),
-            Math.round((Math.min(...xs) / currentDrawPageImg.width) * 1000),
-            Math.round((Math.max(...ys) / currentDrawPageImg.height) * 1000),
-            Math.round((Math.max(...xs) / currentDrawPageImg.width) * 1000)
+            Math.round((Math.min(...allY) / currentDrawPageImg.height) * 1000),
+            Math.round((Math.min(...allX) / currentDrawPageImg.width) * 1000),
+            Math.round((Math.max(...allY) / currentDrawPageImg.height) * 1000),
+            Math.round((Math.max(...allX) / currentDrawPageImg.width) * 1000)
           ];
         }
       }
 
-      // ระบบคำนวณสูตรมาตรฐานอัตโนมัติภายในเครื่อง (Offline Fallback Calculation)
+      // ระบบคำนวณวัสดุภายในเครื่องทันที (Offline Fallback Calculation)
       let fallbackOrderEstimate = "";
       const pLower = chosenProduct.toLowerCase();
       if (pLower.includes("dry tech") || pLower.includes("สันหลังคา")) {
@@ -2798,9 +2815,10 @@
           }
         }
       } catch (apiErr) {
-        // ใช้ค่าคำนวณสำรองในเครื่องทำงานต่อได้ทันที
+        // ใช้ค่า Fallback ต่อได้ทันที
       }
 
+      // บันทึกรูปทรง Vector จริง (measuredShapes & Lines) ลงในไอเทม
       if (editingItemId) {
         const item = lastRawBOQItems.find(it => it._id === editingItemId);
         if (item) {
@@ -2812,12 +2830,16 @@
           item.verification_method = auditSummary;
           item.confidence_score = 99;
           item.is_manual_modified = true;
+          item.measured_shapes = JSON.parse(JSON.stringify(measuredShapes));
+          item.measured_lines = JSON.parse(JSON.stringify(measuredLines));
+          item.pixels_per_meter = pixelsPerMeter;
+          item.calibration_line = calibrationLine ? JSON.parse(JSON.stringify(calibrationLine)) : null;
           item.source_location = {
             page_number: pageNum,
             box_2d: mainBox,
             location_description: `วัดขนาดด้วย Geometry Tool และเลือกสินค้า "${chosenProduct}" บนหน้า ${pageNum}`
           };
-          statusElem.innerText = `✅ อัปเดตรายการ "${item.item_name}" บนหน้า ${pageNum} สำเร็จ!`;
+          statusElem.innerText = `✅ อัปเดตรูปทรงและรายการ "${item.item_name}" บนหน้า ${pageNum} สำเร็จ!`;
         }
       } else {
         const newItem = {
@@ -2832,6 +2854,10 @@
           calculation_note: finalCalcNote,
           verification_method: auditSummary,
           is_manual_modified: true,
+          measured_shapes = JSON.parse(JSON.stringify(measuredShapes)),
+          measured_lines = JSON.parse(JSON.stringify(measuredLines)),
+          pixels_per_meter = pixelsPerMeter,
+          calibration_line = calibrationLine ? JSON.parse(JSON.stringify(calibrationLine)) : null,
           source_location: {
             page_number: pageNum,
             box_2d: mainBox,
