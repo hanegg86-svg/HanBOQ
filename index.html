@@ -3,345 +3,369 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SCG AI BOQ & Concrete Structure Estimator</title>
-  <meta name="theme-color" content="#dc2626">
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="default">
-  <meta name="apple-mobile-web-app-title" content="SCG BOQ">
-  <link rel="manifest" href="manifest.json">
-  <link rel="icon" type="image/png" sizes="192x192" href="icon.png">
-  <link rel="icon" type="image/png" sizes="512x512" href="icon.png">
-  <link rel="apple-touch-icon" href="icon.png">
-  
-  <!-- CSS Stylesheet (Cache Buster ?v=5) -->
-  <link rel="stylesheet" href="style.css?v=5">
-
-  <!-- PDF.js CDN -->
+  <title>SCG AI BOQ &amp; Concrete Estimator - SCG AI BOQ &amp; Concrete Structure Estimator</title>
+  <link rel="stylesheet" href="style.css">
+  <!-- PDF.js สำหรับอ่านและเรนเดอร์ไฟล์ PDF แปลนอาคาร -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script>
-    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    if (window.pdfjsLib) {
+      pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+    }
   </script>
-  <!-- SheetJS CDN -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <!-- SheetJS สำหรับส่งออกตาราง BOQ เป็น Excel (.xlsx) -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head>
 <body>
-  <h2>🏗️ SCG AI BOQ & Concrete Structure Estimator</h2>
 
-  <!-- แถบแสดงสถานะโครงการ ลูกค้า และชื่อไฟล์แบบปัจจุบัน (IndexedDB) -->
+  <!-- แถบแสดงสถานะโครงการที่กำลังเปิดใช้งาน -->
   <div class="project-header-bar">
-    <div>
-      <span class="project-badge-tag" id="currentProjectBadge">โครงการปัจจุบัน</span>
-      <strong id="activeProjectDisplay" style="font-size: 15px; margin-left: 8px;">โครงการทั่วไป (ยังไม่ได้บันทึก)</strong>
-      <span id="activeCustomerDisplay" style="font-size: 13px; opacity: 0.85; margin-left: 6px;">[ลูกค้า: ไม่ระบุ]</span>
-      <span id="activePlanFileDisplay" style="font-size: 13px; color: #fde047; margin-left: 8px;">📄 [ไฟล์แบบ: ยังไม่ได้เลือกแบบ]</span>
+    <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+      <span class="project-badge-tag">โครงการปัจจุบัน</span>
+      <span style="font-size: 16px; font-weight: bold;" id="activeProjectDisplay">โครงการทั่วไป (ยังไม่ได้บันทึก)</span>
+      <span style="font-size: 13px; color: #94a3b8;" id="activeCustomerDisplay">[ลูกค้า: ไม่ระบุ]</span>
+      <span style="font-size: 12px; color: #38bdf8; font-weight: 600;" id="activePlanFileDisplay">📄 [ไฟล์แบบ: ยังไม่ได้เลือกแบบ]</span>
     </div>
-    <div style="display: flex; gap: 8px;">
-      <button type="button" class="btn-projects" style="padding: 6px 14px; font-size: 13px; flex: none;" onclick="openProjectManagerModal()">📂 จัดการโครงการ & รายชื่อลูกค้า</button>
-      <button type="button" style="background: #16a34a; padding: 6px 14px; font-size: 13px; flex: none;" onclick="saveCurrentProjectToDB()">💾 บันทึกโปรเจกต์นี้</button>
+    <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+      <button type="button" class="btn-projects" style="padding: 6px 14px; font-size: 13px;" onclick="openProjectManagerModal()">📂 คลังโครงการ &amp; ลูกค้า</button>
+      <button type="button" style="background: #16a34a; padding: 6px 14px; font-size: 13px;" onclick="saveCurrentProjectToDB()">💾 บันทึกลงเครื่อง (IndexedDB)</button>
+      <button type="button" style="background: #475569; padding: 6px 12px; font-size: 13px;" onclick="createNewProjectPrompt()">➕ สร้างโครงการใหม่</button>
     </div>
   </div>
 
-  <!-- การระบุข้อมูลโครงการ ลูกค้า และชื่อแบบแปลน -->
+  <!-- การ์ดข้อมูลโครงการและ API Key -->
   <div class="card">
-    <h3 style="margin-bottom: 12px; font-size: 15px; color: #1e293b;">📋 ข้อมูลโครงการและลูกค้า (สำหรับออกรายงานและจัดหมวดหมู่):</h3>
     <div class="grid-project-meta">
       <div>
-        <label for="metaCustomerName">👤 ชื่อลูกค้า / เจ้าของโครงการ:</label>
-        <input type="text" id="metaCustomerName" placeholder="เช่น คุณสมชาย ใจดี หรือ บจก. สยามดีเวลลอปเมนท์">
-      </div>
-      <div>
-        <label for="metaProjectName">🏢 ชื่อโครงการ / อาคาร:</label>
-        <input type="text" id="metaProjectName" placeholder="เช่น บ้านพักอาศัย 2 ชั้น แปลง B2">
-      </div>
-      <div>
-        <label for="metaPlanFileName" style="color: #b91c1c;">📄 ชื่อแบบแปลนอ้างอิง (ดึงอัตโนมัติ):</label>
-        <input type="text" id="metaPlanFileName" placeholder="ดึงอัตโนมัติเมื่อเลือกไฟล์ หรือพิมพ์ระบุเองได้">
-      </div>
-      <div>
-        <label for="metaProjectCode">🔖 รหัสโครงการ (Project Code):</label>
-        <input type="text" id="metaProjectCode" placeholder="เช่น PRJ-2026-001">
-      </div>
-      <div>
-        <label for="metaEstimator">👷‍♂️ ผู้ประมาณราคา (Estimator):</label>
-        <input type="text" id="metaEstimator" placeholder="ชื่อวิศวกร / QS">
-      </div>
-    </div>
-  </div>
-
-  <!-- ตั้งค่า API Key -->
-  <div class="card">
-    <label for="apiKey">Gemini API Key:</label>
-    <input type="password" id="apiKey" placeholder="วางรหัส AIzaSy... ที่นี่">
-    <button type="button" style="width: 100%;" onclick="saveApiKey()">บันทึก API Key</button>
-  </div>
-
-  <!-- เลือกวัสดุและอัปโหลดเอกสาร -->
-  <div class="card">
-    <label>เลือกสเปกหรือวัสดุทดแทน (ระบบรองรับ Multi-Drawing ในหน้าเดียว, Symbol Legend Mapping, ภาษาไทย 100%, แยกหน้าอัตโนมัติ, Auto-Edge Panning, OSNAP, Ortho Lock และ Cross-Check 3D):</label>
-    <div class="grid-options">
-      <div>
-        <label for="concreteOption" style="color: #0f172a;">🏢 1. หมวดงานคอนกรีตและโครงสร้าง CPAC:</label>
-        <select id="concreteOption">
-          <option value="auto">คำนวณตามแบบระบุ / สัญลักษณ์ (Default)</option>
-          <option value="cpac_hollowcore_10">แผ่นพื้น CPAC Hollow Core หนา 10 ซม. + Topping 5 ซม. + Wire Mesh</option>
-          <option value="cpac_hollowcore_8">แผ่นพื้น CPAC Hollow Core หนา 8 ซม. + Topping 5 ซม. + Wire Mesh</option>
-          <option value="cpac_hollowcore_12">แผ่นพื้น CPAC Hollow Core หนา 12 ซม. (สแปนยาว)</option>
-          <option value="cpac_posttension">ระบบพื้นคอนกรีตอัดแรง Post-tension + ลวดสลิง PC Strand</option>
-          <option value="cpac_ready_mix_280">คอนกรีตผสมเสร็จ CPAC 280 ksc Cube (งานพื้น/โครงสร้างทั่วไป)</option>
-          <option value="cpac_ready_mix_320">คอนกรีตผสมเสร็จ CPAC 320 ksc Cube (งานโครงสร้างรับแรงสูง)</option>
-          <option value="cpac_waterproof">คอนกรีตกันซึม CPAC (สำหรับห้องน้ำ / ดาดฟ้า)</option>
-        </select>
-      </div>
-      <div>
-        <label for="roofOption">2. หมวดงานหลังคา:</label>
-        <select id="roofOption" onchange="autoAdjustDefaultSlope()">
-          <option value="auto">คำนวณตามแบบระบุ / สัญลักษณ์ (Default)</option>
-          <option value="metal_lumax">SCG Roof Metal Sheet ลอน LumaX (ขั้นต่ำ 0.3° สไตล์โมเดิร์น)</option>
-          <option value="scg_prestige">หลังคาคอนกรีตแผ่นเรียบ SCG Prestige (ขั้นต่ำ 25° + ระบบครอบแห้ง Dry Tech)</option>
-          <option value="scg_neustile">หลังคาคอนกรีตแผ่นเรียบ SCG Neustile (ขั้นต่ำ 22° + ระบบครอบแห้ง Dry Tech)</option>
-          <option value="cpac">หลังคาคอนกรีต SCG CPAC ลอนมาตรฐาน (ขั้นต่ำ 17° + ครอบแห้ง)</option>
-          <option value="roman">กระเบื้องหลังคาลอนคู่ SCG (ขั้นต่ำ 15°)</option>
-          <option value="metal_snaplock">SCG Metal Sheet ลอน Snap Lock (ขั้นต่ำ 3°)</option>
-          <option value="metal_760">SCG Metal Sheet ลอน 760 Noise Shield (ขั้นต่ำ 5°)</option>
-          <option value="excella">หลังคาเซรามิก SCG Excella (ขั้นต่ำ 17°)</option>
-        </select>
-        <label for="roofSlopeDeg" style="margin-top: 6px; font-size: 13px; color: #b91c1c;">📐 ความชันหลังคา (Slope Angle):</label>
-        <div class="slope-input-group">
-          <input type="number" id="roofSlopeDeg" value="0.3" min="0" max="75" step="0.1" title="องศาความชันหลังคา">
-          <span style="font-size: 14px; font-weight: bold; color: #475569;">องศา (°)</span>
-          <span style="font-size: 12px; color: #64748b;" id="slopeFactorLabel">(ขั้นต่ำ: 0.3° | ตัวคูณ: 1.000)</span>
-          <div id="slopeWarning" class="slope-warning-badge">⚠️ องศาต่ำกว่าเกณฑ์มาตรฐาน SCG เสี่ยงน้ำไหลย้อนซึมเข้าใต้หลังคา</div>
+        <label for="apiKey">Gemini API Key:</label>
+        <div style="display: flex; gap: 6px;">
+          <input type="password" id="apiKey" placeholder="AIzaSy..." style="margin-bottom: 0;">
+          <button type="button" style="flex: none; padding: 6px 12px; font-size: 13px; background: #0284c7;" onclick="saveApiKey()">บันทึก Key</button>
         </div>
       </div>
       <div>
-        <label for="ceilingInsulationOption" style="color: #c2410c;">🏠 3. ฉนวนปูเหนือฝ้าเพดาน (STAY COOL):</label>
+        <label for="metaCustomerName">ชื่อลูกค้า / เจ้าของโครงการ:</label>
+        <input type="text" id="metaCustomerName" placeholder="เช่น คุณสมชาย ใจดี">
+      </div>
+      <div>
+        <label for="metaProjectName">ชื่อโครงการ / แบบอาคาร:</label>
+        <input type="text" id="metaProjectName" placeholder="เช่น บ้านพักอาศัย คสล. 2 ชั้น">
+      </div>
+      <div>
+        <label for="metaProjectCode">รหัสโครงการ:</label>
+        <input type="text" id="metaProjectCode" placeholder="PRJ-2026-001">
+      </div>
+      <div>
+        <label for="metaEstimator">ผู้ประมาณราคา:</label>
+        <input type="text" id="metaEstimator" placeholder="วิศวกร / QS ผู้จัดทำ">
+      </div>
+    </div>
+  </div>
+
+  <!-- การ์ดอัปโหลดไฟล์แบบแปลนและแบบประกอบ -->
+  <div class="card">
+    <div class="grid-options" style="background: transparent; padding: 0; margin-bottom: 0;">
+      <div>
+        <label for="planFile">1. แบบแปลนพื้นสถาปัตย์ / โครงสร้าง (Floor Plan)*:</label>
+        <input type="file" id="planFile" accept="application/pdf,image/*" onchange="onFileSelected()">
+        <input type="hidden" id="metaPlanFileName">
+      </div>
+      <div>
+        <label for="sectionFile">2. แบบรูปตัด / รูปด้าน (Section &amp; Elevation):</label>
+        <input type="file" id="sectionFile" accept="application/pdf,image/*">
+      </div>
+      <div>
+        <label for="specFile">3. รายการประกอบแบบ / Schedule สัญลักษณ์:</label>
+        <input type="file" id="specFile" accept="application/pdf,image/*">
+      </div>
+    </div>
+  </div>
+
+  <!-- การ์ดกำหนดสเปกวัสดุก่อสร้าง SCG & CPAC -->
+  <div class="card">
+    <h3>⚙️ กำหนดสเปกวัสดุก่อสร้าง SCG &amp; คอนกรีต CPAC</h3>
+    <div class="grid-options">
+      <div>
+        <label for="concreteOption">งานโครงสร้าง &amp; พื้นคอนกรีต CPAC:</label>
+        <select id="concreteOption">
+          <option value="auto">ตรวจจับอัตโนมัติจากแบบแปลน</option>
+          <option value="แผ่นพื้นสำเร็จรูป CPAC Hollow Core หนา 10 ซม. + Topping 5 ซม.">แผ่นพื้น CPAC Hollow Core 10 ซม. + Topping 5 ซม.</option>
+          <option value="แผ่นพื้นสำเร็จรูป CPAC Hollow Core หนา 8 ซม. + Topping 5 ซม.">แผ่นพื้น CPAC Hollow Core 8 ซม. + Topping 5 ซม.</option>
+          <option value="ระบบพื้นคอนกรีตอัดแรง Post-tension">ระบบพื้นคอนกรีตอัดแรง Post-tension</option>
+          <option value="คอนกรีตผสมเสร็จ CPAC 240 ksc Cube (เทพื้นโครงสร้างทั่วไป)">คอนกรีตผสมเสร็จ CPAC 240 ksc Cube</option>
+          <option value="คอนกรีตผสมเสร็จ CPAC 280 ksc Cube (มาตรฐานงานเสา/คาน)">คอนกรีตผสมเสร็จ CPAC 280 ksc Cube</option>
+        </select>
+      </div>
+      <div>
+        <label for="roofOption">รุ่นกระเบื้อง / แผ่นหลังคา SCG:</label>
+        <select id="roofOption" onchange="autoAdjustDefaultSlope()">
+          <option value="metal_snaplock">SCG Metal Sheet Snap Lock (ซ่อนสกรู ขั้นต่ำ 3°)</option>
+          <option value="metal_lumax">SCG Metal Sheet LumaX (รับความชันต่ำสุด 0.3°)</option>
+          <option value="metal_760">SCG Metal Sheet 760 Noise Shield (ขั้นต่ำ 5°)</option>
+          <option value="roman">กระเบื้องหลังคาลอนคู่ SCG (ขั้นต่ำ 15°)</option>
+          <option value="cpac">หลังคาคอนกรีต SCG CPAC ลอนมาตรฐาน (ขั้นต่ำ 17°)</option>
+          <option value="excella">หลังคาเซรามิก SCG Excella (ขั้นต่ำ 17°)</option>
+          <option value="scg_neustile">หลังคาคอนกรีตแผ่นเรียบ SCG Neustile (ขั้นต่ำ 22°)</option>
+          <option value="scg_prestige">หลังคาคอนกรีตแผ่นเรียบ SCG Prestige (ขั้นต่ำ 25°)</option>
+          <option value="auto">ตรวจจับอัตโนมัติจากแบบแปลน</option>
+        </select>
+      </div>
+      <div>
+        <label for="roofSlopeDeg">องศาความชันหลังคา (Slope Deg):</label>
+        <div class="slope-input-group">
+          <input type="number" id="roofSlopeDeg" step="0.1" min="0.1" max="60" value="3">
+          <span id="slopeFactorLabel" style="font-size: 12px; font-weight: bold; color: #0284c7;">(ขั้นต่ำ: 3° | ตัวคูณ: 1.001)</span>
+          <div id="slopeWarning" class="slope-warning-badge"></div>
+        </div>
+      </div>
+      <div>
+        <label for="ceilingInsulationOption">ฉนวนกันความร้อนปูเหนือฝ้า:</label>
         <select id="ceilingInsulationOption">
-          <option value="auto">คำนวณตามแบบระบุ / สัญลักษณ์ (Default)</option>
-          <option value="staycool_75">ฉนวนเหนือฝ้า SCG STAY COOL หนา 75 มม. (3") หุ้มฟอยล์รอบด้าน</option>
-          <option value="staycool_150">ฉนวนเหนือฝ้า SCG STAY COOL หนา 150 มม. (6") กันร้อนสูงสุด</option>
-          <option value="none">ไม่ติดตั้งฉนวนเหนือฝ้า</option>
+          <option value="auto">ตรวจจับอัตโนมัติจากแบบแปลน</option>
+          <option value="ฉนวนปูเหนือฝ้า SCG STAY COOL หนา 75 มม.">SCG STAY COOL หนา 75 มม. (3 นิ้ว)</option>
+          <option value="ฉนวนปูเหนือฝ้า SCG STAY COOL หนา 150 มม.">SCG STAY COOL หนา 150 มม. (6 นิ้ว กันร้อนสูงสุด)</option>
+          <option value="ไม่ระบุ / ไม่ติดตั้ง">ไม่ระบุ / ไม่ติดตั้ง</option>
         </select>
       </div>
       <div>
-        <label for="roofInsulationOption" style="color: #b91c1c;">🛡️ 4. ฉนวนใต้หลังคา (SCG FSO) & สะท้อนความร้อน:</label>
+        <label for="roofInsulationOption">ฉนวนบุใต้หลังคา / แผ่นสะท้อนความร้อน:</label>
         <select id="roofInsulationOption">
-          <option value="auto">คำนวณตามแบบระบุ / สัญลักษณ์ (Default)</option>
-          <option value="scg_fso">ฉนวนใยแก้วใต้หลังคา SCG FSO (ติดฟอยล์โรงงาน บุใต้ Metal Sheet/แป)</option>
-          <option value="radiant_barrier">แผ่นสะท้อนความร้อน SCG Radiant Barrier ใต้แปหลังคา</option>
-          <option value="none">ไม่ติดตั้งฉนวนใต้หลังคา</option>
+          <option value="auto">ตรวจจับอัตโนมัติจากแบบแปลน</option>
+          <option value="ฉนวนใยแก้วใต้หลังคา SCG FSO">ฉนวนใยแก้วใต้หลังคา SCG FSO (บุใต้แป)</option>
+          <option value="แผ่นสะท้อนความร้อน SCG Radiant Barrier">แผ่นสะท้อนความร้อน SCG Radiant Barrier</option>
+          <option value="ไม่ระบุ / ไม่ติดตั้ง">ไม่ระบุ / ไม่ติดตั้ง</option>
         </select>
       </div>
       <div>
-        <label for="wallOption">5. หมวดงานผนัง:</label>
+        <label for="wallOption">วัสดุก่อผนัง:</label>
         <select id="wallOption">
-          <option value="auto">คำนวณตามแบบระบุ / สัญลักษณ์ (Default)</option>
-          <option value="qcon">ก่ออิฐมวลเบา Q-CON + ปูนฉาบเสือมอร์ตาร์</option>
-          <option value="smartboard_wall">ผนังเบา สมาร์ทบอร์ด SCG หนา 8-10 มม. + โครง C-Stud</option>
-          <option value="smartwood_siding">ผนังตกแต่ง ไม้ฝา SCG Smartwood (ลายไม้สัก)</option>
-          <option value="clay_brick">ก่ออิฐมอญ/บล็อก + ปูนเสือซีเมนต์ผสม</option>
+          <option value="auto">ตรวจจับอัตโนมัติจากแบบแปลน</option>
+          <option value="ก่ออิฐมวลเบา Q-CON + ปูนฉาบเสือมอร์ตาร์">อิฐมวลเบา Q-CON + ปูนฉาบเสือ</option>
+          <option value="ผนังเบา สมาร์ทบอร์ด SCG หนา 8-10 มม.">ผนังเบา สมาร์ทบอร์ด SCG หนา 8-10 มม.</option>
+          <option value="ก่ออิฐมอญ/บล็อก + ปูนเสือซีเมนต์ผสม">ก่ออิฐมอญ / บล็อก + ปูนเสือ</option>
         </select>
       </div>
       <div>
-        <label for="floorOption">6. หมวดงานพื้นสถาปัตย์/ตกแต่ง:</label>
+        <label for="floorOption">วัสดุปูพื้น:</label>
         <select id="floorOption">
-          <option value="auto">คำนวณตามแบบระบุ / สัญลักษณ์ (Default)</option>
-          <option value="cotto_tile">กระเบื้อง COTTO + ปูนกาวเสือ</option>
-          <option value="smartwood_floor">ไม้พื้นสังเคราะห์ SCG Smartwood / D-COR</option>
-          <option value="smartboard_floor">แผ่นพื้นสมาร์ทบอร์ด SCG หนา 16-20 มม.</option>
+          <option value="auto">ตรวจจับอัตโนมัติจากแบบแปลน</option>
+          <option value="กระเบื้องปูพื้น COTTO + ปูนกาวเสือ">กระเบื้อง COTTO + ปูนกาวเสือ</option>
+          <option value="ไม้พื้นสังเคราะห์ SCG Smartwood / D-COR">ไม้พื้นสังเคราะห์ SCG Smartwood</option>
+          <option value="แผ่นพื้นสมาร์ทบอร์ด SCG หนา 16-20 มม.">แผ่นพื้นสมาร์ทบอร์ด SCG 16-20 มม.</option>
         </select>
       </div>
       <div>
-        <label for="ceilingOption">7. หมวดงานฝ้าเพดาน:</label>
+        <label for="ceilingOption">ระบบฝ้าเพดาน:</label>
         <select id="ceilingOption">
-          <option value="auto">คำนวณตามแบบระบุ / สัญลักษณ์ (Default)</option>
-          <option value="smartboard_ceiling">ฝ้าสมาร์ทบอร์ด SCG ขอบเรียบ หนา 3.5-4 มม. + โครงฝ้า</option>
-          <option value="smartboard_vent">ฝ้าชายคา สมาร์ทบอร์ด SCG รุ่นมีรูระบายอากาศ (ลดร้อน)</option>
-          <option value="gypsum_ceiling">แผ่นยิปซัม SCG ตราช้าง ขอบลาด หนา 9 มม. + โครงพลัสไลน์</option>
+          <option value="auto">ตรวจจับอัตโนมัติจากแบบแปลน</option>
+          <option value="แผ่นยิปซัม SCG ตราช้าง ขอบลาด หนา 9 มม.">ยิปซัม SCG ตราช้าง 9 มม. + โครงพลัสไลน์</option>
+          <option value="ฝ้าสมาร์ทบอร์ด SCG ขอบเรียบ หนา 4 มม.">ฝ้าสมาร์ทบอร์ด SCG ขอบเรียบ 4 มม.</option>
+          <option value="ฝ้าชายคา สมาร์ทบอร์ด SCG รุ่นมีรูระบายอากาศ">ฝ้าชายคา สมาร์ทบอร์ด SCG มีรูระบายอากาศ</option>
         </select>
       </div>
       <div>
-        <label for="woodOption">8. หมวดไม้ตกแต่ง Smartwood:</label>
+        <label for="woodOption">ไม้สังเคราะห์ตกแต่ง:</label>
         <select id="woodOption">
-          <option value="auto">คำนวณตามแบบระบุ / สัญลักษณ์ (Default)</option>
-          <option value="smartwood_eaves">ไม้เชิงชาย SCG Smartwood 2 in 1 (ตามแนวชายคา)</option>
-          <option value="smartwood_lath">ไม้ระแนงบังแดด / ตกแต่ง SCG Smartwood 3"</option>
-          <option value="smartwood_fence">ไม้รั้วสังเคราะห์ SCG Smartwood</option>
+          <option value="auto">ตรวจจับอัตโนมัติจากแบบแปลน</option>
+          <option value="ไม้เชิงชาย SCG Smartwood 2 in 1 (ตามแนวชายคา)">ไม้เชิงชาย SCG Smartwood 2 in 1</option>
+          <option value="ไม้ฝา SCG Smartwood (ลายไม้สัก)">ไม้ฝา SCG Smartwood (ลายไม้สัก)</option>
+          <option value="ไม้ระแนงบังแดด SCG Smartwood 3 นิ้ว">ไม้ระแนงบังแดด SCG Smartwood 3 นิ้ว</option>
         </select>
       </div>
     </div>
-    <label for="planFile">1. แบบแปลน (Floor Plan & Roof Plan - PDF/รูปภาพ มีหลายผังในหน้าเดียวหรือหลายหน้าได้):</label>
-    <input type="file" id="planFile" accept="image/*,application/pdf" onchange="onFileSelected()">
-    <label for="sectionFile" style="color: #0369a1;">📐 2. แบบรูปตัด / รูปด้าน (Section & Elevation - สำหรับตรวจสอบความสูงผนัง & Slope 3D):</label>
-    <input type="file" id="sectionFile" accept="image/*,application/pdf">
-    <label for="specFile">3. รายการประกอบแบบ/สเปก / ตารางสัญลักษณ์ Schedule (ถ้ามี):</label>
-    <input type="file" id="specFile" accept="image/*,application/pdf">
-    <input type="file" id="jsonFileInput" accept=".json" style="display: none;" onchange="handleJsonFileImport(event)">
+  </div>
 
+  <!-- การ์ดคำสั่งเฉพาะเจาะจง & Quick Prompts -->
+  <div class="card">
     <div class="custom-prompt-container">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-        <label for="customInstructionPrompt" style="color: #c2410c; margin-bottom: 0;">
-          💬 คำสั่งเฉพาะเจาะจงสำหรับ AI (สั่งโฟกัสกรอบสี จุด หรือเงื่อนไขพิเศษในแบบ):
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <label for="customInstructionPrompt" style="margin-bottom: 0; color: #9a3412; font-weight: bold;">
+          ⚡ ปุ่มคำสั่งด่วน (คลิกเพื่อเติมข้อความ):
         </label>
-        <button type="button" class="btn-custom-add" style="padding: 5px 12px; font-size: 13px; flex: none;" onclick="openCustomItemModal()">➕ เพิ่มรายการเฉพาะเจาะจงลงในตาราง</button>
+        <button type="button" style="background: transparent; color: #b45309; border: none; padding: 2px 6px; font-size: 11px; text-decoration: underline; cursor: pointer; flex: none;" onclick="clearQuickPrompt()">ล้างข้อความ</button>
       </div>
-      <textarea id="customInstructionPrompt" placeholder="เช่น: หน้านี้มีทั้งแปลนพื้นและแปลนหลังคา ให้ถอดทั้ง 2 ส่วนแยกรายการกัน หรือ ตรวจสอบสัญลักษณ์ผนัง △1 และ △5 ตามตารางรายการประกอบแบบ"></textarea>
-      <div style="font-size: 12px; color: #7c2d12; font-weight: 600;">⚡ ปุ่มคำสั่งด่วน (คลิกเพื่อเติมข้อความ):</div>
       <div class="prompt-chip-group">
-        <span class="prompt-chip" onclick="applyQuickPrompt('สแกนแยกทั้งแปลนพื้นและแปลนหลังคาที่อยู่ในหน้าเดียวกันให้ครบทุกหมวดงาน')">📑 สแกนทั้งพื้น & หลังคาในหน้าเดียว</span>
-        <span class="prompt-chip" onclick="applyQuickPrompt('ให้อ่านและจับคู่สัญลักษณ์ผนัง (เช่น △1, △5, △11) และสัญลักษณ์พื้น (เช่น F1, F2, HC) ตามตารางรายการวัสดุประกอบแบบ (Schedule Legend) ให้ครบถ้วนเป็นภาษาไทย')">📐 จับคู่สัญลักษณ์ △ และ Schedule (ภาษาไทย)</span>
-        <span class="prompt-chip" onclick="applyQuickPrompt('วัดพื้นที่หลังคาตามกรอบสีแดงในแบบ')">🎯 วัดตามกรอบสีแดง</span>
-        <span class="prompt-chip" onclick="applyQuickPrompt('ถอดแบบเฉพาะงานโครงสร้างคอนกรีตและแผ่นพื้น CPAC Hollow Core แยกแสดงทีละชั้น')">🏢 เน้นโครงสร้าง CPAC</span>
-        <span class="prompt-chip" style="background: #f1f5f9; color: #475569; border-color: #cbd5e1;" onclick="clearQuickPrompt()">ล้างคำสั่ง</span>
+        <span class="prompt-chip" onclick="applyQuickPrompt('สแกนทั้งผังพื้น &amp; หลังคาในหน้าเดียว พร้อมถอดแบบแยกหมวดงาน')">📋 สแกนทั้งพื้น &amp; หลังคาในหน้าเดียว</span>
+        <span class="prompt-chip" onclick="applyQuickPrompt('จับคู่สัญลักษณ์ Schedule (ภาษาไทย) และถอดพื้นที่ห้องอย่างละเอียด')">📐 จับคู่สัญลักษณ์ Schedule (ภาษาไทย)</span>
+        <span class="prompt-chip" onclick="applyQuickPrompt('วัดตามกรอบสี่เหลี่ยมและรูปหลายเหลี่ยมที่ระบุในแบบ')">🎯 วัดตามกรอบสี</span>
+        <span class="prompt-chip" onclick="applyQuickPrompt('ตรวจสอบแนวรูปตัดและระดับความสูงฝ้าเพดาน (Cross-Check 3D)')">🔍 Cross-Check 3D รูปตัด</span>
       </div>
+      <textarea id="customInstructionPrompt" placeholder="ระบุคำสั่งพิเศษเพิ่มเติมเพื่อส่งให้ Gemini 3.5 Flash Lite เช่น 'เน้นถอดงานกระเบื้องห้องน้ำชั้น 2 ทั้งหมดเป็นพิเศษ'" style="margin-top: 8px; margin-bottom: 0;"></textarea>
     </div>
 
+    <!-- ปุ่มเริ่มประมวลผลหลัก -->
     <div class="btn-group">
-      <button id="processBtn" onclick="processDocuments()">เริ่มวิเคราะห์และ Cross-Check 3D (สแกนครบทุกผังในหน้าเดียว)</button>
-      <button id="drawBtn" class="btn-draw" onclick="openManualDrawModal(null)" disabled>🎯 สร้างรายการใหม่ด้วย Precision Geometry Tool</button>
-      <button type="button" class="btn-custom-add" onclick="openCustomItemModal()">➕ เพิ่มบรรทัดสินค้าเฉพาะเจาะจง</button>
-      <button id="recalcBtn" class="btn-recalc" onclick="recalculateWithNewSpecs()" disabled>🔄 คำนวณใหม่ตามสเปกที่เลือก</button>
-      <button type="button" class="btn-import" onclick="document.getElementById('jsonFileInput').click()">📂 นำเข้าไฟล์ JSON</button>
+      <button type="button" id="processBtn" onclick="processDocuments()">
+        🚀 เริ่มวิเคราะห์และ Cross-Check 3D (สแกนครบทุกผังในหน้าเดียว)
+      </button>
+      <button type="button" id="recalcBtn" class="btn-recalc" disabled onclick="recalculateWithNewSpecs()">
+        🔄 คำนวณยอดสั่งซื้อใหม่ตามสเปกที่เปลี่ยน
+      </button>
+      <button type="button" id="drawBtn" class="btn-draw" disabled onclick="openManualDrawModal()">
+        📐 สร้างรายการใหม่ด้วย Precision Geometry Tool
+      </button>
+      <button type="button" class="btn-custom-add" onclick="openCustomItemModal()">
+        ➕ เพิ่มรายการเฉพาะเจาะจง
+      </button>
     </div>
     <div id="status" class="status-text"></div>
   </div>
 
-  <!-- ตาราง BOQ -->
+  <!-- การ์ดแสดงตาราง BOQ และสรุปผลลัพธ์ -->
   <div class="card" id="resultCard" style="display: none;">
-    <!-- แผงสรุปมูลค่ารวมและจำนวนรายการ (Project Dashboard Stat Bar) -->
+    <!-- แถบสรุปยอดรวมโครงการ -->
     <div class="project-summary-bar">
       <div class="summary-stat-box">
         <span class="stat-label">💰 มูลค่ารวมโครงการ:</span>
-        <span class="stat-value-highlight" id="totalProjectValueDisplay">0.00 MB</span>
+        <span class="stat-value-highlight" id="totalProjectValueDisplay">0.00 MB (0.00 บาท)</span>
       </div>
+      <div style="border-left: 1px solid #334155; height: 24px;"></div>
       <div class="summary-stat-box">
         <span class="stat-label">📦 จำนวนรายการทั้งหมด:</span>
         <span class="stat-value" id="totalItemsCountDisplay">0 รายการ</span>
       </div>
     </div>
 
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 8px;">
-      <div>
-        <h3 style="margin: 0;">รายการประเมินปริมาณงานและสินค้า SCG & คอนกรีต CPAC (แยกแถวรายผัง/หมวดงาน)</h3>
-        <span style="font-size: 12px; color: #64748b;">💡 แต่ละแถวจะโฟกัสตำแหน่งผังจริงในแบบ กด "ดู/แก้ไขในแบบ" เพื่อกระโดดไปกรอบผังนั้นได้ทันที</span>
-      </div>
-      <button type="button" class="btn-custom-add" style="padding: 6px 14px; font-size: 13px; flex: none;" onclick="openCustomItemModal()">➕ เพิ่มรายการเฉพาะเจาะจงใหม่</button>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; flex-wrap: wrap; gap: 8px;">
+      <h3 style="margin-bottom: 0;">รายการประเมินปริมาณงานและสินค้า SCG &amp; คอนกรีต CPAC (แยกแถวรายผัง/หมวดงาน)</h3>
     </div>
-    <div class="table-container" id="boqPrintArea">
-      <table id="boqTable">
+    <div style="font-size: 12px; color: #64748b; margin-bottom: 10px;">
+      💡 แต่ละแถวจะโฟกัสตำแหน่งผังจริงในแบบ กด "ดู/แก้ไขในแบบ" เพื่อกระโดดไปกรอบผังนั้นได้ทันที | สามารถกรอกราคาต่อหน่วยเพื่อคำนวณมูลค่ารวมอัตโนมัติ
+    </div>
+
+    <div class="table-container">
+      <table>
         <thead>
           <tr>
             <th>หมวดงาน</th>
-            <th>หน้าที่พบ</th>
-            <th>รหัสอ้างอิง / สัญลักษณ์</th>
+            <th style="text-align: center;">หน้า</th>
+            <th>รหัส/สัญลักษณ์</th>
             <th>รายการงานตามแบบ (แยกชั้น/ผัง/โซน)</th>
             <th>ปริมาณสุทธิ (แก้ไขได้)</th>
-            <th style="min-width: 170px; text-align: right;">มูลค่า (MB)</th>
+            <th style="min-width: 135px; text-align: right;">ราคา/หน่วย (บาท)</th>
+            <th style="min-width: 160px; text-align: right;">มูลค่ารวม (คำนวณอัตโนมัติ)</th>
             <th>สินค้า SCG / CPAC ที่แนะนำ</th>
-            <th>ประมาณการสั่งซื้อจริง (พร้อมแพ็กเกจระบบ)</th>
-            <th>ความมั่นใจ</th>
-            <th>หมายเหตุและวิธีคำนวณ</th>
-            <th>🔍 การ Cross-Check & ที่มาปริมาณ</th>
-            <th class="no-print" style="text-align: center;">ตำแหน่ง & แก้ไขในแบบ</th>
+            <th>ประมาณการสั่งซื้อจริง</th>
+            <th style="text-align: center;">ความมั่นใจ</th>
+            <th>หมายเหตุ/สูตรคำนวณ</th>
+            <th>การ Cross-Check 3D</th>
+            <th class="no-print" style="text-align: center;">ดู/แก้ไขในแบบ</th>
             <th class="no-print" style="text-align: center;">จัดการ</th>
           </tr>
         </thead>
-        <tbody id="boqBody"></tbody>
+        <tbody id="boqBody">
+          <!-- แถวข้อมูล BOQ จะถูกเรนเดอร์ผ่านฟังก์ชัน renderBOQTable ใน app.js -->
+        </tbody>
       </table>
     </div>
 
+    <!-- ปุ่มส่งออกและนำเข้าข้อมูล -->
     <div class="export-import-grid">
-      <button type="button" class="btn-export-excel" onclick="exportExcel()">📊 Export เป็น Excel (.xlsx แท้)</button>
-      <button type="button" class="btn-export-pdf" id="btnExportPdf" onclick="openPdfPreviewModal()">📄 พรีวิว & พิมพ์/บันทึก PDF (A4 แนวนอน)</button>
-      <button type="button" class="btn-export-json" onclick="exportJSON()">💾 บันทึกโปรเจกต์ (Export JSON)</button>
-      <button type="button" class="btn-import-json" onclick="document.getElementById('jsonFileInput').click()">📂 นำเข้าโปรเจกต์ (Import JSON)</button>
+      <button type="button" class="btn-export-excel" onclick="exportExcel()">
+        📊 Export เป็น Excel (.xlsx แท้)
+      </button>
+      <button type="button" class="btn-export-pdf" onclick="openPdfPreviewModal()">
+        📄 พรีวิว &amp; พิมพ์/บันทึก PDF (A4 แนวนอน)
+      </button>
+      <button type="button" class="btn-export-json" onclick="exportJSON()">
+        💾 บันทึกเป็นไฟล์โครงการ (.json)
+      </button>
+      <div>
+        <label for="jsonFileInput" class="btn-import-json" style="display: block; text-align: center; color: white; padding: 12px; border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer; margin-bottom: 0;">
+          📂 เปิดไฟล์สำรอง (.json)
+        </label>
+        <input type="file" id="jsonFileInput" accept=".json" style="display: none;" onchange="handleJsonFileImport(event)">
+      </div>
     </div>
   </div>
 
-  <!-- Modal จัดการโปรเจกต์และรายชื่อลูกค้า (IndexedDB Dashboard มีระบบแท็บรายโครงการ & รายลูกค้า) -->
-  <div id="projectManagerModal" class="modal">
-    <div class="project-manager-modal-content">
+  <!-- MODAL: Precision Geometry Tool (Canvas วัดขนาดบนแปลน) -->
+  <div id="drawModal" class="modal">
+    <div class="modal-content">
       <div class="modal-header">
-        <div class="modal-title">📂 รายการโครงการและฐานข้อมูลลูกค้า (IndexedDB Local Storage)</div>
-        <span class="close-btn" onclick="closeModal('projectManagerModal')">&times;</span>
+        <div class="modal-title" id="drawModalHeaderTitle">📐 Precision Geometry Tool (Canvas)</div>
+        <span class="close-btn" onclick="closeModal('drawModal')">&times;</span>
       </div>
 
-      <!-- แถบแท็บสลับมุมมองแบบ Segmented Control -->
-      <div class="project-tab-bar">
-        <button type="button" class="tab-btn active" id="tabAllProjects" onclick="switchProjectTab('all')">🏢 โครงการทั้งหมด</button>
-        <button type="button" class="tab-btn" id="tabByCustomer" onclick="switchProjectTab('customer')">👤 ดูตามรายชื่อลูกค้า</button>
+      <div class="draw-controls">
+        <label style="margin-bottom: 0;">เลือกหน้าแปลน:</label>
+        <select id="drawPageSelect" onchange="onDrawPageChange()"></select>
+
+        <button type="button" id="btnModeCalib" class="tool-mode-btn btn-mode-calib" onclick="switchToolMode('calibrate')">📏 1. ตั้งสเกล</button>
+        <button type="button" id="btnModeArea" class="tool-mode-btn btn-mode-area active" onclick="switchToolMode('area')">🎯 2. สี่เหลี่ยม</button>
+        <button type="button" id="btnModePoly" class="tool-mode-btn btn-mode-poly" onclick="switchToolMode('polygon')">🔷 3. หลายเหลี่ยม (Polygon)</button>
+        <button type="button" id="btnModeLine" class="tool-mode-btn btn-mode-line" onclick="switchToolMode('line')">📐 4. เส้นตรง</button>
+        <button type="button" id="btnModePan" class="tool-mode-btn btn-mode-pan" onclick="switchToolMode('pan')">✋ มือเลื่อนแบบ</button>
+
+        <span id="scaleInfoBadge" class="scale-info-badge">⚠️ ยังไม่ได้ตั้งสเกล</span>
+
+        <div class="measure-type-pill">
+          <span>ประเภทการวัด:</span>
+          <select id="measureTypeSelect" onchange="onMeasureTypeChanged()">
+            <option value="area">พื้นที่ (ตร.ม.)</option>
+            <option value="perimeter">ความยาวรอบรูป / แนวเส้น (ม.)</option>
+          </select>
+        </div>
+
+        <div id="modalSlopeContainer" class="slope-pill" style="display: none;">
+          <span>ความชันหลังคา:</span>
+          <input type="number" id="modalSlopeDeg" step="0.5" min="0" max="60" value="3" style="width: 65px;" onchange="onModalSlopeChanged()">
+          <span id="modalSlopeMinLabel">(ขั้นต่ำ: 3°)</span>
+        </div>
+
+        <div id="roofShapeContainer" class="roof-shape-pill" style="display: none;">
+          <span>ทรงหลังคา:</span>
+          <select id="roofShapeSelect" onchange="onRoofShapeChanged()">
+            <option value="gable">ทรงจั่ว (เผื่อเศษ 5%)</option>
+            <option value="hip">ทรงปั้นหยา (เผื่อเศษ 10%)</option>
+          </select>
+        </div>
+
+        <div class="product-select-wrapper">
+          <span>หมวด:</span>
+          <select id="drawCategorySelect" onchange="onCategoryChangedInDrawModal()">
+            <option value="งานหลังคา">งานหลังคา</option>
+            <option value="งานสันหลังคา/ตะเข้สัน (SCG Dry Tech)">งานสันหลังคา (SCG Dry Tech)</option>
+            <option value="งานฉนวนใต้หลังคา (SCG FSO)">งานฉนวนใต้หลังคา (SCG FSO)</option>
+            <option value="งานฉนวนปูเหนือฝ้า (STAY COOL)">งานฉนวนปูเหนือฝ้า (STAY COOL)</option>
+            <option value="งานโครงสร้างและคอนกรีต CPAC">งานโครงสร้าง/CPAC</option>
+            <option value="งานไม้สังเคราะห์/ตกแต่ง">งานไม้สังเคราะห์</option>
+            <option value="งานผนัง">งานผนัง</option>
+            <option value="งานพื้น">งานพื้น</option>
+            <option value="งานฝ้าเพดาน">งานฝ้าเพดาน</option>
+          </select>
+          <span>สินค้า:</span>
+          <select id="drawProductSelect" onchange="onProductSelectChanged()"></select>
+        </div>
+
+        <span id="boxCounterLabel" class="box-counter">เลือกแล้ว 0 รูป (0.00 ตร.ม.)</span>
+        <button type="button" style="background: #475569; padding: 6px 10px; font-size: 12px; flex: none;" onclick="undoLastBox()">↩️ ย้อนกลับ</button>
+        <button type="button" class="btn-delete" style="padding: 6px 10px; font-size: 12px; flex: none;" onclick="clearAllDrawBoxes()">🗑️ ล้างทั้งหมด</button>
+        <button type="button" style="background: #059669; padding: 6px 14px; font-size: 13px; font-weight: bold; flex: none;" onclick="saveAndApplyInPlaceMeasurement()">✅ บันทึกรายการนี้</button>
       </div>
 
-      <div style="display: flex; gap: 8px; margin: 10px 0; align-items: center;">
-        <input type="text" id="projectSearchInput" placeholder="🔍 พิมพ์เพื่อค้นหาตามชื่อลูกค้า ชื่อโครงการ หรือชื่อไฟล์แบบ..." style="margin-bottom: 0;" oninput="filterProjectList()">
-        <button type="button" style="background: #16a34a; flex: none; padding: 10px 16px;" onclick="createNewProjectPrompt()">➕ สร้างโครงการใหม่</button>
+      <!-- พื้นที่แสดงและวาด Canvas -->
+      <div class="canvas-wrapper" id="canvasViewport">
+        <div class="floating-zoom-bar">
+          <button type="button" onclick="zoomStep(1.2)">🔍 +</button>
+          <span id="zoomLevelDisplay" class="zoom-level-text">100%</span>
+          <button type="button" onclick="zoomStep(0.8)">🔍 -</button>
+          <button type="button" onclick="fitToViewport()">📐 พอดีจอ</button>
+          <button type="button" onclick="resetZoom()">1:1</button>
+        </div>
+        <canvas id="drawCanvas"></canvas>
       </div>
-      <div id="projectListContainer" style="flex: 1; overflow-y: auto; padding-right: 4px;"></div>
+      <div id="drawStatus" class="status-text" style="font-size: 12px; margin-top: 6px; text-align: left;"></div>
     </div>
   </div>
 
-  <!-- Modal สำหรับเพิ่มรายการเฉพาะเจาะจง -->
-  <div id="customItemModal" class="modal">
-    <div class="custom-item-modal-content">
-      <div class="modal-header">
-        <div class="modal-title">➕ ระบุข้อความเพื่อเพิ่มรายการสินค้าเฉพาะเจาะจง</div>
-        <span class="close-btn" onclick="closeModal('customItemModal')">&times;</span>
-      </div>
-      <div style="margin-top: 10px;">
-        <div class="scope-selector-card">
-          <label style="margin-bottom: 4px; color: #0f172a;">🎯 ขอบเขตการค้นหา & วิเคราะห์ในแบบแปลน:</label>
-          <div class="scope-radio-group">
-            <label class="scope-radio-label">
-              <input type="radio" name="customScopeRadio" id="scopeAllPagesRadio" value="all" checked onchange="toggleCustomScopeMode()">
-              <span>📑 สแกนตรวจหาจากทุกหน้า (สแกนทั้งเล่ม)</span>
-            </label>
-            <label class="scope-radio-label">
-              <input type="radio" name="customScopeRadio" id="scopeSinglePageRadio" value="single" onchange="toggleCustomScopeMode()">
-              <span>📄 ระบุเฉพาะเจาะจงหน้า</span>
-            </label>
-          </div>
-        </div>
-        <div id="customPageSelectContainer" style="display: none;">
-          <label for="customItemPageSelect">เลือกหน้าแปลนที่ต้องการโฟกัส:</label>
-          <select id="customItemPageSelect"></select>
-        </div>
-        <label for="customItemCategorySelect">หมวดงาน:</label>
-        <select id="customItemCategorySelect">
-          <option value="งานผนัง">งานผนัง</option>
-          <option value="งานหลังคา">งานหลังคา</option>
-          <option value="งานสันหลังคา/ตะเข้สัน (SCG Dry Tech)">งานสันหลังคา/ตะเข้สัน (SCG Dry Tech)</option>
-          <option value="งานฉนวนใต้หลังคา (SCG FSO)">งานฉนวนใต้หลังคา (SCG FSO)</option>
-          <option value="งานฉนวนปูเหนือฝ้า (STAY COOL)">งานฉนวนปูเหนือฝ้า (STAY COOL)</option>
-          <option value="งานโครงสร้างและคอนกรีต CPAC">งานโครงสร้างและคอนกรีต CPAC</option>
-          <option value="งานฝ้าเพดาน">งานฝ้าเพดาน</option>
-          <option value="งานพื้น">งานพื้น</option>
-          <option value="งานไม้สังเคราะห์/ตกแต่ง">งานไม้สังเคราะห์/ตกแต่ง</option>
-        </select>
-        <label for="customItemTextInput">ระบุรายละเอียดสินค้า / พื้นที่ / ความต้องการเฉพาะเจาะจง:</label>
-        <textarea id="customItemTextInput" style="min-height: 95px;" placeholder="เช่น: สแกนถอดแบบผนังตามสัญลักษณ์ △1 (อิฐมวลเบา Q-CON) และ △5 ทุกห้อง ทุกชั้นตามตารางรายการประกอบแบบ"></textarea>
-        <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 10px;">
-          <button type="button" style="background: #64748b; flex: none; padding: 8px 16px;" onclick="closeModal('customItemModal')">ยกเลิก</button>
-          <button type="button" id="btnSubmitCustomItem" class="btn-custom-add" style="flex: none; padding: 8px 20px;" onclick="submitCustomItemRow()">⚡ สั่ง AI คำนวณและเพิ่มลงในตาราง</button>
-        </div>
-        <div id="customItemStatus" style="font-size: 13px; color: #d97706; margin-top: 8px; font-weight: 500;"></div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Modal พรีวิวกระดาษ A4 แนวนอน -->
+  <!-- MODAL: พรีวิวและพิมพ์รายงาน A4 แนวนอน -->
   <div id="pdfPreviewModal" class="modal">
     <div class="pdf-preview-modal-content">
       <div class="pdf-preview-toolbar">
-        <div style="display: flex; align-items: center; gap: 8px;">
-          <span style="font-size: 18px;">📄</span>
-          <div>
-            <div style="font-weight: bold; font-size: 15px;">พรีวิวรายงานเอกสาร A4 แนวนอน (SCG BOQ Report)</div>
-            <div style="font-size: 12px; opacity: 0.8;">ตรวจสอบความถูกต้องก่อนกดพิมพ์หรือบันทึกเป็น PDF</div>
-          </div>
-        </div>
+        <div style="font-size: 15px; font-weight: bold;">📄 ตัวอย่างรายงานพิมพ์และส่งออก PDF (A4 แนวนอน)</div>
         <div style="display: flex; gap: 8px; align-items: center;">
-          <button type="button" onclick="printReportDocument()" style="background: #16a34a; padding: 8px 18px; font-size: 13px; font-weight: bold;">🖨️ พิมพ์ / บันทึกเป็น PDF</button>
-          <button type="button" onclick="closeModal('pdfPreviewModal')" style="background: #64748b; padding: 8px 14px; font-size: 13px;">✕ ปิด</button>
+          <button type="button" style="background: #16a34a; padding: 6px 14px; font-size: 13px; flex: none;" onclick="printReportDocument()">🖨️ สั่งพิมพ์ / บันทึกเป็น PDF</button>
+          <button type="button" style="background: #475569; padding: 6px 12px; font-size: 13px; flex: none;" onclick="closeModal('pdfPreviewModal')">ปิดหน้าต่าง</button>
         </div>
       </div>
       <div class="pdf-preview-viewport">
@@ -350,81 +374,84 @@
     </div>
   </div>
 
-  <!-- In-Place Drawing Modal -->
-  <div id="drawModal" class="modal">
-    <div class="modal-content">
+  <!-- MODAL: เพิ่มรายการเฉพาะเจาะจง (Custom Item Prompt) -->
+  <div id="customItemModal" class="modal">
+    <div class="custom-item-modal-content">
       <div class="modal-header">
-        <div class="modal-title" id="drawModalHeaderTitle">📐 ตรวจสอบตำแหน่ง & แก้ไขพื้นที่ในแบบแปลน (Auto-Edge Pan & OSNAP)</div>
-        <span class="close-btn" onclick="closeModal('drawModal')">&times;</span>
+        <div class="modal-title">➕ สั่งวิเคราะห์และเพิ่มรายการเฉพาะเจาะจง</div>
+        <span class="close-btn" onclick="closeModal('customItemModal')">&times;</span>
       </div>
-      <div class="draw-controls">
-        <label style="margin: 0;">หน้า:</label>
-        <select id="drawPageSelect" onchange="onDrawPageChange()"></select>
-        <button type="button" id="btnModeCalib" class="tool-mode-btn btn-mode-calib" onclick="switchToolMode('calibrate')">📏 1. ตั้งสเกล (1 เส้น)</button>
-        <button type="button" id="btnModeArea" class="tool-mode-btn btn-mode-area active" onclick="switchToolMode('area')">🎯 2. สี่เหลี่ยม</button>
-        <button type="button" id="btnModePoly" class="tool-mode-btn btn-mode-poly" onclick="switchToolMode('polygon')">🔷 3. หลายเหลี่ยม (Polygon)</button>
-        <button type="button" id="btnModeLine" class="tool-mode-btn btn-mode-line" onclick="switchToolMode('line')">📐 4. เส้นวัดความยาว (ม.)</button>
-        <button type="button" id="btnModePan" class="tool-mode-btn btn-mode-pan" onclick="switchToolMode('pan')">✋ มือเลื่อนแบบ (Pan)</button>
-        <span class="snap-indicator-pill">🚀 ขอบจอเลื่อนเอง & 🧲 ดูดมุม</span>
-        <div class="measure-type-pill">
-          <span>ชนิดการวัด:</span>
-          <select id="measureTypeSelect" onchange="onMeasureTypeChanged()" style="padding: 2px 6px; font-weight: bold; border: 1px solid #93c5fd;">
-            <option value="area">📐 พื้นที่ (ตร.ม.)</option>
-            <option value="perimeter">🔄 เส้นรอบรูป (ม.)</option>
-          </select>
-        </div>
-        <div class="roof-shape-pill" id="roofShapeContainer">
-          <span>ทรงหลังคา (% เศษ):</span>
-          <select id="roofShapeSelect" onchange="onRoofShapeChanged()" style="padding: 2px 6px; font-weight: bold; border: 1px solid #e879f9;">
-            <option value="gable">จั่ว / เพิงแหงน (เผื่อ 5%)</option>
-            <option value="hip">ปั้นหยา / มะนิลา (เผื่อตัดเศษ 10%)</option>
-          </select>
-        </div>
-        <span class="scale-info-badge" id="scaleInfoBadge">⚠️ ยังไม่ได้ตั้งสเกล</span>
-        <label style="margin: 0;">หมวดงาน:</label>
-        <select id="drawCategorySelect" onchange="onCategoryChangedInDrawModal()">
+      <div style="margin-top: 10px;">
+        <label for="customItemCategorySelect">หมวดงาน:</label>
+        <select id="customItemCategorySelect">
           <option value="งานหลังคา">งานหลังคา</option>
-          <option value="งานสันหลังคา/ตะเข้สัน (SCG Dry Tech)">งานสันหลังคา/ตะเข้สัน (SCG Dry Tech)</option>
-          <option value="งานฉนวนใต้หลังคา (SCG FSO)">งานฉนวนใต้หลังคา (SCG FSO)</option>
-          <option value="งานฉนวนปูเหนือฝ้า (STAY COOL)">งานฉนวนปูเหนือฝ้า (STAY COOL)</option>
           <option value="งานโครงสร้างและคอนกรีต CPAC">งานโครงสร้างและคอนกรีต CPAC</option>
-          <option value="งานฝ้าเพดาน">งานฝ้าเพดาน</option>
           <option value="งานผนัง">งานผนัง</option>
           <option value="งานพื้น">งานพื้น</option>
+          <option value="งานฝ้าเพดาน">งานฝ้าเพดาน</option>
+          <option value="งานฉนวนใต้หลังคา (SCG FSO)">งานฉนวนใต้หลังคา (SCG FSO)</option>
+          <option value="งานฉนวนปูเหนือฝ้า (STAY COOL)">งานฉนวนปูเหนือฝ้า (STAY COOL)</option>
           <option value="งานไม้สังเคราะห์/ตกแต่ง">งานไม้สังเคราะห์/ตกแต่ง</option>
         </select>
-        <div class="product-select-wrapper">
-          <span style="font-size: 12px; font-weight: bold; color: #92400e;">🏷️ สินค้า SCG/CPAC:</span>
-          <select id="drawProductSelect" onchange="onProductSelectChanged()"></select>
+
+        <div class="scope-selector-card">
+          <label style="margin-bottom: 0;">ขอบเขตการสแกนในแบบแปลน:</label>
+          <div class="scope-radio-group">
+            <label class="scope-radio-label">
+              <input type="radio" name="customScope" id="scopeAllPagesRadio" checked onchange="toggleCustomScopeMode()">
+              สแกนครบทุกหน้าแปลน
+            </label>
+            <label class="scope-radio-label">
+              <input type="radio" name="customScope" id="scopeSinglePageRadio" onchange="toggleCustomScopeMode()">
+              เฉพาะหน้าที่ระบุ
+            </label>
+          </div>
+          <div id="customPageSelectContainer" style="display: none; margin-top: 8px;">
+            <select id="customItemPageSelect" style="margin-bottom: 0;"></select>
+          </div>
         </div>
-        <div id="modalSlopeContainer" class="slope-pill">
-          <span>📐 Slope:</span>
-          <input type="number" id="modalSlopeDeg" value="0.3" min="0" max="75" step="0.1" style="width: 55px; padding: 2px 4px; font-weight: bold;" onchange="onModalSlopeChanged()">
-          <span>องศา</span>
-          <span id="modalSlopeMinLabel" style="font-size: 11px; opacity: 0.85;">(ขั้นต่ำ: 0.3°)</span>
+
+        <label for="customItemTextInput">คำสั่งหรือความต้องการเฉพาะเจาะจง:</label>
+        <textarea id="customItemTextInput" placeholder="เช่น 'ตรวจหาแนวตะเข้สันและรางน้ำสเตนเลสทั้งหมด พร้อมระบุความยาวรวม'"></textarea>
+
+        <div id="customItemStatus" class="status-text" style="font-size: 13px; text-align: left; min-height: 20px;"></div>
+
+        <div style="display: flex; gap: 8px; margin-top: 12px;">
+          <button type="button" id="btnSubmitCustomItem" style="background: #0284c7;" onclick="submitCustomItemRow()">⚡ ถอดแบบด้วย Gemini 3.5 Flash Lite</button>
+          <button type="button" style="background: #64748b; flex: none; padding: 10px 16px;" onclick="closeModal('customItemModal')">ยกเลิก</button>
         </div>
-        <span class="box-counter" id="boxCounterLabel">เลือกแล้ว 0 รูป (0.00 ตร.ม.)</span>
-        <button type="button" class="btn-draw" style="padding: 6px 14px; flex: none;" onclick="saveAndApplyInPlaceMeasurement()">💾 บันทึกอัปเดตรายการนี้</button>
-        <button type="button" style="padding: 6px 10px; background: #eab308; color: #000; flex: none;" onclick="undoLastBox()">↩️ ลบรูปล่าสุด</button>
-        <button type="button" style="padding: 6px 10px; background: #64748b; flex: none;" onclick="clearAllDrawBoxes()">🗑️ ล้างทั้งหมด</button>
       </div>
-      <div class="canvas-wrapper" id="canvasViewport">
-        <div class="floating-zoom-bar">
-          <button type="button" title="ซูมเข้า" onclick="zoomStep(1.2)">🔍 +</button>
-          <button type="button" title="ซูมออก" onclick="zoomStep(0.8)">🔍 -</button>
-          <span class="zoom-level-text" id="zoomLevelDisplay">100%</span>
-          <button type="button" title="ขนาด 100%" onclick="resetZoom()">100%</button>
-          <button type="button" title="พอดีหน้าจอ" onclick="fitToViewport()">Fit</button>
-        </div>
-        <canvas id="drawCanvas"></canvas>
-      </div>
-      <div id="drawStatus" style="font-size: 13px; color: #0284c7; margin-top: 8px; font-weight: 500; flex-shrink: 0;"></div>
     </div>
   </div>
 
-  <!-- Scripts (Cache Buster ?v=5) -->
-  <script src="db.js?v=5"></script>
+  <!-- MODAL: คลังโปรเจกต์ & จัดการรายชื่อลูกค้า (IndexedDB Management) -->
+  <div id="projectManagerModal" class="modal">
+    <div class="project-manager-modal-content">
+      <div class="modal-header">
+        <div class="modal-title">📁 ระบบจัดการโปรเจกต์ &amp; ลูกค้า (IndexedDB)</div>
+        <span class="close-btn" onclick="closeModal('projectManagerModal')">&times;</span>
+      </div>
+
+      <!-- แถบ Segmented Control สลับมุมมอง -->
+      <div class="project-tab-bar">
+        <button type="button" id="tabAllProjects" class="tab-btn active" onclick="switchProjectTab('all')">📋 โครงการทั้งหมด (Flat List)</button>
+        <button type="button" id="tabByCustomer" class="tab-btn" onclick="switchProjectTab('customer')">👥 จัดกลุ่มตามลูกค้า (Group by Customer)</button>
+      </div>
+
+      <!-- แถบค้นหาโปรเจกต์ -->
+      <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+        <input type="text" id="projectSearchInput" placeholder="🔍 พิมพ์ชื่อลูกค้า, ชื่อโครงการ, ชื่อไฟล์แบบ หรือรหัสเพื่อค้นหา..." style="margin-bottom: 0;" oninput="filterProjectList()">
+        <button type="button" style="background: #16a34a; padding: 6px 14px; font-size: 13px; flex: none;" onclick="createNewProjectPrompt()">➕ โครงการใหม่</button>
+      </div>
+
+      <!-- กล่องแสดงรายการโปรเจกต์ -->
+      <div id="projectListContainer" style="flex: 1; overflow-y: auto; padding-right: 4px;"></div>
+    </div>
+  </div>
+
+  <!-- สคริปต์หลักตามลำดับ Dependency -->
+  <script src="db.js"></script>
   <script src="geometry.js"></script>
-  <script src="app.js?v=5"></script>
+  <script src="app.js"></script>
 </body>
 </html>

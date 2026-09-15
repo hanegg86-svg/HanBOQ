@@ -532,7 +532,8 @@ async function submitCustomItemRow() {
     }
     itemsToAdd.forEach((item, idx) => {
       item._id = "item_" + Date.now() + "_" + idx + "_" + Math.floor(Math.random() * 1000);
-      item.value_mb = item.value_mb !== undefined ? parseFloat(item.value_mb) : 0;
+      item.unit_price = item.unit_price !== undefined ? parseFloat(item.unit_price) : 0;
+      calculateItemTotals(item);
       item.is_manual_modified = true;
       lastRawBOQItems.push(item);
     });
@@ -665,7 +666,8 @@ ${customDirective}
     });
     boqItems.forEach((item, idx) => {
       item._id = "item_" + Date.now() + "_" + idx;
-      item.value_mb = item.value_mb !== undefined ? parseFloat(item.value_mb) : 0;
+      item.unit_price = item.unit_price !== undefined ? parseFloat(item.unit_price) : 0;
+      calculateItemTotals(item);
     });
     lastRawBOQItems = boqItems;
     recalcBtn.disabled = false;
@@ -737,7 +739,9 @@ ${JSON.stringify(lastRawBOQItems.map(it => ({
     updatedItems.forEach((item, idx) => {
       const orig = lastRawBOQItems[idx];
       item._id = (orig && orig._id) ? orig._id : "item_" + Date.now() + "_" + idx;
+      item.unit_price = (orig && orig.unit_price !== undefined) ? orig.unit_price : 0;
       item.value_mb = (orig && orig.value_mb !== undefined) ? orig.value_mb : 0;
+      calculateItemTotals(item);
     });
     lastRawBOQItems = updatedItems;
     renderBOQTable(lastRawBOQItems);
@@ -749,25 +753,125 @@ ${JSON.stringify(lastRawBOQItems.map(it => ({
   }
 }
 
+/* ----------------------------------------------------------
+   ระบบสกัดตัวเลขและคำนวณราคาอัตโนมัติ (AUTO PRICING ENGINE)
+   ---------------------------------------------------------- */
+function extractNumericQuantity(qtyStr) {
+  if (!qtyStr) return 0;
+  const match = String(qtyStr).match(/[\d,.]+/);
+  if (!match) return 0;
+  const num = parseFloat(match[0].replace(/,/g, ''));
+  return isNaN(num) ? 0 : num;
+}
+
+function calculateItemTotals(item) {
+  const qty = extractNumericQuantity(item.net_quantity);
+  
+  // รองรับข้อมูลโปรเจกต์เดิมที่มี value_mb แต่ยังไม่เคยกรอก unit_price
+  if ((item.unit_price === undefined || item.unit_price === null || item.unit_price === 0) && item.value_mb > 0) {
+    const existingTotal = item.value_mb * 1000000;
+    item.total_price = existingTotal;
+    if (qty > 0) {
+      item.unit_price = parseFloat((existingTotal / qty).toFixed(2));
+    }
+  } else {
+    const uPrice = parseFloat(item.unit_price) || 0;
+    item.unit_price = uPrice;
+    item.total_price = qty * uPrice;
+    item.value_mb = item.total_price > 0 ? (item.total_price / 1000000) : 0;
+  }
+  return {
+    qty,
+    unitPrice: item.unit_price,
+    totalPrice: item.total_price,
+    value_mb: item.value_mb
+  };
+}
+
+function formatCurrency(amount) {
+  const val = parseFloat(amount) || 0;
+  return val.toLocaleString("th-TH", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  }) + " ฿";
+}
+
+function updateItemUnitPrice(id, val) {
+  if (!lastRawBOQItems) return;
+  const item = lastRawBOQItems.find(it => it._id === id);
+  if (!item) return;
+  const num = parseFloat(val);
+  item.unit_price = !isNaN(num) && num >= 0 ? num : 0;
+  
+  const totals = calculateItemTotals(item);
+  
+  // อัปเดตมูลค่ารวมของแถวนั้นแบบ Real-time
+  const totalValElem = document.getElementById(`total-val-${item._id}`);
+  const totalMbElem = document.getElementById(`total-mb-${item._id}`);
+  if (totalValElem) totalValElem.innerText = formatCurrency(totals.totalPrice);
+  if (totalMbElem) totalMbElem.innerText = `(${totals.value_mb.toFixed(4)} MB)`;
+  
+  updateTotalSummaryDisplay();
+}
+
 function updateItemValue(id, val) {
   if (!lastRawBOQItems) return;
   const item = lastRawBOQItems.find(it => it._id === id);
   if (!item) return;
   const num = parseFloat(val);
   item.value_mb = !isNaN(num) && num >= 0 ? num : 0;
+  item.total_price = item.value_mb * 1000000;
+  const qty = extractNumericQuantity(item.net_quantity);
+  if (qty > 0) {
+    item.unit_price = parseFloat((item.total_price / qty).toFixed(2));
+    const uPriceInput = document.getElementById(`unit-price-${item._id}`);
+    if (uPriceInput) uPriceInput.value = item.unit_price > 0 ? item.unit_price : "";
+  }
   updateTotalSummaryDisplay();
 }
 
 function updateTotalSummaryDisplay() {
   if (!lastRawBOQItems) return;
   const totalMB = lastRawBOQItems.reduce((sum, it) => sum + (parseFloat(it.value_mb) || 0), 0);
+  const totalBaht = lastRawBOQItems.reduce((sum, it) => sum + (parseFloat(it.total_price) || 0), 0);
   const totalValElem = document.getElementById("totalProjectValueDisplay");
   const totalCountElem = document.getElementById("totalItemsCountDisplay");
-  if (totalValElem) totalValElem.innerText = `${totalMB.toFixed(2)} MB`;
+  if (totalValElem) totalValElem.innerText = `${totalMB.toFixed(2)} MB (${totalBaht.toLocaleString('th-TH', {minimumFractionDigits: 2, maximumFractionDigits: 2})} บาท)`;
   if (totalCountElem) totalCountElem.innerText = `${lastRawBOQItems.length} รายการ`;
 }
 
+function ensureTableHeader() {
+  const tbody = document.getElementById("boqBody");
+  if (!tbody) return;
+  const table = tbody.closest("table");
+  if (!table) return;
+  let thead = table.querySelector("thead");
+  if (!thead) {
+    thead = document.createElement("thead");
+    table.insertBefore(thead, tbody);
+  }
+  thead.innerHTML = `
+    <tr>
+      <th>หมวดงาน</th>
+      <th style="text-align: center;">หน้า</th>
+      <th>รหัส/สัญลักษณ์</th>
+      <th>รายการงานตามแบบ (แยกชั้น/ผัง/โซน)</th>
+      <th>ปริมาณสุทธิ (แก้ไขได้)</th>
+      <th style="min-width: 135px; text-align: right;">ราคา/หน่วย (บาท)</th>
+      <th style="min-width: 160px; text-align: right;">มูลค่ารวม (คำนวณอัตโนมัติ)</th>
+      <th>สินค้า SCG / CPAC ที่แนะนำ</th>
+      <th>ประมาณการสั่งซื้อจริง</th>
+      <th style="text-align: center;">ความมั่นใจ</th>
+      <th>หมายเหตุ/สูตรคำนวณ</th>
+      <th>การ Cross-Check 3D</th>
+      <th class="no-print" style="text-align: center;">ดู/แก้ไขในแบบ</th>
+      <th class="no-print" style="text-align: center;">จัดการ</th>
+    </tr>
+  `;
+}
+
 function renderBOQTable(items) {
+  ensureTableHeader();
   const tbody = document.getElementById("boqBody");
   tbody.innerHTML = "";
   if (!items || items.length === 0) {
@@ -775,6 +879,7 @@ function renderBOQTable(items) {
     return;
   }
   items.forEach((item) => {
+    calculateItemTotals(item);
     let badgeClass = "badge badge-other";
     const cat = item.category || "";
     if (cat.includes("หลังคา")) badgeClass = "badge badge-roof";
@@ -809,7 +914,7 @@ function renderBOQTable(items) {
                           (item.verification_method || "").includes("ความสูง");
     const crossCheckBadge = hasCrossCheck ? `<div class="cross-check-tag">🔍 Cross-Checked 3D</div>` : "";
     const orderEstimateFormatted = formatOrderEstimateHTML(item.order_estimate);
-    const itemVal = item.value_mb !== undefined && item.value_mb !== null ? item.value_mb : "";
+    const unitPriceVal = item.unit_price > 0 ? item.unit_price : "";
 
     const row = document.createElement("tr");
     row.id = `boq-row-${item._id}`;
@@ -826,10 +931,16 @@ function renderBOQTable(items) {
           ${manualBadge}
         </div>
       </td>
-      <td style="white-space: nowrap; min-width: 170px;">
-        <div style="display: flex; align-items: center; gap: 6px;">
-          <input type="number" step="0.01" min="0" class="input-value-mb" id="val-input-${item._id}" value="${itemVal}" placeholder="0.00" onchange="updateItemValue('${item._id}', this.value)">
-          <span style="font-size: 12px; font-weight: 800; color: #047857;">MB</span>
+      <td style="white-space: nowrap; min-width: 135px; text-align: right;">
+        <div style="display: flex; align-items: center; justify-content: flex-end; gap: 4px;">
+          <input type="number" step="any" min="0" class="input-unit-price" id="unit-price-${item._id}" value="${unitPriceVal}" placeholder="0.00" oninput="updateItemUnitPrice('${item._id}', this.value)">
+          <span style="font-size: 11px; font-weight: 700; color: #475569;">บ.</span>
+        </div>
+      </td>
+      <td style="white-space: nowrap; min-width: 160px; text-align: right;">
+        <div class="total-price-cell">
+          <span class="total-price-val" id="total-val-${item._id}">${formatCurrency(item.total_price)}</span>
+          <span class="total-price-mb" id="total-mb-${item._id}">(${item.value_mb.toFixed(4)} MB)</span>
         </div>
       </td>
       <td style="color: #b91c1c; font-weight: 600;">${item.scg_product || "-"}</td>
@@ -876,6 +987,15 @@ function updateNetQuantity(id, newValue) {
   const trimmed = newValue.trim();
   item.net_quantity = trimmed;
   item.is_manual_modified = true;
+
+  // คำนวณมูลค่ารวมใหม่ทันทีเมื่อปริมาณสุทธิเปลี่ยน
+  const totals = calculateItemTotals(item);
+  const totalValElem = document.getElementById(`total-val-${item._id}`);
+  const totalMbElem = document.getElementById(`total-mb-${item._id}`);
+  if (totalValElem) totalValElem.innerText = formatCurrency(totals.totalPrice);
+  if (totalMbElem) totalMbElem.innerText = `(${totals.value_mb.toFixed(4)} MB)`;
+  updateTotalSummaryDisplay();
+
   const numericMatch = trimmed.match(/[\d,.]+/);
   if (numericMatch) {
     const rawNum = parseFloat(numericMatch[0].replace(/,/g, ''));
@@ -954,8 +1074,10 @@ function exportExcel() {
   const plan = document.getElementById("metaPlanFileName").value || "ไม่ระบุชื่อแบบ";
   const code = document.getElementById("metaProjectCode").value || "-";
   const totalMB = lastRawBOQItems.reduce((sum, it) => sum + (parseFloat(it.value_mb) || 0), 0);
+  const totalBaht = lastRawBOQItems.reduce((sum, it) => sum + (parseFloat(it.total_price) || 0), 0);
 
   const excelData = lastRawBOQItems.map(row => {
+    calculateItemTotals(row);
     const page = (row.source_location && row.source_location.page_number) ? row.source_location.page_number : "-";
     const desc = (row.source_location && row.source_location.location_description) ? row.source_location.location_description : "-";
     const modifiedStatus = row.is_manual_modified ? "แก้ไขในแบบแล้ว" : "คำนวณอัตโนมัติ";
@@ -970,7 +1092,9 @@ function exportExcel() {
       "รหัสอ้างอิง/สัญลักษณ์": row.code_ref || "-",
       "รายการงานตามแบบ": row.item_name || "-",
       "ปริมาณสุทธิ": row.net_quantity || "-",
-      "มูลค่า (MB)": row.value_mb !== undefined && row.value_mb !== null ? row.value_mb : 0,
+      "ราคาต่อหน่วย (บาท)": row.unit_price !== undefined ? Number(row.unit_price) : 0,
+      "มูลค่ารวม (บาท)": row.total_price !== undefined ? Number(Number(row.total_price).toFixed(2)) : 0,
+      "มูลค่า (MB)": row.value_mb !== undefined && row.value_mb !== null ? Number(Number(row.value_mb).toFixed(4)) : 0,
       "สถานะ": modifiedStatus,
       "สินค้า SCG / CPAC ที่แนะนำ": row.scg_product || "-",
       "ประมาณการสั่งซื้อจริง": cleanEstimate,
@@ -992,7 +1116,9 @@ function exportExcel() {
     "รหัสอ้างอิง/สัญลักษณ์": "",
     "รายการงานตามแบบ": "",
     "ปริมาณสุทธิ": "",
-    "มูลค่า (MB)": Number(totalMB.toFixed(2)),
+    "ราคาต่อหน่วย (บาท)": "",
+    "มูลค่ารวม (บาท)": Number(totalBaht.toFixed(2)),
+    "มูลค่า (MB)": Number(totalMB.toFixed(4)),
     "สถานะ": "",
     "สินค้า SCG / CPAC ที่แนะนำ": "",
     "ประมาณการสั่งซื้อจริง": "",
@@ -1016,6 +1142,7 @@ function buildReportHTML() {
   const code = document.getElementById("metaProjectCode").value || "-";
   const estimator = document.getElementById("metaEstimator").value || "-";
   const totalMB = lastRawBOQItems.reduce((sum, it) => sum + (parseFloat(it.value_mb) || 0), 0);
+  const totalBaht = lastRawBOQItems.reduce((sum, it) => sum + (parseFloat(it.total_price) || 0), 0);
 
   const headerHTML = `
     <div style="border-bottom: 3px solid #dc2626; padding-bottom: 12px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: flex-end;">
@@ -1032,7 +1159,7 @@ function buildReportHTML() {
         </div>
       </div>
       <div style="text-align: right; font-size: 11px; color: #475569; line-height: 1.4;">
-        <div style="font-size: 14px; font-weight: 800; color: #047857;">💰 มูลค่ารวมโครงการ: ${totalMB.toFixed(2)} MB</div>
+        <div style="font-size: 14px; font-weight: 800; color: #047857;">💰 มูลค่ารวมโครงการ: ${totalMB.toFixed(2)} MB (${totalBaht.toLocaleString('th-TH', {minimumFractionDigits: 2, maximumFractionDigits: 2})} บาท)</div>
         <div style="margin-top: 3px;"><strong>วันที่ออกรายงาน:</strong> ${new Date().toLocaleDateString('th-TH')}</div>
         <div><strong>จำนวนรายการทั้งหมด:</strong> ${lastRawBOQItems.length} รายการ</div>
       </div>
@@ -1040,6 +1167,7 @@ function buildReportHTML() {
   `;
   let rowsHTML = "";
   lastRawBOQItems.forEach((row, i) => {
+    calculateItemTotals(row);
     const page = (row.source_location && row.source_location.page_number) ? row.source_location.page_number : "-";
     const cleanEstimate = (row.order_estimate || "-")
       .split(/\r?\n/)
@@ -1047,7 +1175,10 @@ function buildReportHTML() {
       .filter(s => s.length > 0)
       .map(s => `• ${s}`)
       .join("<br>");
-    const valText = row.value_mb !== undefined && row.value_mb !== null && row.value_mb > 0 ? Number(row.value_mb).toFixed(2) + " MB" : "-";
+    const uPriceText = row.unit_price > 0 ? Number(row.unit_price).toLocaleString('th-TH', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : "-";
+    const totalBahtText = row.total_price > 0 ? Number(row.total_price).toLocaleString('th-TH', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + " ฿" : "-";
+    const mbText = row.value_mb > 0 ? `(${Number(row.value_mb).toFixed(4)} MB)` : "";
+
     rowsHTML += `
       <tr style="border-bottom: 1px solid #cbd5e1; font-size: 10px; background: ${i % 2 === 0 ? '#ffffff' : '#f8fafc'}; page-break-inside: avoid;">
         <td style="padding: 6px 8px; font-weight: bold; color: #b91c1c; vertical-align: top;">${row.category || "-"}</td>
@@ -1055,7 +1186,11 @@ function buildReportHTML() {
         <td style="padding: 6px 8px; font-weight: bold; color: #0284c7; vertical-align: top;">${row.code_ref || "-"}</td>
         <td style="padding: 6px 8px; font-weight: bold; vertical-align: top;">${row.item_name || "-"}</td>
         <td style="padding: 6px 8px; font-weight: bold; color: #0284c7; vertical-align: top;">${row.net_quantity || "-"}</td>
-        <td style="padding: 6px 8px; font-weight: bold; color: #047857; text-align: right; vertical-align: top;">${valText}</td>
+        <td style="padding: 6px 8px; font-weight: bold; color: #334155; text-align: right; vertical-align: top;">${uPriceText}</td>
+        <td style="padding: 6px 8px; font-weight: bold; color: #047857; text-align: right; vertical-align: top;">
+          <div>${totalBahtText}</div>
+          <div style="font-size: 8px; color: #0284c7;">${mbText}</div>
+        </td>
         <td style="padding: 6px 8px; font-weight: bold; color: #b91c1c; vertical-align: top;">${row.scg_product || "-"}</td>
         <td style="padding: 6px 8px; line-height: 1.35; vertical-align: top;">${cleanEstimate}</td>
         <td style="padding: 6px 8px; color: #475569; line-height: 1.3; vertical-align: top;">${row.calculation_note || "-"}</td>
@@ -1072,7 +1207,8 @@ function buildReportHTML() {
           <th style="padding: 8px;">รหัส/สัญลักษณ์</th>
           <th style="padding: 8px;">รายการงานตามแบบ</th>
           <th style="padding: 8px;">ปริมาณสุทธิ</th>
-          <th style="padding: 8px; text-align: right; min-width: 130px;">มูลค่า (MB)</th>
+          <th style="padding: 8px; text-align: right; min-width: 100px;">ราคา/หน่วย (บาท)</th>
+          <th style="padding: 8px; text-align: right; min-width: 130px;">มูลค่ารวม</th>
           <th style="padding: 8px;">สินค้าแนะนำ</th>
           <th style="padding: 8px;">ประมาณการสั่งซื้อจริง</th>
           <th style="padding: 8px;">หมายเหตุ/สูตรคำนวณ</th>
@@ -1085,7 +1221,11 @@ function buildReportHTML() {
       <tfoot>
         <tr style="background: #e2e8f0; font-size: 11px; font-weight: bold;">
           <td colspan="5" style="padding: 8px; text-align: right;">รวมมูลค่าโครงการทั้งหมด:</td>
-          <td style="padding: 8px; text-align: right; color: #047857;">${totalMB.toFixed(2)} MB</td>
+          <td style="padding: 8px;"></td>
+          <td style="padding: 8px; text-align: right; color: #047857;">
+            <div>${totalBaht.toLocaleString('th-TH', {minimumFractionDigits: 2, maximumFractionDigits: 2})} บาท</div>
+            <div style="font-size: 9px; color: #0284c7;">(${totalMB.toFixed(2)} MB)</div>
+          </td>
           <td colspan="4" style="padding: 8px;"></td>
         </tr>
       </tfoot>
@@ -1261,7 +1401,8 @@ function handleJsonFileImport(event) {
       }
       itemsToLoad.forEach((item, idx) => {
         if (!item._id) item._id = "item_" + Date.now() + "_" + idx;
-        item.value_mb = item.value_mb !== undefined ? parseFloat(item.value_mb) : 0;
+        item.unit_price = item.unit_price !== undefined ? parseFloat(item.unit_price) : 0;
+        calculateItemTotals(item);
       });
       lastRawBOQItems = itemsToLoad;
       document.getElementById("recalcBtn").disabled = false;
