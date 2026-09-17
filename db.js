@@ -402,6 +402,13 @@ function loadProjectIntoUI(p) {
 
   lastRawBOQItems = p.items || [];
   renderBOQTable(lastRawBOQItems);
+
+  // ปลดล็อกปุ่มคำนวณใหม่ทันทีเมื่อโหลดโปรเจกต์ที่มีรายการจาก IndexedDB
+  const recalcBtn = document.getElementById("recalcBtn");
+  if (recalcBtn) {
+    recalcBtn.disabled = (lastRawBOQItems.length === 0);
+  }
+
   updateActiveBarDisplay(p.projectName, p.customerName, p.planFileName);
 }
 

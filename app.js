@@ -686,6 +686,10 @@ async function recalculateWithNewSpecs() {
     return;
   }
   const apiKey = document.getElementById("apiKey").value.trim();
+  if (!apiKey) {
+    alert("กรุณากรอกและบันทึก Gemini API Key ก่อน");
+    return;
+  }
   const statusDiv = document.getElementById("status");
   const recalcBtn = document.getElementById("recalcBtn");
   const slopeDeg = document.getElementById("roofSlopeDeg").value;
@@ -874,6 +878,13 @@ function renderBOQTable(items) {
   ensureTableHeader();
   const tbody = document.getElementById("boqBody");
   tbody.innerHTML = "";
+
+  // ปลดล็อกหรือล็อกปุ่มคำนวณใหม่อัตโนมัติตามจำนวนรายการที่มีอยู่จริง
+  const recalcBtn = document.getElementById("recalcBtn");
+  if (recalcBtn) {
+    recalcBtn.disabled = (!items || items.length === 0);
+  }
+
   if (!items || items.length === 0) {
     document.getElementById("resultCard").style.display = "none";
     return;
