@@ -276,6 +276,126 @@ function updateScaleBadge() {
   }
 }
 
+/* ==========================================================
+   ฟังก์ชัน AI ตรวจจับเส้นสเกลอัตโนมัติ (AUTO-CALIBRATION WITH AI)
+   ========================================================== */
+async function autoDetectScaleWithAI() {
+  if (!currentDrawPageImg) {
+    alert("กรุณาเลือกและโหลดหน้าแบบแปลนก่อน");
+    return;
+  }
+  const apiKey = document.getElementById("apiKey").value.trim();
+  if (!apiKey) {
+    alert("กรุณากรอกและบันทึก Gemini API Key ก่อน");
+    return;
+  }
+
+  const statusElem = document.getElementById("drawStatus");
+  const autoBtn = document.getElementById("btnAutoCalib");
+  if (autoBtn) autoBtn.disabled = true;
+  statusElem.innerText = "🤖 Gemini 3.5 Flash Lite กำลังสแกนหาเส้นบอกระยะ (Dimension line / Grid line) เพื่อตั้งสเกลอัตโนมัติ...";
+
+  try {
+    const tempCanvas = document.createElement("canvas");
+    tempCanvas.width = currentDrawPageImg.width;
+    tempCanvas.height = currentDrawPageImg.height;
+    const tempCtx = tempCanvas.getContext("2d");
+    tempCtx.drawImage(currentDrawPageImg, 0, 0);
+    const base64Data = tempCanvas.toDataURL("image/jpeg", 0.9).split(",")[1];
+
+    const promptText = `
+### งานและบทบาท (MANDATORY JSON ONLY):
+ท่านคือวิศวกรผู้เชี่ยวชาญการอ่านแบบสถาปัตยกรรมและโครงสร้าง
+จงสแกนตรวจสอบภาพแปลนอาคารนี้ เพื่อค้นหา "เส้นบอกระยะ (Dimension line หรือ Grid dimension)" ที่ชัดเจนที่สุด 1 เส้น
+(เช่น เส้นบอกระยะระหว่างแนวเสา Grid 1 ถึง 2, เส้นบอกระยะผนัง หรือ Dimension ตัวเลขบอกความยาวในหน่วยเมตร เช่น 4.00, 3.50, 5.00)
+
+### สิ่งที่ต้องตอบกลับ:
+ระบุพิกัดหัว-ท้ายของเส้นบอกระยะนั้นเป็นค่าพิกัดสัมพัทธ์ 0 ถึง 1000 (โดย [0,0] คือมุมซ้ายบน และ [1000,1000] คือมุมขวาล่างของภาพ)
+พร้อมตัวเลขระยะทางจริงในหน่วยเมตร (เฉพาะตัวเลข เช่น 4.0 หรือ 3.5)
+
+ตอบกลับด้วย JSON รูปแบบนี้เท่านั้น:
+{
+  "detected_meters": 4.0,
+  "dimension_text": "4.00 ม.",
+  "start_point": { "x": 250, "y": 340 },
+  "end_point": { "x": 370, "y": 340 }
+}
+`;
+
+    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key=${apiKey}`;
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        system_instruction: {
+          parts: [{
+            text: "ท่านคือวิศวกรผู้อ่านแบบก่อสร้าง ตอบกลับเฉพาะ JSON ที่ระบุพิกัดเส้นบอกระยะและตัวเลขระยะทางจริงเป็นเมตรเท่านั้น"
+          }]
+        },
+        contents: [{
+          parts: [
+            { text: promptText },
+            {
+              inlineData: {
+                data: base64Data,
+                mimeType: "image/jpeg"
+              }
+            }
+          ]
+        }],
+        generationConfig: {
+          responseMimeType: "application/json"
+        }
+      })
+    });
+
+    if (!response.ok) throw new Error("API Connection Error");
+    const data = await response.json();
+    const rawContent = data.candidates[0].content.parts[0].text;
+    const result = cleanAndParseJSON(rawContent);
+
+    if (result && result.start_point && result.end_point && result.detected_meters) {
+      const meters = parseFloat(result.detected_meters);
+      if (isNaN(meters) || meters <= 0) {
+        throw new Error("ตรวจพบระยะทางไม่ถูกต้อง");
+      }
+
+      const x1 = (result.start_point.x / 1000) * currentDrawPageImg.width;
+      const y1 = (result.start_point.y / 1000) * currentDrawPageImg.height;
+      const x2 = (result.end_point.x / 1000) * currentDrawPageImg.width;
+      const y2 = (result.end_point.y / 1000) * currentDrawPageImg.height;
+
+      const dx = x2 - x1;
+      const dy = y2 - y1;
+      const pixelDist = Math.sqrt(dx * dx + dy * dy);
+
+      if (pixelDist < 10) {
+        throw new Error("ระยะพิกเซลสั้นเกินไป ไม่สามารถคำนวณสเกลได้");
+      }
+
+      pixelsPerMeter = pixelDist / meters;
+      calibrationLine = {
+        x1: x1,
+        y1: y1,
+        x2: x2,
+        y2: y2,
+        meters: meters
+      };
+
+      updateScaleBadge();
+      redrawCanvas();
+      statusElem.innerText = `✅ ตรวจจับสเกลสำเร็จอัตโนมัติ: ${result.dimension_text || meters + ' ม.'} (${pixelDist.toFixed(1)} px) ➔ 1 ม. = ${pixelsPerMeter.toFixed(1)} px`;
+    } else {
+      throw new Error("ไม่พบเส้นบอกระยะที่สมบูรณ์");
+    }
+  } catch (err) {
+    console.error("Auto Calibration Error:", err);
+    statusElem.innerText = "⚠️ ไม่สามารถตรวจจับสเกลอัตโนมัติได้ กรุณาใช้ปุ่ม '📏 1. ตั้งสเกล' เพื่อลากเส้นเอง";
+  } finally {
+    if (autoBtn) autoBtn.disabled = false;
+  }
+}
+
 function updateBoxCounter() {
   const cat = document.getElementById("drawCategorySelect").value;
   const isRoofRelated = (cat.includes("หลังคา") || cat.includes("FSO") || cat.includes("Dry Tech"));
@@ -1082,10 +1202,10 @@ async function saveAndApplyInPlaceMeasurement() {
       calculation_note: finalCalcNote,
       verification_method: auditSummary,
       is_manual_modified: true,
-      measured_shapes: JSON.parse(JSON.stringify(measuredShapes)),
-      measured_lines: JSON.parse(JSON.stringify(measuredLines)),
-      pixels_per_meter: pixelsPerMeter,
-      calibration_line: calibrationLine ? JSON.parse(JSON.stringify(calibrationLine)) : null,
+      measured_shapes = JSON.parse(JSON.stringify(measuredShapes)),
+      measured_lines = JSON.parse(JSON.stringify(measuredLines)),
+      pixels_per_meter = pixelsPerMeter,
+      calibration_line = calibrationLine ? JSON.parse(JSON.stringify(calibrationLine)) : null,
       source_location: {
         page_number: pageNum,
         box_2d: mainBox,
