@@ -98,7 +98,7 @@ function findMagneticSnapPoint(targetPos) {
       checkPoint({ x: shape.x, y: shape.y });
       checkPoint({ x: shape.x + shape.w, y: shape.y });
       checkPoint({ x: shape.x + shape.w, y: shape.y + shape.h });
-      checkPoint({ x: shape.x, y: shape.y + shape.h });
+      checkPoint({ x: shape.x, y: shape.h + shape.y });
     } else if (shape.type === 'polygon' && shape.points) {
       shape.points.forEach(checkPoint);
     }
@@ -862,8 +862,13 @@ function clearAllDrawBoxes() {
 
 async function openInPlaceEditor(itemId) {
   if (!currentUploadedFile) {
-    alert("กรุณาเลือกไฟล์แบบแปลนก่อน");
-    return;
+    const planInput = document.getElementById("planFile");
+    if (planInput && planInput.files && planInput.files[0]) {
+      await loadPlanDocument(planInput.files[0]);
+    } else {
+      alert("กรุณาเลือกไฟล์แบบแปลนก่อน");
+      return;
+    }
   }
   editingItemId = itemId;
   const targetItem = lastRawBOQItems.find(it => it._id === itemId);
@@ -1202,10 +1207,10 @@ async function saveAndApplyInPlaceMeasurement() {
       calculation_note: finalCalcNote,
       verification_method: auditSummary,
       is_manual_modified: true,
-      measured_shapes = JSON.parse(JSON.stringify(measuredShapes)),
-      measured_lines = JSON.parse(JSON.stringify(measuredLines)),
-      pixels_per_meter = pixelsPerMeter,
-      calibration_line = calibrationLine ? JSON.parse(JSON.stringify(calibrationLine)) : null,
+      measured_shapes: JSON.parse(JSON.stringify(measuredShapes)),
+      measured_lines: JSON.parse(JSON.stringify(measuredLines)),
+      pixels_per_meter: pixelsPerMeter,
+      calibration_line: calibrationLine ? JSON.parse(JSON.stringify(calibrationLine)) : null,
       source_location: {
         page_number: pageNum,
         box_2d: mainBox,
