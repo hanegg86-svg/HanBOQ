@@ -98,7 +98,7 @@ function findMagneticSnapPoint(targetPos) {
       checkPoint({ x: shape.x, y: shape.y });
       checkPoint({ x: shape.x + shape.w, y: shape.y });
       checkPoint({ x: shape.x + shape.w, y: shape.y + shape.h });
-      checkPoint({ x: shape.x, y: shape.h + shape.y });
+      checkPoint({ x: shape.x, y: shape.y + shape.h });
     } else if (shape.type === 'polygon' && shape.points) {
       shape.points.forEach(checkPoint);
     }
