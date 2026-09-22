@@ -293,7 +293,7 @@ async function autoDetectScaleWithAI() {
   const statusElem = document.getElementById("drawStatus");
   const autoBtn = document.getElementById("btnAutoCalib");
   if (autoBtn) autoBtn.disabled = true;
-  statusElem.innerText = "🤖 Gemini 3.5 Flash Lite กำลังสแกนหาเส้นบอกระยะ (Dimension line / Grid line) เพื่อตั้งสเกลอัตโนมัติ...";
+  statusElem.innerText = "🤖 Gemini 3.5 Flash Lite กำลังสแกนหาแนวกริดและเสา (Grid Lines) เพื่อตั้งสเกลอัตโนมัติ...";
 
   try {
     const tempCanvas = document.createElement("canvas");
@@ -304,21 +304,25 @@ async function autoDetectScaleWithAI() {
     const base64Data = tempCanvas.toDataURL("image/jpeg", 0.9).split(",")[1];
 
     const promptText = `
-### งานและบทบาท (MANDATORY JSON ONLY):
-ท่านคือวิศวกรผู้เชี่ยวชาญการอ่านแบบสถาปัตยกรรมและโครงสร้าง
-จงสแกนตรวจสอบภาพแปลนอาคารนี้ เพื่อค้นหา "เส้นบอกระยะ (Dimension line หรือ Grid dimension)" ที่ชัดเจนที่สุด 1 เส้น
-(เช่น เส้นบอกระยะระหว่างแนวเสา Grid 1 ถึง 2, เส้นบอกระยะผนัง หรือ Dimension ตัวเลขบอกความยาวในหน่วยเมตร เช่น 4.00, 3.50, 5.00)
+### บทบาทและภารกิจ (MANDATORY JSON ONLY):
+ท่านคือวิศวกรผู้เชี่ยวชาญการอ่านแบบสถาปัตยกรรมและโครงสร้าง (Engineering Drawing Reader)
+จงค้นหาแนวกริดไลน์ (Grid Line) หรือแนวเสาคู่ที่ชัดเจนที่สุด 1 ช่วงบนแบบแปลนนี้ 
+เช่น ระหว่าง "วงกลมกริด (1)" ถึง "วงกลมกริด (2)" หรือคู่กริดอื่นที่มีตัวเลขบอกระยะกำกับชัดเจน (เช่น 4.00, 3.50, 5.00)
 
-### สิ่งที่ต้องตอบกลับ:
-ระบุพิกัดหัว-ท้ายของเส้นบอกระยะนั้นเป็นค่าพิกัดสัมพัทธ์ 0 ถึง 1000 (โดย [0,0] คือมุมซ้ายบน และ [1000,1000] คือมุมขวาล่างของภาพ)
-พร้อมตัวเลขระยะทางจริงในหน่วยเมตร (เฉพาะตัวเลข เช่น 4.0 หรือ 3.5)
+### กฎเหล็กการกำหนดจุดพิกัด (CRITICAL RULES - ห้ามผิดพลาด):
+1. **จุดเริ่มต้น (start_point)**: ต้องเป็น "จุดศูนย์กลางของแกนกริด/เสาแรก" (เช่น จุดศูนย์กลางของวงกลมกริด 1 หรือเส้นแนวเสา 1)
+2. **จุดสิ้นสุด (end_point)**: ต้องเป็น "จุดศูนย์กลางของแกนกริด/เสาถัดไป" (เช่น จุดศูนย์กลางของวงกลมกริด 2 หรือเส้นแนวเสา 2)
+3. **คำเตือนสำคัญ**: ห้ามเริ่มหรือจบเส้นที่ตัวเลขบอกขนาด (Dimension Text) เด็ดขาด! เส้นต้องลากครอบคลุมระยะเต็มจากแนวแกนเสาแรกไปจนถึงแนวแกนเสาที่สอง
+4. กำหนดให้ระดับแกน Y ของ start_point และ end_point เท่ากัน (เส้นตรงแนวนอนสมบูรณ์) บริเวณแนวเส้นบอกระยะ Grid
+5. ระบุพิกัดในสเกลสัมพัทธ์ 0 ถึง 1000 (โดย [0,0] คือมุมซ้ายบน และ [1000,1000] คือมุมขวาล่างของภาพ)
+6. ระบุตัวเลขระยะทางจริงระหว่าง 2 กริดนี้ในหน่วยเมตร (เฉพาะตัวเลข เช่น 4.0 หรือ 3.5)
 
 ตอบกลับด้วย JSON รูปแบบนี้เท่านั้น:
 {
   "detected_meters": 4.0,
-  "dimension_text": "4.00 ม.",
-  "start_point": { "x": 250, "y": 340 },
-  "end_point": { "x": 370, "y": 340 }
+  "dimension_text": "แนวกริด 1 ถึง 2 (4.00 ม.)",
+  "start_point": { "x": 92, "y": 280 },
+  "end_point": { "x": 360, "y": 280 }
 }
 `;
 
@@ -329,7 +333,7 @@ async function autoDetectScaleWithAI() {
       body: JSON.stringify({
         system_instruction: {
           parts: [{
-            text: "ท่านคือวิศวกรผู้อ่านแบบก่อสร้าง ตอบกลับเฉพาะ JSON ที่ระบุพิกัดเส้นบอกระยะและตัวเลขระยะทางจริงเป็นเมตรเท่านั้น"
+            text: "ท่านคือวิศวกรผู้อ่านแบบก่อสร้าง ตอบกลับเฉพาะ JSON ที่ระบุพิกัดกึ่งกลางแนวกริดไลน์และระยะทางจริงเป็นเมตรเท่านั้น ห้ามเริ่มเส้นที่ตัวเลขบอกขนาด"
           }]
         },
         contents: [{
@@ -360,16 +364,23 @@ async function autoDetectScaleWithAI() {
         throw new Error("ตรวจพบระยะทางไม่ถูกต้อง");
       }
 
-      const x1 = (result.start_point.x / 1000) * currentDrawPageImg.width;
-      const y1 = (result.start_point.y / 1000) * currentDrawPageImg.height;
-      const x2 = (result.end_point.x / 1000) * currentDrawPageImg.width;
-      const y2 = (result.end_point.y / 1000) * currentDrawPageImg.height;
+      let x1 = (result.start_point.x / 1000) * currentDrawPageImg.width;
+      let y1 = (result.start_point.y / 1000) * currentDrawPageImg.height;
+      let x2 = (result.end_point.x / 1000) * currentDrawPageImg.width;
+      let y2 = (result.end_point.y / 1000) * currentDrawPageImg.height;
+
+      // จัดแนวแกน Y ให้ตรงกันหากเป็นมิติแนวนอนหลัก (ป้องกันเส้นเอียง)
+      if (Math.abs(y2 - y1) < currentDrawPageImg.height * 0.03) {
+        const avgY = (y1 + y2) / 2;
+        y1 = avgY;
+        y2 = avgY;
+      }
 
       const dx = x2 - x1;
       const dy = y2 - y1;
       const pixelDist = Math.sqrt(dx * dx + dy * dy);
 
-      if (pixelDist < 10) {
+      if (pixelDist < 15) {
         throw new Error("ระยะพิกเซลสั้นเกินไป ไม่สามารถคำนวณสเกลได้");
       }
 
