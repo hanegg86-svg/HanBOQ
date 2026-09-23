@@ -26,6 +26,7 @@ function clearQuickPrompt() {
 }
 
 const SCG_ROOF_MIN_SLOPE = {
+  "scg_truss": 0.3,
   "metal_lumax": 0.3,
   "metal_snaplock": 3,
   "metal_760": 5,
@@ -39,6 +40,7 @@ const SCG_ROOF_MIN_SLOPE = {
 
 function getMinSlopeFromProductName(productName) {
   const p = (productName || "").toLowerCase();
+  if (p.includes("truss") || p.includes("ทรัส")) return 0.3;
   if (p.includes("lumax") || p.includes("ลูแมกซ์")) return 0.3;
   if (p.includes("snap lock") || p.includes("snaplock")) return 3;
   if (p.includes("760") || p.includes("noise shield")) return 5;
@@ -68,10 +70,10 @@ const THAI_CONSTRUCTION_DICT = {
   "พื้น ค.ส.ล.": "คอนกรีตผสมเสร็จ CPAC 240 ksc Cube (เทพื้นโครงสร้าง)",
   "วัสดุมุงหลังคา": "ตรวจสอบ Roof Plan — แนะนำ SCG Metal Sheet หรือกระเบื้อง CPAC",
   "โครงเหล็กหลังคา": "SCG Metal Sheet Lumax/Snap Lock (เหมาะกับโครงเหล็ก)",
-  "โครงทรัส": "ระบบโครงหลังคาสำเร็จรูป SCG Truss (สมาร์ททรัสท์)",
-  "โครง truss": "ระบบโครงหลังคาสำเร็จรูป SCG Truss (สมาร์ททรัสท์)",
-  "truss": "ระบบโครงหลังคาสำเร็จรูป SCG Truss (สมาร์ททรัสท์)",
-  "โครงหลังคาสำเร็จรูป": "ระบบโครงหลังคาสำเร็จรูป SCG Truss (สมาร์ททรัสท์)",
+  "โครงทรัส": "ระบบโครงหลังคาสำเร็จรูป SCG Truss",
+  "โครง truss": "ระบบโครงหลังคาสำเร็จรูป SCG Truss",
+  "truss": "ระบบโครงหลังคาสำเร็จรูป SCG Truss",
+  "โครงหลังคาสำเร็จรูป": "ระบบโครงหลังคาสำเร็จรูป SCG Truss",
   "แผ่นเมทัลชีท": "SCG Metal Sheet ลอน Snap Lock / LumaX",
   "อลูมิเนียมคอมโพสิต": "NON_SCG: วัสดุตกแต่งภายนอก (ไม่ใช่สินค้า SCG)",
   "กระจกใส": "NON_SCG: กระจก (ไม่ใช่สินค้า SCG)",
@@ -106,10 +108,10 @@ const MATERIAL_MAPPING_TABLE = [
   ["เหล็กกล่อง", "SCG Metal Sheet Lumax/Snap Lock (อาคารโครงเหล็ก)", "งานโครงสร้างเหล็ก", "scg"],
   ["จันทันเหล็ก", "SCG Metal Sheet Lumax/Snap Lock (อาคารโครงเหล็ก)", "งานโครงสร้างเหล็ก", "scg"],
   ["แปเหล็ก", "SCG Metal Sheet Lumax/Snap Lock (อาคารโครงเหล็ก)", "งานโครงสร้างเหล็ก", "scg"],
-  ["โครง truss", "ระบบโครงหลังคาสำเร็จรูป SCG Truss (สมาร์ททรัสท์)", "งานโครงสร้างเหล็ก", "scg"],
-  ["โครงทรัส", "ระบบโครงหลังคาสำเร็จรูป SCG Truss (สมาร์ททรัสท์)", "งานโครงสร้างเหล็ก", "scg"],
-  ["truss", "ระบบโครงหลังคาสำเร็จรูป SCG Truss (สมาร์ททรัสท์)", "งานโครงสร้างเหล็ก", "scg"],
-  ["โครงหลังคาสำเร็จรูป", "ระบบโครงหลังคาสำเร็จรูป SCG Truss (สมาร์ททรัสท์)", "งานโครงสร้างเหล็ก", "scg"],
+  ["โครง truss", "ระบบโครงหลังคาสำเร็จรูป SCG Truss", "งานโครงสร้างเหล็ก", "scg"],
+  ["โครงทรัส", "ระบบโครงหลังคาสำเร็จรูป SCG Truss", "งานโครงสร้างเหล็ก", "scg"],
+  ["truss", "ระบบโครงหลังคาสำเร็จรูป SCG Truss", "งานโครงสร้างเหล็ก", "scg"],
+  ["โครงหลังคาสำเร็จรูป", "ระบบโครงหลังคาสำเร็จรูป SCG Truss", "งานโครงสร้างเหล็ก", "scg"],
   ["หลังคาเมทัลชีท", "SCG Metal Sheet ลอน Snap Lock (ซ่อนสกรู)", "งานหลังคา", "scg"],
   ["metal sheet", "SCG Metal Sheet ลอน LumaX", "งานหลังคา", "scg"],
   ["กระเบื้องหลังคา", "กระเบื้องหลังคาลอนคู่ SCG", "งานหลังคา", "scg"],
@@ -201,7 +203,7 @@ function detectBuildingType(rawText) {
 
 const SCG_PRODUCT_CATALOG = {
   "งานหลังคา": [
-    "ระบบโครงหลังคาสำเร็จรูป SCG Truss (สมาร์ททรัสท์ - คิดพื้นที่เป็น ตร.ม.)",
+    "ระบบโครงหลังคาสำเร็จรูป SCG Truss (คิดพื้นที่เป็น ตร.ม.)",
     "SCG Roof Metal Sheet ลอน LumaX (รับความชันต่ำสุด 0.3 องศา)",
     "SCG Roof Metal Sheet ลอน Snap Lock (ซ่อนสกรู ขั้นต่ำ 3 องศา)",
     "SCG Roof Metal Sheet ลอน 760 Noise Shield (กันเสียงฝน)",
@@ -240,7 +242,7 @@ const SCG_PRODUCT_CATALOG = {
     "คอนกรีตทับหน้า Topping หนา 5 ซม. เหนือแผ่น Hollow Core"
   ],
   "งานโครงสร้างเหล็ก": [
-    "ระบบโครงหลังคาสำเร็จรูป SCG Truss (สมาร์ททรัสท์ - คิดพื้นที่เป็น ตร.ม.)",
+    "ระบบโครงหลังคาสำเร็จรูป SCG Truss (คิดพื้นที่เป็น ตร.ม.)",
     "SCG Metal Sheet ลอน LumaX (เหมาะกับโครงเหล็ก ความชันต่ำ 0.3°)",
     "SCG Metal Sheet ลอน Snap Lock (ซ่อนสกรู เหมาะกับโครงเหล็ก ขั้นต่ำ 3°)",
     "SCG Metal Sheet ลอน 760 Noise Shield (โครงเหล็ก + กันเสียงฝน ขั้นต่ำ 5°)",
@@ -750,7 +752,7 @@ async function processDocuments() {
     if (customInstruction) {
       customDirective = "\n### คำสั่งเน้นย้ำของผู้ใช้งาน:\n\"\"\"\n" + customInstruction + "\n\"\"\"\n";
     }
-    const promptText = "\n### กฎเหล็กด้านภาษา (MANDATORY THAI LANGUAGE RULE):\nท่านคือหัวหน้าวิศวกรผู้เชี่ยวชาญการถอดแบบและประมาณราคา (Chief QS) ของ SCG และ CPAC\nข้อมูลและคำอธิบายทุกช่องในตาราง BOQ ต้องเขียนเป็น \"ภาษาไทยล้วน 100%\"\n### งานที่ต้องปฏิบัติ:\nวิเคราะห์แบบสถาปัตย์ แบบโครงสร้าง และแบบรูปตัด/รูปด้าน ทั้งหมด " + detectedTotalPages + " หน้า พร้อมตรวจสอบสอบทาน 3 มิติ เพื่อจัดทำรายการประมาณการวัสดุ BOQ สินค้า SCG และคอนกรีต CPAC อย่างละเอียดและแม่นยำ\n" + customDirective + "\n### พจนานุกรมคำศัพท์ในแบบก่อสร้างไทย:\n" + JSON.stringify(THAI_CONSTRUCTION_DICT, null, 2) + "\n\n### การตรวจสอบจากรูปตัดและรูปด้าน (Section & Elevation Cross-Check):\n1. ตรวจสอบรูปตัด (Section A-A, B-B) ทุกรูป: หาระดับ FFL (Finished Floor Level), ระดับหลังคา, ระดับฝ้าเพดาน\n2. คำนวณความสูงของผนัง: ความสูง = ระดับฝ้า - FFL หรือ ระดับหลังคา - FFL\n3. ตรวจสอบจำนวนชั้น: ถ้าพบ \"ระดับพื้นชั้น 2 +3.75\" หรือค่าระดับความสูงหลายค่า → แยก BOQ ตามชั้น\n4. ถ้าพบโครงเหล็ก H-beam หรือโครง Truss → อาคารนี้ใช้โครงสร้างเหล็ก → แนะนำ SCG Metal Sheet หรือโครงหลังคา SCG Truss\n5. ตรวจสอบ slope จากแปลนโครงสร้างหลังคา (S-05, ST.07) — ระบุเป็นองศา (º หรือ °)\n6. ทุกรูปตัดต้องนำมาคำนวณ Cross-Check 3D: พื้นที่ผนังภายนอก, ความสูงฝ้า, ปริมาณวัสดุกรุผนัง\n\n### สเปกวัสดุที่ผู้ใช้เลือก:\n1. หมวดคอนกรีตและโครงสร้าง CPAC: \"" + concreteChoice + "\"\n2. หมวดหลังคา: \"" + roofChoice + "\" (ความชัน: " + slopeDeg + " องศา)\n3. หมวดฉนวนปูเหนือฝ้า: \"" + ceilingInsChoice + "\"\n4. หมวดฉนวนใต้หลังคา: \"" + roofInsChoice + "\"\n5. ผนัง: \"" + wallChoice + "\", พื้น: \"" + floorChoice + "\", ฝ้า: \"" + ceilingChoice + "\", ไม้ตกแต่ง: \"" + woodChoice + "\"\n### รูปแบบผลลัพธ์ (ภาษาไทยล้วน 100%):\nส่งออกเฉพาะ JSON Array ที่ถูกต้องตามโครงสร้างนี้:\n[\n  {\n    \"category\": \"หมวดงานภาษาไทย เช่น งานผนัง, งานหลังคา, งานโครงสร้างเหล็ก, งานโครงสร้างและคอนกรีต CPAC\",\n    \"code_ref\": \"รหัสสัญลักษณ์ เช่น △1, △5, F1, HC, TR-1 หรือรหัสอ้างอิงในแบบ\",\n    \"item_name\": \"ชื่อรายการงานตามแบบแปลน/ตารางสัญลักษณ์ภาษาไทย (ระบุชั้น/ห้อง/โซน)\",\n    \"net_quantity\": \"ปริมาณพร้อมหน่วยภาษาไทย เช่น 120.50 ตร.ม. หรือ 45.00 ม.\",\n    \"scg_product\": \"ชื่อสินค้า SCG หรือ CPAC ที่แนะนำ\",\n    \"order_estimate\": \"- รายการสินค้าหลัก 1 พร้อมจำนวนและหน่วย\\n- อุปกรณ์ส่วนควบระบบ 2\",\n    \"confidence_score\": 98,\n    \"calculation_note\": \"สูตรคำนวณและสัดส่วนเผื่อเศษเป็นภาษาไทย\",\n    \"verification_method\": \"ที่มาการคำนวณและการ Cross-Check 3D เป็นภาษาไทย\",\n    \"source_location\": {\n      \"page_number\": 1,\n      \"box_2d\": [100, 100, 900, 900],\n      \"location_description\": \"คำอธิบายตำแหน่งบนแบบแปลนหน้านั้นภาษาไทย\"\n    }\n  }\n]\n";
+    const promptText = "\n### กฎเหล็กด้านภาษา (MANDATORY THAI LANGUAGE RULE):\nท่านคือหัวหน้าวิศวกรผู้เชี่ยวชาญการถอดแบบและประมาณราคา (Chief QS) ของ SCG และ CPAC\nข้อมูลและคำอธิบายทุกช่องในตาราง BOQ ต้องเขียนเป็น \"ภาษาไทยล้วน 100%\"\n### งานที่ต้องปฏิบัติ:\nวิเคราะห์แบบสถาปัตย์ แบบโครงสร้าง และแบบรูปตัด/รูปด้าน ทั้งหมด " + detectedTotalPages + " หน้า พร้อมตรวจสอบสอบทาน 3 มิติ เพื่อจัดทำรายการประมาณการวัสดุ BOQ สินค้า SCG และคอนกรีต CPAC อย่างละเอียดและแม่นยำ\n" + customDirective + "\n### พจนานุกรมคำศัพท์ในแบบก่อสร้างไทย:\n" + JSON.stringify(THAI_CONSTRUCTION_DICT, null, 2) + "\n\n### การตรวจสอบจากรูปตัดและรูปด้าน (Section & Elevation Cross-Check):\n1. ตรวจสอบรูปตัด (Section A-A, B-B) ทุกรูป: หาระดับ FFL (Finished Floor Level), ระดับหลังคา, ระดับฝ้าเพดาน\n2. คำนวณความสูงของผนัง: ความสูง = ระดับฝ้า - FFL หรือ ระดับหลังคา - FFL\n3. ตรวจสอบจำนวนชั้น: ถ้าพบ \"ระดับพื้นชั้น 2 +3.75\" หรือค่าระดับความสูงหลายค่า → แยก BOQ ตามชั้น\n4. ถ้าพบโครงเหล็ก H-beam หรือโครง Truss → อาคารนี้ใช้โครงสร้างเหล็ก → แนะนำ SCG Metal Sheet หรือระบบโครงหลังคาสำเร็จรูป SCG Truss\n5. ตรวจสอบ slope จากแปลนโครงสร้างหลังคา (S-05, ST.07) — ระบุเป็นองศา (º หรือ °)\n6. ทุกรูปตัดต้องนำมาคำนวณ Cross-Check 3D: พื้นที่ผนังภายนอก, ความสูงฝ้า, ปริมาณวัสดุกรุผนัง\n\n### สเปกวัสดุที่ผู้ใช้เลือก:\n1. หมวดคอนกรีตและโครงสร้าง CPAC: \"" + concreteChoice + "\"\n2. หมวดหลังคา: \"" + roofChoice + "\" (ความชัน: " + slopeDeg + " องศา)\n3. หมวดฉนวนปูเหนือฝ้า: \"" + ceilingInsChoice + "\"\n4. หมวดฉนวนใต้หลังคา: \"" + roofInsChoice + "\"\n5. ผนัง: \"" + wallChoice + "\", พื้น: \"" + floorChoice + "\", ฝ้า: \"" + ceilingChoice + "\", ไม้ตกแต่ง: \"" + woodChoice + "\"\n### รูปแบบผลลัพธ์ (ภาษาไทยล้วน 100%):\nส่งออกเฉพาะ JSON Array ที่ถูกต้องตามโครงสร้างนี้:\n[\n  {\n    \"category\": \"หมวดงานภาษาไทย เช่น งานผนัง, งานหลังคา, งานโครงสร้างเหล็ก, งานโครงสร้างและคอนกรีต CPAC\",\n    \"code_ref\": \"รหัสสัญลักษณ์ เช่น △1, △5, F1, HC, TR-1 หรือรหัสอ้างอิงในแบบ\",\n    \"item_name\": \"ชื่อรายการงานตามแบบแปลน/ตารางสัญลักษณ์ภาษาไทย (ระบุชั้น/ห้อง/โซน)\",\n    \"net_quantity\": \"ปริมาณพร้อมหน่วยภาษาไทย เช่น 120.50 ตร.ม. หรือ 45.00 ม.\",\n    \"scg_product\": \"ชื่อสินค้า SCG หรือ CPAC ที่แนะนำ\",\n    \"order_estimate\": \"- รายการสินค้าหลัก 1 พร้อมจำนวนและหน่วย\\n- อุปกรณ์ส่วนควบระบบ 2\",\n    \"confidence_score\": 98,\n    \"calculation_note\": \"สูตรคำนวณและสัดส่วนเผื่อเศษเป็นภาษาไทย\",\n    \"verification_method\": \"ที่มาการคำนวณและการ Cross-Check 3D เป็นภาษาไทย\",\n    \"source_location\": {\n      \"page_number\": 1,\n      \"box_2d\": [100, 100, 900, 900],\n      \"location_description\": \"คำอธิบายตำแหน่งบนแบบแปลนหน้านั้นภาษาไทย\"\n    }\n  }\n]\n";
     parts.unshift({ text: promptText });
     const endpoint = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key=" + apiKey;
     const response = await fetch(endpoint, {
