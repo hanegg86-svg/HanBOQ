@@ -3,7 +3,7 @@
    ปรับปรุง: THAI_CONSTRUCTION_DICT, หมวดโครงสร้างเหล็ก,
    Auto Slope Detection, MATERIAL_MAPPING_TABLE,
    Cross-Sell Engine, Section/Elevation Cross-Check,
-   NON_SCG Material Detection
+   NON_SCG Material Detection, ป้องกันการล้างรายการเดิม
    ========================================================== */
 let currentUploadedFile = null;
 let pdfDocumentInstance = null;
@@ -573,7 +573,6 @@ function openCustomItemModal() {
   }
   document.getElementById("scopeAllPagesRadio").checked = true;
   toggleCustomScopeMode();
-  document.getElementById("customItemTextInput").value = "";
   document.getElementById("customItemStatus").innerText = "";
   document.getElementById("customItemModal").style.display = "flex";
 }
@@ -644,10 +643,24 @@ async function submitCustomItemRow() {
     if (Array.isArray(parsedResult)) {
       itemsToAdd = parsedResult;
     } else if (parsedResult && typeof parsedResult === 'object') {
-      itemsToAdd = [parsedResult];
+      if (Array.isArray(parsedResult.items)) {
+        itemsToAdd = parsedResult.items;
+      } else if (Array.isArray(parsedResult.boq_items)) {
+        itemsToAdd = parsedResult.boq_items;
+      } else if (Array.isArray(parsedResult.data)) {
+        itemsToAdd = parsedResult.data;
+      } else {
+        itemsToAdd = [parsedResult];
+      }
     }
+
+    if (!Array.isArray(lastRawBOQItems)) {
+      lastRawBOQItems = [];
+    }
+
     for (let idx = 0; idx < itemsToAdd.length; idx++) {
       const item = itemsToAdd[idx];
+      if (!item || typeof item !== 'object') continue;
       item._id = "item_" + Date.now() + "_" + idx + "_" + Math.floor(Math.random() * 1000);
       item.unit_price = item.unit_price !== undefined ? parseFloat(item.unit_price) : 0;
       calculateItemTotals(item);
@@ -660,7 +673,14 @@ async function submitCustomItemRow() {
       return pA - pB;
     });
     renderBOQTable(lastRawBOQItems);
+
+    // บันทึกลง IndexedDB ทันทีเพื่อคงสภาพข้อมูลโครงการ
+    if (typeof saveCurrentProject === "function") {
+      await saveCurrentProject();
+    }
+
     statusElem.innerText = "✅ เพิ่มรายการเฉพาะเจาะจง (" + itemsToAdd.length + " รายการ) สำเร็จ!";
+    document.getElementById("customItemTextInput").value = "";
     setTimeout(() => {
       closeModal("customItemModal");
     }, 900);
@@ -793,6 +813,14 @@ async function processDocuments() {
       }
     }
 
+    // รักษาและรวมรายการเดิมที่เคยเพิ่มหรือแก้ไขแบบ Manual ไว้
+    const existingManualItems = (lastRawBOQItems || []).filter(item => item.is_manual_modified);
+    if (existingManualItems.length > 0) {
+      existingManualItems.forEach(manualItem => {
+        boqItems.push(manualItem);
+      });
+    }
+
     boqItems.sort((a, b) => {
       const pA = (a.source_location && a.source_location.page_number) ? a.source_location.page_number : 1;
       const pB = (b.source_location && b.source_location.page_number) ? b.source_location.page_number : 1;
@@ -800,13 +828,19 @@ async function processDocuments() {
     });
     for (let i = 0; i < boqItems.length; i++) {
       const item = boqItems[i];
-      item._id = "item_" + Date.now() + "_" + i;
+      if (!item._id) item._id = "item_" + Date.now() + "_" + i;
       item.unit_price = item.unit_price !== undefined ? parseFloat(item.unit_price) : 0;
       calculateItemTotals(item);
     }
     lastRawBOQItems = boqItems;
     recalcBtn.disabled = false;
     renderBOQTable(lastRawBOQItems);
+
+    // ซิงก์ลง IndexedDB
+    if (typeof saveCurrentProject === "function") {
+      await saveCurrentProject();
+    }
+
     statusDiv.innerText = "ประมวลผลสำเร็จเรียบร้อย! ถอดปริมาณงานได้ทั้งหมด " + boqItems.length + " รายการเป็นภาษาไทย";
   } catch (err) {
     statusDiv.innerText = "เกิดข้อผิดพลาดในการประมวลผล กรุณาลองใหม่อีกครั้ง";
@@ -867,6 +901,12 @@ async function recalculateWithNewSpecs() {
     }
     lastRawBOQItems = updatedItems;
     renderBOQTable(lastRawBOQItems);
+
+    // บันทึกลง IndexedDB
+    if (typeof saveCurrentProject === "function") {
+      await saveCurrentProject();
+    }
+
     statusDiv.innerText = "คำนวณและอัปเดตสเปกสินค้าใหม่เป็นภาษาไทยสำเร็จ!";
   } catch (err) {
     statusDiv.innerText = "เกิดข้อผิดพลาดในการคำนวณใหม่ กรุณาลองอีกครั้ง";
@@ -1105,6 +1145,9 @@ function deleteBOQItem(id) {
   if (confirm('คุณต้องการลบ "' + itemName + '" ออกจากตาราง BOQ ใช่หรือไม่?')) {
     lastRawBOQItems = lastRawBOQItems.filter(item => item._id !== id);
     renderBOQTable(lastRawBOQItems);
+    if (typeof saveCurrentProject === "function") {
+      saveCurrentProject();
+    }
   }
 }
 
@@ -1184,6 +1227,9 @@ function updateNetQuantity(id, newValue) {
   const inputElem = document.getElementById('qty-input-' + id);
   if (inputElem) {
     inputElem.classList.add("modified");
+  }
+  if (typeof saveCurrentProject === "function") {
+    saveCurrentProject();
   }
 }
 
