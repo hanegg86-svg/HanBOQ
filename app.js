@@ -3,7 +3,7 @@
    ปรับปรุง: THAI_CONSTRUCTION_DICT, หมวดโครงสร้างเหล็ก,
    Auto Slope Detection, MATERIAL_MAPPING_TABLE,
    Cross-Sell Engine, Section/Elevation Cross-Check,
-   NON_SCG Material Detection, Append/Merge Items & IndexedDB Auto-Sync
+   NON_SCG Material Detection
    ========================================================== */
 let currentUploadedFile = null;
 let pdfDocumentInstance = null;
@@ -646,9 +646,6 @@ async function submitCustomItemRow() {
     } else if (parsedResult && typeof parsedResult === 'object') {
       itemsToAdd = [parsedResult];
     }
-    if (!Array.isArray(lastRawBOQItems)) {
-      lastRawBOQItems = [];
-    }
     for (let idx = 0; idx < itemsToAdd.length; idx++) {
       const item = itemsToAdd[idx];
       item._id = "item_" + Date.now() + "_" + idx + "_" + Math.floor(Math.random() * 1000);
@@ -662,18 +659,8 @@ async function submitCustomItemRow() {
       const pB = (b.source_location && b.source_location.page_number) ? b.source_location.page_number : 1;
       return pA - pB;
     });
-    const recalcBtn = document.getElementById("recalcBtn");
-    if (recalcBtn) recalcBtn.disabled = false;
-    const resultCard = document.getElementById("resultCard");
-    if (resultCard) resultCard.style.display = "block";
     renderBOQTable(lastRawBOQItems);
-
-    // Auto-save to IndexedDB
-    if (typeof saveCurrentProject === "function") {
-      await saveCurrentProject();
-    }
-
-    statusElem.innerText = "✅ เพิ่มรายการเฉพาะเจาะจง (" + itemsToAdd.length + " รายการ) สำเร็จ! (รวมทั้งหมด " + lastRawBOQItems.length + " รายการ)";
+    statusElem.innerText = "✅ เพิ่มรายการเฉพาะเจาะจง (" + itemsToAdd.length + " รายการ) สำเร็จ!";
     setTimeout(() => {
       closeModal("customItemModal");
     }, 900);
@@ -806,46 +793,21 @@ async function processDocuments() {
       }
     }
 
-    for (let i = 0; i < boqItems.length; i++) {
-      const item = boqItems[i];
-      item._id = "item_" + Date.now() + "_" + i + "_" + Math.floor(Math.random() * 1000);
-      item.unit_price = item.unit_price !== undefined ? parseFloat(item.unit_price) : 0;
-      calculateItemTotals(item);
-    }
-
-    // ===== ตรวจสอบการต่อท้ายรายการ (Append/Merge) เพื่อไม่ให้ล้างของเก่าออก =====
-    let isAppendMode = false;
-    if (lastRawBOQItems && lastRawBOQItems.length > 0) {
-      if (customInstruction) {
-        isAppendMode = confirm("พบรายการเดิมอยู่ในตาราง " + lastRawBOQItems.length + " รายการ\n\nต้องการ 'เพิ่มรายการใหม่' ต่อท้ายรายการเดิมใช่หรือไม่?\n- กด [ตกลง (OK)] เพื่อเพิ่มต่อท้ายรายการเดิม\n- กด [ยกเลิก (Cancel)] เพื่อล้างแล้วเริ่มวิเคราะห์ใหม่ทั้งหมด");
-      } else {
-        isAppendMode = confirm("มีรายการเดิมอยู่ในตาราง " + lastRawBOQItems.length + " รายการ\n\nต้องการ 'เพิ่มรายการใหม่' ต่อท้ายรายการเดิม หรือ 'เริ่มวิเคราะห์ใหม่ทั้งหมด'?\n- กด [ตกลง (OK)] เพื่อเพิ่มต่อท้าย\n- กด [ยกเลิก (Cancel)] เพื่อแทนที่ทั้งหมด");
-      }
-    }
-
-    if (isAppendMode) {
-      lastRawBOQItems = lastRawBOQItems.concat(boqItems);
-    } else {
-      lastRawBOQItems = boqItems;
-    }
-
-    lastRawBOQItems.sort((a, b) => {
+    boqItems.sort((a, b) => {
       const pA = (a.source_location && a.source_location.page_number) ? a.source_location.page_number : 1;
       const pB = (b.source_location && b.source_location.page_number) ? b.source_location.page_number : 1;
       return pA - pB;
     });
-
+    for (let i = 0; i < boqItems.length; i++) {
+      const item = boqItems[i];
+      item._id = "item_" + Date.now() + "_" + i;
+      item.unit_price = item.unit_price !== undefined ? parseFloat(item.unit_price) : 0;
+      calculateItemTotals(item);
+    }
+    lastRawBOQItems = boqItems;
     recalcBtn.disabled = false;
     renderBOQTable(lastRawBOQItems);
-
-    // Auto-save to IndexedDB
-    if (typeof saveCurrentProject === "function") {
-      await saveCurrentProject();
-    }
-
-    statusDiv.innerText = isAppendMode
-      ? "✅ เพิ่มรายการสำเร็จ! เพิ่มใหม่ " + boqItems.length + " รายการ (รวมในตารางทั้งหมด " + lastRawBOQItems.length + " รายการเป็นภาษาไทย)"
-      : "ประมวลผลสำเร็จเรียบร้อย! ถอดปริมาณงานได้ทั้งหมด " + boqItems.length + " รายการเป็นภาษาไทย";
+    statusDiv.innerText = "ประมวลผลสำเร็จเรียบร้อย! ถอดปริมาณงานได้ทั้งหมด " + boqItems.length + " รายการเป็นภาษาไทย";
   } catch (err) {
     statusDiv.innerText = "เกิดข้อผิดพลาดในการประมวลผล กรุณาลองใหม่อีกครั้ง";
   } finally {
@@ -905,11 +867,6 @@ async function recalculateWithNewSpecs() {
     }
     lastRawBOQItems = updatedItems;
     renderBOQTable(lastRawBOQItems);
-
-    if (typeof saveCurrentProject === "function") {
-      await saveCurrentProject();
-    }
-
     statusDiv.innerText = "คำนวณและอัปเดตสเปกสินค้าใหม่เป็นภาษาไทยสำเร็จ!";
   } catch (err) {
     statusDiv.innerText = "เกิดข้อผิดพลาดในการคำนวณใหม่ กรุณาลองอีกครั้ง";
@@ -1148,9 +1105,6 @@ function deleteBOQItem(id) {
   if (confirm('คุณต้องการลบ "' + itemName + '" ออกจากตาราง BOQ ใช่หรือไม่?')) {
     lastRawBOQItems = lastRawBOQItems.filter(item => item._id !== id);
     renderBOQTable(lastRawBOQItems);
-    if (typeof saveCurrentProject === "function") {
-      saveCurrentProject();
-    }
   }
 }
 
@@ -1230,9 +1184,6 @@ function updateNetQuantity(id, newValue) {
   const inputElem = document.getElementById('qty-input-' + id);
   if (inputElem) {
     inputElem.classList.add("modified");
-  }
-  if (typeof saveCurrentProject === "function") {
-    saveCurrentProject();
   }
 }
 
