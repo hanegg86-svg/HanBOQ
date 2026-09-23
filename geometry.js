@@ -1,5 +1,6 @@
 /* ==========================================================
    ระบบ PRECISION GEOMETRY TOOL (CANVAS, OSNAP, ORTHO & EDGE PAN)
+   ปรับปรุงให้เชื่อมต่อกับ Project DB, Metadata Tagging, AI Context
    ========================================================== */
 let currentDrawPageImg = null;
 let currentToolMode = "area";
@@ -29,11 +30,246 @@ let panStartY = 0;
 let isSpacePressed = false;
 let isShiftPressed = false;
 
+/* ==========================================================
+   PROJECT DB INTEGRATION — โหลด settings จาก project ปัจจุบัน
+   ========================================================== */
+async function loadProjectSettingsToGeometry() {
+  if (!currentProjectId || typeof getProjectById !== "function") return;
+
+  try {
+    const project = await getProjectById(currentProjectId);
+    if (!project || !project.settings) return;
+
+    const s = project.settings;
+
+    // โหลด slope จาก project settings
+    if (s.roofSlopeDeg && document.getElementById("modalSlopeDeg")) {
+      document.getElementById("modalSlopeDeg").value = s.roofSlopeDeg;
+    }
+
+    // โหลด roofOption จาก project settings
+    if (s.roofOption && document.getElementById("roofOption")) {
+      document.getElementById("roofOption").value = s.roofOption;
+    }
+
+    // โหลด calibration ถ้ามี
+    if (project.ai_context?.detected_slope) {
+      // มี slope ที่เคย detect ไว้แล้ว
+    }
+
+    console.log("📐 [Geometry] โหลด settings จาก project:", project.projectName);
+  } catch (err) {
+    console.warn("[Geometry] ไม่สามารถโหลด settings จาก project ได้:", err);
+  }
+}
+
+/* ==========================================================
+   PROJECT DB INTEGRATION — sync metadata กลับไปยัง project
+   ========================================================== */
+async function syncGeometryToProjectDB() {
+  if (!currentProjectId || typeof getProjectById !== "function") return;
+
+  try {
+    const project = await getProjectById(currentProjectId);
+    if (!project) return;
+
+    // --- auto-detect project type จาก geometry shapes ---
+    const cat = document.getElementById("drawCategorySelect")?.value || "";
+    const chosenProduct = document.getElementById("drawProductSelect")?.value || "";
+    const slopeDeg = parseFloat(document.getElementById("modalSlopeDeg")?.value) || 0;
+
+    const hasSteelStructure =
+      cat.includes("หลังคา") ||
+      chosenProduct.toLowerCase().includes("lumax") ||
+      chosenProduct.toLowerCase().includes("metal") ||
+      chosenProduct.toLowerCase().includes("snap lock") ||
+      chosenProduct.toLowerCase().includes("prestige") ||
+      chosenProduct.toLowerCase().includes("neustile");
+
+    const hasConcreteStructure =
+      cat.includes("โครงสร้าง") ||
+      cat.includes("คอนกรีต") ||
+      cat.includes("CPAC") ||
+      chosenProduct.toLowerCase().includes("cpac") ||
+      chosenProduct.toLowerCase().includes("hollow core") ||
+      chosenProduct.toLowerCase().includes("ready-mix") ||
+      chosenProduct.toLowerCase().includes("post-tension");
+
+    const hasAluminumComposite =
+      cat.includes("อลูมิเนียม") ||
+      chosenProduct.toLowerCase().includes("aluminum") ||
+      chosenProduct.toLowerCase().includes("composite");
+
+    const hasInsulation =
+      cat.includes("ฉนวน") ||
+      cat.includes("FSO") ||
+      cat.includes("STAY COOL");
+
+    const isRoofRelated =
+      cat.includes("หลังคา") ||
+      cat.includes("FSO") ||
+      cat.includes("Dry Tech") ||
+      cat.includes("สันหลังคา");
+
+    // --- อัปเดต project_template ---
+    if (!project.project_template) project.project_template = {};
+    const pt = project.project_template;
+
+    if (hasSteelStructure && pt.has_steel_structure !== true) {
+      pt.has_steel_structure = true;
+      pt.structure_type = pt.structure_type || "steel_frame";
+    }
+    if (hasConcreteStructure && pt.has_concrete_structure !== true) {
+      pt.has_concrete_structure = true;
+      pt.structure_type = pt.structure_type || "reinforced_concrete";
+    }
+    if (hasAluminumComposite) {
+      pt.has_aluminum_composite = true;
+    }
+    if (isRoofRelated && pt.roof_style === "unknown") {
+      pt.roof_style = "metal_sheet";
+    }
+
+    // Scope of work
+    if (!pt.scope_of_work) pt.scope_of_work = [];
+    if (cat && pt.scope_of_work.indexOf(cat) === -1) {
+      pt.scope_of_work.push(cat);
+    }
+    if (pt.floor_count < 1) pt.floor_count = 1;
+
+    // --- อัปเดต ai_context ---
+    if (!project.ai_context) project.ai_context = {};
+    const ai = project.ai_context;
+
+    if (slopeDeg > 0 && (ai.detected_slope === null || ai.detected_slope !== slopeDeg)) {
+      ai.detected_slope = slopeDeg;
+    }
+
+    if (hasSteelStructure && ai.detected_building_types.indexOf("steel_structure") === -1) {
+      ai.detected_building_types.push("steel_structure");
+    }
+    if (hasConcreteStructure && ai.detected_building_types.indexOf("concrete_structure") === -1) {
+      ai.detected_building_types.push("concrete_structure");
+    }
+
+    // --- อัปเดต metadata_tags ---
+    if (!project.metadata_tags) project.metadata_tags = [];
+    const tags = project.metadata_tags;
+
+    const newTags = [];
+    if (hasSteelStructure && tags.indexOf("steel_structure") === -1) newTags.push("steel_structure");
+    if (hasConcreteStructure && tags.indexOf("concrete") === -1) newTags.push("concrete");
+    if (hasAluminumComposite && tags.indexOf("aluminum_composite") === -1) newTags.push("aluminum_composite");
+    if (hasInsulation && tags.indexOf("insulation") === -1) newTags.push("insulation");
+    if (isRoofRelated && tags.indexOf("roof_work") === -1) newTags.push("roof_work");
+    if (slopeDeg > 0) {
+      const slopeTag = "slope_" + slopeDeg + "deg";
+      if (tags.indexOf(slopeTag) === -1) newTags.push(slopeTag);
+    }
+    if (chosenProduct && tags.indexOf("product:" + chosenProduct) === -1) {
+      newTags.push("product:" + chosenProduct);
+    }
+
+    for (let i = 0; i < newTags.length; i++) {
+      tags.push(newTags[i]);
+    }
+
+    // --- อัปเดต last_material_preference ---
+    ai.last_material_preference = isRoofRelated ? "metal_sheet" :
+      (hasConcreteStructure ? "cpac_240" : ai.last_material_preference || "auto");
+
+    // --- บันทึก settings snapshot ---
+    project.settings = project.settings || {};
+    project.settings.roofSlopeDeg = document.getElementById("modalSlopeDeg")?.value || project.settings.roofSlopeDeg || "15";
+    const roofOptionEl = document.getElementById("roofOption");
+    if (roofOptionEl) project.settings.roofOption = roofOptionEl.value;
+    if (isRoofRelated && chosenProduct) {
+      project.settings.last_roof_product = chosenProduct;
+    }
+
+    project.updatedAt = new Date().toISOString();
+
+    // บันทึกลง DB
+    if (typeof saveProjectToDB === "function") {
+      await saveProjectToDB(project);
+      console.log("💾 [Geometry] Sync metadata กลับไปยัง project DB สำเร็จ | Tags:", tags.slice(-5));
+    }
+  } catch (err) {
+    console.warn("[Geometry] ไม่สามารถ sync กลับไปยัง project DB ได้:", err);
+  }
+}
+
+/* ==========================================================
+   AUTO-DETECT PROJECT TYPE จาก geometry shapes + category
+   ========================================================== */
+function autoDetectProjectTypeFromGeometry() {
+  const cat = document.getElementById("drawCategorySelect")?.value || "";
+  const product = document.getElementById("drawProductSelect")?.value || "";
+  const slopeDeg = parseFloat(document.getElementById("modalSlopeDeg")?.value) || 0;
+
+  const result = {
+    roof_style: "unknown",
+    structure_type: "unknown",
+    has_steel_structure: false,
+    has_concrete_structure: false,
+    has_aluminum_composite: false,
+    has_insulation: false,
+    slope_deg: slopeDeg,
+    scope_tags: []
+  };
+
+  // ตรวจจับจาก category
+  if (cat.includes("หลังคา")) {
+    result.roof_style = "metal_sheet";
+    result.has_steel_structure = true;
+    result.scope_tags.push("roof_work");
+  }
+  if (cat.includes("โครงสร้าง") || cat.includes("คอนกรีต") || cat.includes("CPAC")) {
+    result.has_concrete_structure = true;
+    result.structure_type = "reinforced_concrete";
+    result.scope_tags.push("structure_work");
+  }
+  if (cat.includes("อลูมิเนียม") || cat.includes("Composite")) {
+    result.has_aluminum_composite = true;
+    result.scope_tags.push("aluminum_composite");
+  }
+  if (cat.includes("ฉนวน") || cat.includes("FSO") || cat.includes("STAY COOL")) {
+    result.has_insulation = true;
+    result.scope_tags.push("insulation");
+  }
+
+  // ตรวจจับจาก product
+  const pLower = product.toLowerCase();
+  if (pLower.includes("lumax") || pLower.includes("metal") || pLower.includes("prestige") || pLower.includes("neustile")) {
+    result.roof_style = "metal_sheet";
+    result.has_steel_structure = true;
+  }
+  if (pLower.includes("cpac") || pLower.includes("hollow core") || pLower.includes("ready-mix")) {
+    result.has_concrete_structure = true;
+  }
+  if (pLower.includes("aluminum") || pLower.includes("composite")) {
+    result.has_aluminum_composite = true;
+  }
+
+  // ตรวจจับจาก shapes
+  if (measuredShapes.length > 0 && result.roof_style === "unknown") {
+    if (slopeDeg > 0) {
+      result.roof_style = "metal_sheet";
+      result.has_steel_structure = true;
+    }
+  }
+
+  return result;
+}
+
+/* ==========================================================
+   TRANSFORM
+   ========================================================== */
 function updateTransform() {
   const canvas = document.getElementById("drawCanvas");
   canvas.style.transformOrigin = "0 0";
-  canvas.style.transform = `translate(${panOffsetX}px, ${panOffsetY}px) scale(${zoomScale})`;
-  document.getElementById("zoomLevelDisplay").innerText = `${Math.round(zoomScale * 100)}%`;
+  canvas.style.transform = "translate(" + panOffsetX + "px, " + panOffsetY + "px) scale(" + zoomScale + ")";
+  document.getElementById("zoomLevelDisplay").innerText = Math.round(zoomScale * 100) + "%";
 }
 
 function zoomStep(factor) {
@@ -81,6 +317,9 @@ function getCanvasCoords(e) {
   return getCanvasCoordsFromClient(e.clientX, e.clientY);
 }
 
+/* ==========================================================
+   MAGNETIC SNAP
+   ========================================================== */
 function findMagneticSnapPoint(targetPos) {
   let closestPt = null;
   let minDist = SNAP_RADIUS / zoomScale;
@@ -155,6 +394,9 @@ function updateActiveMeasurementShape() {
   redrawCanvas();
 }
 
+/* ==========================================================
+   AUTO-PAN (Edge Scrolling)
+   ========================================================== */
 function startAutoPanLoop() {
   if (autoPanAnimationId !== null) return;
   const loop = () => {
@@ -209,6 +451,9 @@ function checkEdgePanning(clientX, clientY) {
   }
 }
 
+/* ==========================================================
+   POLYGON METRICS
+   ========================================================== */
 function calculatePolygonMetrics(points, ppm) {
   if (!points || points.length < 3 || !ppm) return { flatAreaM: 0, perimeterM: 0 };
   let areaSum = 0;
@@ -227,6 +472,9 @@ function calculatePolygonMetrics(points, ppm) {
   return { flatAreaM, perimeterM: periSum };
 }
 
+/* ==========================================================
+   TOOL MODE SWITCH
+   ========================================================== */
 function switchToolMode(mode) {
   currentToolMode = mode;
   document.getElementById("btnModeCalib").classList.toggle("active", mode === "calibrate");
@@ -264,7 +512,7 @@ function switchToolMode(mode) {
 function updateScaleBadge() {
   const badge = document.getElementById("scaleInfoBadge");
   if (pixelsPerMeter) {
-    badge.innerText = `✅ สเกล: 1 ม. = ${pixelsPerMeter.toFixed(1)} px (${calibrationLine ? calibrationLine.meters + "ม." : ""})`;
+    badge.innerText = "✅ สเกล: 1 ม. = " + pixelsPerMeter.toFixed(1) + " px (" + (calibrationLine ? calibrationLine.meters + "ม." : "") + ")";
     badge.style.background = "#dcfce7";
     badge.style.color = "#15803d";
     badge.style.borderColor = "#bbf7d0";
@@ -277,7 +525,7 @@ function updateScaleBadge() {
 }
 
 /* ==========================================================
-   ฟังก์ชัน AI ตรวจจับเส้นสเกลอัตโนมัติ (AUTO-CALIBRATION WITH AI)
+   AUTO-CALIBRATION WITH AI
    ========================================================== */
 async function autoDetectScaleWithAI() {
   if (!currentDrawPageImg) {
@@ -289,12 +537,10 @@ async function autoDetectScaleWithAI() {
     alert("กรุณากรอกและบันทึก Gemini API Key ก่อน");
     return;
   }
-
   const statusElem = document.getElementById("drawStatus");
   const autoBtn = document.getElementById("btnAutoCalib");
   if (autoBtn) autoBtn.disabled = true;
   statusElem.innerText = "🤖 Gemini 3.5 Flash Lite กำลังสแกนหาแนวกริดและเสา (Grid Lines) เพื่อตั้งสเกลอัตโนมัติ...";
-
   try {
     const tempCanvas = document.createElement("canvas");
     tempCanvas.width = currentDrawPageImg.width;
@@ -302,13 +548,11 @@ async function autoDetectScaleWithAI() {
     const tempCtx = tempCanvas.getContext("2d");
     tempCtx.drawImage(currentDrawPageImg, 0, 0);
     const base64Data = tempCanvas.toDataURL("image/jpeg", 0.9).split(",")[1];
-
     const promptText = `
 ### บทบาทและภารกิจ (MANDATORY JSON ONLY):
 ท่านคือวิศวกรผู้เชี่ยวชาญการอ่านแบบสถาปัตยกรรมและโครงสร้าง (Engineering Drawing Reader)
-จงค้นหาแนวกริดไลน์ (Grid Line) หรือแนวเสาคู่ที่ชัดเจนที่สุด 1 ช่วงบนแบบแปลนนี้ 
+จงค้นหาแนวกริดไลน์ (Grid Line) หรือแนวเสาคู่ที่ชัดเจนที่สุด 1 ช่วงบนแบบแปลนนี้
 เช่น ระหว่าง "วงกลมกริด (1)" ถึง "วงกลมกริด (2)" หรือคู่กริดอื่นที่มีตัวเลขบอกระยะกำกับชัดเจน (เช่น 4.00, 3.50, 5.00)
-
 ### กฎเหล็กการกำหนดจุดพิกัด (CRITICAL RULES - ห้ามผิดพลาด):
 1. **จุดเริ่มต้น (start_point)**: ต้องเป็น "จุดศูนย์กลางของแกนกริด/เสาแรก" (เช่น จุดศูนย์กลางของวงกลมกริด 1 หรือเส้นแนวเสา 1)
 2. **จุดสิ้นสุด (end_point)**: ต้องเป็น "จุดศูนย์กลางของแกนกริด/เสาถัดไป" (เช่น จุดศูนย์กลางของวงกลมกริด 2 หรือเส้นแนวเสา 2)
@@ -316,7 +560,6 @@ async function autoDetectScaleWithAI() {
 4. กำหนดให้ระดับแกน Y ของ start_point และ end_point เท่ากัน (เส้นตรงแนวนอนสมบูรณ์) บริเวณแนวเส้นบอกระยะ Grid
 5. ระบุพิกัดในสเกลสัมพัทธ์ 0 ถึง 1000 (โดย [0,0] คือมุมซ้ายบน และ [1000,1000] คือมุมขวาล่างของภาพ)
 6. ระบุตัวเลขระยะทางจริงระหว่าง 2 กริดนี้ในหน่วยเมตร (เฉพาะตัวเลข เช่น 4.0 หรือ 3.5)
-
 ตอบกลับด้วย JSON รูปแบบนี้เท่านั้น:
 {
   "detected_meters": 4.0,
@@ -325,8 +568,7 @@ async function autoDetectScaleWithAI() {
   "end_point": { "x": 360, "y": 280 }
 }
 `;
-
-    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key=${apiKey}`;
+    const endpoint = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key=" + apiKey;
     const response = await fetch(endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -352,38 +594,30 @@ async function autoDetectScaleWithAI() {
         }
       })
     });
-
     if (!response.ok) throw new Error("API Connection Error");
     const data = await response.json();
     const rawContent = data.candidates[0].content.parts[0].text;
     const result = cleanAndParseJSON(rawContent);
-
     if (result && result.start_point && result.end_point && result.detected_meters) {
       const meters = parseFloat(result.detected_meters);
       if (isNaN(meters) || meters <= 0) {
         throw new Error("ตรวจพบระยะทางไม่ถูกต้อง");
       }
-
       let x1 = (result.start_point.x / 1000) * currentDrawPageImg.width;
       let y1 = (result.start_point.y / 1000) * currentDrawPageImg.height;
       let x2 = (result.end_point.x / 1000) * currentDrawPageImg.width;
       let y2 = (result.end_point.y / 1000) * currentDrawPageImg.height;
-
-      // จัดแนวแกน Y ให้ตรงกันหากเป็นมิติแนวนอนหลัก (ป้องกันเส้นเอียง)
       if (Math.abs(y2 - y1) < currentDrawPageImg.height * 0.03) {
         const avgY = (y1 + y2) / 2;
         y1 = avgY;
         y2 = avgY;
       }
-
       const dx = x2 - x1;
       const dy = y2 - y1;
       const pixelDist = Math.sqrt(dx * dx + dy * dy);
-
       if (pixelDist < 15) {
         throw new Error("ระยะพิกเซลสั้นเกินไป ไม่สามารถคำนวณสเกลได้");
       }
-
       pixelsPerMeter = pixelDist / meters;
       calibrationLine = {
         x1: x1,
@@ -392,10 +626,9 @@ async function autoDetectScaleWithAI() {
         y2: y2,
         meters: meters
       };
-
       updateScaleBadge();
       redrawCanvas();
-      statusElem.innerText = `✅ ตรวจจับสเกลสำเร็จอัตโนมัติ: ${result.dimension_text || meters + ' ม.'} (${pixelDist.toFixed(1)} px) ➔ 1 ม. = ${pixelsPerMeter.toFixed(1)} px`;
+      statusElem.innerText = "✅ ตรวจจับสเกลสำเร็จอัตโนมัติ: " + (result.dimension_text || meters + ' ม.') + " (" + pixelDist.toFixed(1) + " px) ➔ 1 ม. = " + pixelsPerMeter.toFixed(1) + " px";
     } else {
       throw new Error("ไม่พบเส้นบอกระยะที่สมบูรณ์");
     }
@@ -414,23 +647,26 @@ function updateBoxCounter() {
   const label = document.getElementById("boxCounterLabel");
   if (currentToolMode === "line" || measuredLines.length > 0) {
     const totalLineM = measuredLines.reduce((sum, l) => sum + (l.lengthM || 0), 0);
-    label.innerText = `วัดแล้ว ${measuredLines.length} เส้น (รวมความยาว: ${totalLineM.toFixed(2)} ม.)`;
+    label.innerText = "วัดแล้ว " + measuredLines.length + " เส้น (รวมความยาว: " + totalLineM.toFixed(2) + " ม.)";
     return;
   }
   if (mType === "perimeter") {
     const totalPerimeter = measuredShapes.reduce((sum, b) => sum + (b.perimeterM || 0), 0);
-    label.innerText = `เลือกแล้ว ${measuredShapes.length} รูป (เส้นรอบรูป: ${totalPerimeter.toFixed(2)} ม.)`;
+    label.innerText = "เลือกแล้ว " + measuredShapes.length + " รูป (เส้นรอบรูป: " + totalPerimeter.toFixed(2) + " ม.)";
   } else {
     const totalFlat = measuredShapes.reduce((sum, b) => sum + (b.flatAreaM || 0), 0);
     const totalSlope = measuredShapes.reduce((sum, b) => sum + (b.slopeAreaM || b.flatAreaM || 0), 0);
     if (isRoofRelated) {
-      label.innerText = `เลือกแล้ว ${measuredShapes.length} รูป (ราบ: ${totalFlat.toFixed(2)} ตร.ม. | ลาดเอียง: ${totalSlope.toFixed(2)} ตร.ม.)`;
+      label.innerText = "เลือกแล้ว " + measuredShapes.length + " รูป (ราบ: " + totalFlat.toFixed(2) + " ตร.ม. | ลาดเอียง: " + totalSlope.toFixed(2) + " ตร.ม.)";
     } else {
-      label.innerText = `เลือกแล้ว ${measuredShapes.length} รูป (${totalFlat.toFixed(2)} ตร.ม.)`;
+      label.innerText = "เลือกแล้ว " + measuredShapes.length + " รูป (" + totalFlat.toFixed(2) + " ตร.ม.)";
     }
   }
 }
 
+/* ==========================================================
+   REDRAW CANVAS
+   ========================================================== */
 function redrawCanvas() {
   if (!currentDrawPageImg) return;
   const canvas = document.getElementById("drawCanvas");
@@ -460,10 +696,9 @@ function redrawCanvas() {
     ctx.fillRect(midX - 50, midY - 26, 100, 24);
     ctx.fillStyle = "#ffffff";
     ctx.font = "bold 13px sans-serif";
-    ctx.fillText(`📏 ${calibrationLine.meters} ม.`, midX - 35, midY - 9);
+    ctx.fillText("📏 " + calibrationLine.meters + " ม.", midX - 35, midY - 9);
     ctx.restore();
   }
-
   if (currentDragLine) {
     ctx.save();
     ctx.strokeStyle = (currentToolMode === "line") ? "#f59e0b" : "#a855f7";
@@ -475,12 +710,10 @@ function redrawCanvas() {
     ctx.stroke();
     ctx.restore();
   }
-
   if (measuredShapes.length > 0 || measuredLines.length > 0 || currentDragBox || currentPolygonPoints.length > 0) {
     ctx.fillStyle = "rgba(15, 23, 42, 0.15)";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
   }
-
   measuredLines.forEach((line) => {
     ctx.save();
     ctx.strokeStyle = "#f59e0b";
@@ -495,10 +728,9 @@ function redrawCanvas() {
     ctx.fillRect(midX - 45, midY - 24, 90, 24);
     ctx.fillStyle = "#000000";
     ctx.font = "bold 13px sans-serif";
-    ctx.fillText(`📏 ${line.lengthM.toFixed(2)} ม.`, midX - 38, midY - 7);
+    ctx.fillText("📏 " + line.lengthM.toFixed(2) + " ม.", midX - 38, midY - 7);
     ctx.restore();
   });
-
   measuredShapes.forEach((shape, idx) => {
     ctx.save();
     if (shape.type === 'polygon' && shape.points) {
@@ -523,13 +755,13 @@ function redrawCanvas() {
         ctx.stroke();
       });
       const firstPt = shape.points[0];
-      let polyLabel = `🔷 #${idx + 1} (Polygon)`;
+      let polyLabel = "🔷 #" + (idx + 1) + " (Polygon)";
       if (mType === "perimeter") {
-        polyLabel = `🔄 #${idx + 1}: รอบรูป = ${shape.perimeterM.toFixed(2)} ม.`;
+        polyLabel = "🔄 #" + (idx + 1) + ": รอบรูป = " + shape.perimeterM.toFixed(2) + " ม.";
       } else if (shape.flatAreaM) {
         polyLabel = isRoofRelated
-          ? `🔷 #${idx + 1}: ราบ ${shape.flatAreaM.toFixed(1)} ➔ ลาดเอียง (${shape.slopeDeg || currentSlopeDeg}°) = ${shape.slopeAreaM.toFixed(1)} ตร.ม.`
-          : `🔷 #${idx + 1}: ${shape.flatAreaM.toFixed(2)} ตร.ม.`;
+          ? "🔷 #" + (idx + 1) + ": ราบ " + shape.flatAreaM.toFixed(1) + " ➔ ลาดเอียง (" + (shape.slopeDeg || currentSlopeDeg) + "°) = " + shape.slopeAreaM.toFixed(1) + " ตร.ม."
+          : "🔷 #" + (idx + 1) + ": " + shape.flatAreaM.toFixed(2) + " ตร.ม.";
       }
       ctx.fillStyle = isRoofRelated ? "#ef4444" : "#2563eb";
       const badgeY = firstPt.y > 32 ? firstPt.y - 32 : firstPt.y;
@@ -543,13 +775,13 @@ function redrawCanvas() {
       ctx.strokeStyle = isRoofRelated ? "#ef4444" : "#10b981";
       ctx.lineWidth = 5;
       ctx.strokeRect(shape.x, shape.y, shape.w, shape.h);
-      let badgeLabel = `🎯 #${idx + 1}`;
+      let badgeLabel = "🎯 #" + (idx + 1);
       if (mType === "perimeter" && shape.perimeterM) {
-        badgeLabel = `🔄 #${idx + 1}: เส้นรอบรูป = ${shape.perimeterM.toFixed(2)} ม.`;
+        badgeLabel = "🔄 #" + (idx + 1) + ": เส้นรอบรูป = " + shape.perimeterM.toFixed(2) + " ม.";
       } else if (shape.flatAreaM) {
         badgeLabel = isRoofRelated
-          ? `🎯 #${idx + 1}: ราบ ${shape.flatAreaM.toFixed(1)} ➔ ลาดเอียง (${shape.slopeDeg || currentSlopeDeg}°) = ${shape.slopeAreaM.toFixed(1)} ตร.ม.`
-          : `🎯 #${idx + 1}: ${shape.flatAreaM.toFixed(2)} ตร.ม.`;
+          ? "🎯 #" + (idx + 1) + ": ราบ " + shape.flatAreaM.toFixed(1) + " ➔ ลาดเอียง (" + (shape.slopeDeg || currentSlopeDeg) + "°) = " + shape.slopeAreaM.toFixed(1) + " ตร.ม."
+          : "🎯 #" + (idx + 1) + ": " + shape.flatAreaM.toFixed(2) + " ตร.ม.";
       }
       ctx.fillStyle = isRoofRelated ? "#ef4444" : "#10b981";
       const badgeY = shape.y > 32 ? shape.y - 32 : shape.y;
@@ -561,7 +793,6 @@ function redrawCanvas() {
     }
     ctx.restore();
   });
-
   if (currentPolygonPoints.length > 0) {
     ctx.save();
     ctx.strokeStyle = "#38bdf8";
@@ -592,7 +823,6 @@ function redrawCanvas() {
     }
     ctx.restore();
   }
-
   if (currentDragBox) {
     ctx.drawImage(currentDrawPageImg, currentDragBox.x, currentDragBox.y, currentDragBox.w, currentDragBox.h, currentDragBox.x, currentDragBox.y, currentDragBox.w, currentDragBox.h);
     ctx.strokeStyle = "#38bdf8";
@@ -605,13 +835,13 @@ function redrawCanvas() {
       let dragLabel = "";
       if (mType === "perimeter") {
         const peri = 2 * (wM + hM);
-        dragLabel = `🔄 เส้นรอบรูป: ${peri.toFixed(2)} ม.`;
+        dragLabel = "🔄 เส้นรอบรูป: " + peri.toFixed(2) + " ม.";
       } else {
         const flatM = wM * hM;
-        dragLabel = `📐 ราบ ${flatM.toFixed(2)} ตร.ม.`;
+        dragLabel = "📐 ราบ " + flatM.toFixed(2) + " ตร.ม.";
         if (isRoofRelated) {
           const slopeM = flatM * slopeMultiplier;
-          dragLabel = `📐 ราบ ${flatM.toFixed(1)} ➔ ลาดเอียง (${currentSlopeDeg}°) = ${slopeM.toFixed(1)} ตร.ม.`;
+          dragLabel = "📐 ราบ " + flatM.toFixed(1) + " ➔ ลาดเอียง (" + currentSlopeDeg + "°) = " + slopeM.toFixed(1) + " ตร.ม.";
         }
       }
       ctx.fillRect(currentDragBox.x, currentDragBox.y - 26, Math.max(220, ctx.measureText(dragLabel).width + 20), 24);
@@ -620,7 +850,6 @@ function redrawCanvas() {
       ctx.fillText(dragLabel, currentDragBox.x + 6, currentDragBox.y - 8);
     }
   }
-
   if (activeSnappedPoint) {
     ctx.save();
     ctx.strokeStyle = "#10b981";
@@ -639,6 +868,9 @@ function redrawCanvas() {
   }
 }
 
+/* ==========================================================
+   DRAW EVENTS
+   ========================================================= */
 function setupDrawEvents() {
   const viewport = document.getElementById("canvasViewport");
   const canvas = document.getElementById("drawCanvas");
@@ -871,6 +1103,9 @@ function clearAllDrawBoxes() {
   document.getElementById("drawStatus").innerText = "ล้างข้อมูลเรียบร้อยแล้ว ลากกรอบหรือคลิก Polygon ใหม่เพื่อวัด";
 }
 
+/* ==========================================================
+   OPEN IN-PLACE EDITOR
+   ========================================================== */
 async function openInPlaceEditor(itemId) {
   if (!currentUploadedFile) {
     const planInput = document.getElementById("planFile");
@@ -887,14 +1122,14 @@ async function openInPlaceEditor(itemId) {
   const loc = targetItem.source_location || {};
   const targetPage = (loc.page_number && loc.page_number !== "all") ? loc.page_number : 1;
   const modalTitle = document.getElementById("drawModalHeaderTitle");
-  modalTitle.innerText = `🔍 ตำแหน่งในแบบ (หน้า ${targetPage}) & แก้ไขรายการ: "${targetItem.item_name}"`;
+  modalTitle.innerText = '🔍 ตำแหน่งในแบบ (หน้า ' + targetPage + ') & แก้ไขรายการ: "' + targetItem.item_name + '"';
   const select = document.getElementById("drawPageSelect");
   select.innerHTML = "";
   const totalPages = pdfDocumentInstance ? pdfDocumentInstance.numPages : 1;
   for (let i = 1; i <= totalPages; i++) {
     const opt = document.createElement("option");
     opt.value = i;
-    opt.innerText = `หน้า ${i}`;
+    opt.innerText = "หน้า " + i;
     if (i === targetPage) opt.selected = true;
     select.appendChild(opt);
   }
@@ -921,12 +1156,14 @@ async function openInPlaceEditor(itemId) {
     document.getElementById("measureTypeSelect").value = "perimeter";
   }
   document.getElementById("drawModal").style.display = "flex";
-  document.getElementById("drawStatus").innerText = `กำลังเปิดแปลนหน้า ${targetPage} ของรายการ "${targetItem.item_name}"...`;
+
+  await loadProjectSettingsToGeometry();
+
+  document.getElementById("drawStatus").innerText = 'กำลังเปิดแปลนหน้า ' + targetPage + ' ของรายการ "' + targetItem.item_name + '"...';
   await loadDrawCanvasPage(targetPage);
   measuredShapes = [];
   measuredLines = [];
   currentPolygonPoints = [];
-
   if (targetItem.pixels_per_meter) {
     pixelsPerMeter = targetItem.pixels_per_meter;
     if (targetItem.calibration_line) {
@@ -934,7 +1171,6 @@ async function openInPlaceEditor(itemId) {
     }
     updateScaleBadge();
   }
-
   if (targetItem.measured_shapes && targetItem.measured_shapes.length > 0) {
     measuredShapes = JSON.parse(JSON.stringify(targetItem.measured_shapes));
     if (targetItem.measured_lines && targetItem.measured_lines.length > 0) {
@@ -972,7 +1208,10 @@ async function openInPlaceEditor(itemId) {
   setTimeout(fitToViewport, 100);
 }
 
-function openManualDrawModal() {
+/* ==========================================================
+   OPEN MANUAL DRAW MODAL
+   ========================================================== */
+async function openManualDrawModal() {
   editingItemId = null;
   document.getElementById("drawModalHeaderTitle").innerText = "📐 สร้างรายการใหม่ด้วย Precision Geometry Tool (Auto-Edge Pan)";
   const select = document.getElementById("drawPageSelect");
@@ -981,10 +1220,13 @@ function openManualDrawModal() {
   for (let i = 1; i <= totalPages; i++) {
     const opt = document.createElement("option");
     opt.value = i;
-    opt.innerText = `หน้า ${i}`;
+    opt.innerText = "หน้า " + i;
     select.appendChild(opt);
   }
   document.getElementById("drawModal").style.display = "flex";
+
+  await loadProjectSettingsToGeometry();
+
   onCategoryChangedInDrawModal();
   measuredShapes = [];
   measuredLines = [];
@@ -1017,6 +1259,9 @@ async function loadDrawCanvasPage(pageNum) {
   redrawCanvas();
 }
 
+/* ==========================================================
+   SAVE AND APPLY
+   ========================================================== */
 async function saveAndApplyInPlaceMeasurement() {
   const mType = document.getElementById("measureTypeSelect").value;
   const isLineMode = measuredLines.length > 0;
@@ -1037,21 +1282,19 @@ async function saveAndApplyInPlaceMeasurement() {
   const roofShape = document.getElementById("roofShapeSelect").value;
   const wastePercent = (roofShape === "hip") ? 1.10 : 1.05;
   const wasteFactorText = (roofShape === "hip") ? "10%" : "5%";
-  
   let chosenValue = 0;
   let chosenUnit = "ตร.ม.";
   let auditSummary = "";
-  
   if (isLineMode) {
     chosenValue = measuredLines.reduce((sum, l) => sum + (l.lengthM || 0), 0);
     chosenUnit = "ม.";
-    let parts = measuredLines.map((l, i) => `เส้น #${i+1} (${l.lengthM.toFixed(2)} ม.)`);
-    auditSummary = `[วัดความยาวแนวเส้น หน้า ${pageNum}]: ${parts.join(" + ")} = รวมความยาวสุทธิ ${chosenValue.toFixed(2)} เมตร`;
+    let parts = measuredLines.map((l, i) => "เส้น #" + (i+1) + " (" + l.lengthM.toFixed(2) + " ม.)");
+    auditSummary = "[วัดความยาวแนวเส้น หน้า " + pageNum + "]: " + parts.join(" + ") + " = รวมความยาวสุทธิ " + chosenValue.toFixed(2) + " เมตร";
   } else if (mType === "perimeter") {
     chosenValue = measuredShapes.reduce((sum, b) => sum + (b.perimeterM || 0), 0);
     chosenUnit = "ม.";
-    let parts = measuredShapes.map((b, i) => `#${i+1} [${b.type === 'polygon' ? 'Polygon' : 'สี่เหลี่ยม'} = ${b.perimeterM.toFixed(2)} ม.]`);
-    auditSummary = `[คิดเส้นรอบรูปอาคาร/แนวสัน หน้า ${pageNum}]: ${parts.join(" + ")} = รวมความยาว ${chosenValue.toFixed(2)} เมตร`;
+    let parts = measuredShapes.map((b, i) => "#" + (i+1) + " [" + (b.type === 'polygon' ? 'Polygon' : 'สี่เหลี่ยม') + " = " + b.perimeterM.toFixed(2) + " ม.]");
+    auditSummary = "[คิดเส้นรอบรูปอาคาร/แนวสัน หน้า " + pageNum + "]: " + parts.join(" + ") + " = รวมความยาว " + chosenValue.toFixed(2) + " เมตร";
   } else {
     chosenValue = isRoofRelated
       ? measuredShapes.reduce((sum, b) => sum + (b.slopeAreaM || 0), 0)
@@ -1059,17 +1302,15 @@ async function saveAndApplyInPlaceMeasurement() {
     chosenUnit = "ตร.ม.";
     let parts = measuredShapes.map((b, i) => {
       return isRoofRelated
-        ? `รูป #${i+1} (${b.type === 'polygon' ? 'Polygon' : 'สี่เหลี่ยม'} ราบ ${b.flatAreaM.toFixed(2)} ม.² ÷ cos(${b.slopeDeg || slopeDeg}°) = ลาดเอียง ${b.slopeAreaM.toFixed(2)} ม.²)`
-        : `รูป #${i+1} (${b.type === 'polygon' ? 'Polygon' : 'สี่เหลี่ยม'} ${b.flatAreaM.toFixed(2)} ม.²)`;
+        ? "รูป #" + (i+1) + " (" + (b.type === 'polygon' ? 'Polygon' : 'สี่เหลี่ยม') + " ราบ " + b.flatAreaM.toFixed(2) + " ม.² ÷ cos(" + (b.slopeDeg || slopeDeg) + "°) = ลาดเอียง " + b.slopeAreaM.toFixed(2) + " ม.²)"
+        : "รูป #" + (i+1) + " (" + (b.type === 'polygon' ? 'Polygon' : 'สี่เหลี่ยม') + " " + b.flatAreaM.toFixed(2) + " ม.²)";
     });
     auditSummary = isRoofRelated
-      ? `[หน้า ${pageNum} | คำนวณ Slope ${slopeDeg}° | ทรง${roofShape === 'hip' ? 'ปั้นหยา' : 'จั่ว'}]: ${parts.join(" + ")} = รวมพื้นที่ลาดเอียงสุทธิ ${chosenValue.toFixed(2)} ตร.ม.`
-      : `[หน้า ${pageNum}]: ${parts.join(" + ")} = รวมสุทธิ ${chosenValue.toFixed(2)} ตร.ม.`;
+      ? "[หน้า " + pageNum + " | คำนวณ Slope " + slopeDeg + "° | ทรง" + (roofShape === 'hip' ? 'ปั้นหยา' : 'จั่ว') + "]: " + parts.join(" + ") + " = รวมพื้นที่ลาดเอียงสุทธิ " + chosenValue.toFixed(2) + " ตร.ม."
+      : "[หน้า " + pageNum + "]: " + parts.join(" + ") + " = รวมสุทธิ " + chosenValue.toFixed(2) + " ตร.ม.";
   }
-
   const statusElem = document.getElementById("drawStatus");
-  statusElem.innerText = `กำลังคำนวณยอดสั่งซื้อสินค้าและระบบแพ็กเกจของ "${chosenProduct}" ...`;
-
+  statusElem.innerText = 'กำลังคำนวณยอดสั่งซื้อสินค้าและระบบแพ็กเกจของ "' + chosenProduct + '" ...';
   let mainBox = [100, 100, 500, 500];
   if (measuredShapes.length > 0 && currentDrawPageImg) {
     let allX = [];
@@ -1091,51 +1332,48 @@ async function saveAndApplyInPlaceMeasurement() {
       ];
     }
   }
-
   let fallbackOrderEstimate = "";
   const pLower = chosenProduct.toLowerCase();
   if (pLower.includes("dry tech") || pLower.includes("สันหลังคา")) {
     const tiles = Math.ceil(chosenValue * 3.3 * wastePercent);
     const dryRolls = Math.ceil((chosenValue / 3.0) * wastePercent);
-    fallbackOrderEstimate = `- แผ่นครอบสันหลังคา: ${tiles} แผ่น\n- แผ่นรองใต้สันหลังคา SCG Dry Tech: ${dryRolls} ม้วน (3.0 ม./ม้วน)`;
+    fallbackOrderEstimate = "- แผ่นครอบสันหลังคา: " + tiles + " แผ่น\n- แผ่นรองใต้สันหลังคา SCG Dry Tech: " + dryRolls + " ม้วน (3.0 ม./ม้วน)";
   } else if (pLower.includes("hollow core") || pLower.includes("ฮอลโลว์คอร์")) {
     const sqmAmt = (chosenValue * wastePercent).toFixed(1);
     const toppingCubic = (chosenValue * 0.05 * wastePercent).toFixed(2);
     const wireMeshSqm = (chosenValue * 1.10).toFixed(1);
-    fallbackOrderEstimate = `- แผ่นพื้น CPAC Hollow Core: ${sqmAmt} ตร.ม.\n- คอนกรีตทับหน้า Topping หนา 5 ซม.: ${toppingCubic} คิว (ลบ.ม.)\n- ตะแกรงเหล็ก Wire Mesh: ${wireMeshSqm} ตร.ม. (เผื่อทาบ 10%)`;
+    fallbackOrderEstimate = "- แผ่นพื้น CPAC Hollow Core: " + sqmAmt + " ตร.ม.\n- คอนกรีตทับหน้า Topping หนา 5 ซม.: " + toppingCubic + " คิว (ลบ.ม.)\n- ตะแกรงเหล็ก Wire Mesh: " + wireMeshSqm + " ตร.ม. (เผื่อทาบ 10%)";
   } else if (pLower.includes("prestige") || pLower.includes("neustile") || pLower.includes("cpac") || pLower.includes("ลอนคู่")) {
     const tiles = Math.ceil(chosenValue * 11 * wastePercent);
-    fallbackOrderEstimate = `- กระเบื้องหลังคา: ${tiles} แผ่น (เผื่อเศษ ${wasteFactorText})`;
+    fallbackOrderEstimate = "- กระเบื้องหลังคา: " + tiles + " แผ่น (เผื่อเศษ " + wasteFactorText + ")";
   } else if (pLower.includes("post-tension")) {
     const sqmAmt = (chosenValue * wastePercent).toFixed(1);
     const strandKg = Math.round(chosenValue * 4.0);
-    fallbackOrderEstimate = `- พื้นคอนกรีตอัดแรง Post-tension: ${sqmAmt} ตร.ม.\n- ลวดสลิง PC Strand: ~${strandKg} กก.`;
+    fallbackOrderEstimate = "- พื้นคอนกรีตอัดแรง Post-tension: " + sqmAmt + " ตร.ม.\n- ลวดสลิง PC Strand: ~" + strandKg + " กก.";
   } else if (pLower.includes("คอนกรีตผสมเสร็จ") || pLower.includes("ready-mix")) {
     const cubic = (chosenValue * wastePercent).toFixed(2);
-    fallbackOrderEstimate = `- คอนกรีตผสมเสร็จ CPAC: ${cubic} คิว (ลบ.ม.)`;
+    fallbackOrderEstimate = "- คอนกรีตผสมเสร็จ CPAC: " + cubic + " คิว (ลบ.ม.)";
   } else if (pLower.includes("เชิงชาย") || pLower.includes("บัว")) {
     const pcs = Math.ceil((chosenValue / 3.0) * wastePercent);
-    fallbackOrderEstimate = `- ไม้เชิงชาย SCG Smartwood: ${pcs} ท่อน (3.0 ม./ท่อน)`;
+    fallbackOrderEstimate = "- ไม้เชิงชาย SCG Smartwood: " + pcs + " ท่อน (3.0 ม./ท่อน)";
   } else if (pLower.includes("stay cool")) {
     const rolls = Math.ceil((chosenValue / 2.40) * wastePercent);
-    fallbackOrderEstimate = `- ฉนวนปูเหนือฝ้า SCG STAY COOL: ${rolls} ม้วน (ปูเหนือฝ้า 2.40 ตร.ม./ม้วน)`;
+    fallbackOrderEstimate = "- ฉนวนปูเหนือฝ้า SCG STAY COOL: " + rolls + " ม้วน (ปูเหนือฝ้า 2.40 ตร.ม./ม้วน)";
   } else if (pLower.includes("fso")) {
     const sqmAmt = (chosenValue * wastePercent).toFixed(1);
-    fallbackOrderEstimate = `- ฉนวนใยแก้วใต้หลังคา SCG FSO: ${sqmAmt} ตร.ม.`;
+    fallbackOrderEstimate = "- ฉนวนใยแก้วใต้หลังคา SCG FSO: " + sqmAmt + " ตร.ม.";
   } else if (pLower.includes("สมาร์ทบอร์ด") || pLower.includes("ยิปซัม")) {
     const sheets = Math.ceil((chosenValue / 2.88) * wastePercent);
-    fallbackOrderEstimate = `- แผ่นบอร์ด: ${sheets} แผ่น (ขนาดมาตรฐาน 1.20x2.40 ม.)`;
+    fallbackOrderEstimate = "- แผ่นบอร์ด: " + sheets + " แผ่น (ขนาดมาตรฐาน 1.20x2.40 ม.)";
   } else if (pLower.includes("ไม้ฝา")) {
     const planks = Math.ceil(chosenValue * 2.22 * wastePercent);
-    fallbackOrderEstimate = `- ไม้ฝาตกแต่ง SCG Smartwood: ${planks} แผ่น`;
+    fallbackOrderEstimate = "- ไม้ฝาตกแต่ง SCG Smartwood: " + planks + " แผ่น";
   } else {
     const sqmAmt = (chosenValue * wastePercent).toFixed(1);
-    fallbackOrderEstimate = `- ${chosenProduct}: ${sqmAmt} ${chosenUnit} (เผื่อเศษ ${wasteFactorText})`;
+    fallbackOrderEstimate = "- " + chosenProduct + ": " + sqmAmt + " " + chosenUnit + " (เผื่อเศษ " + wasteFactorText + ")";
   }
-
   let finalOrderEstimate = fallbackOrderEstimate;
-  let finalCalcNote = `คำนวณจากขนาดวัดจริง ${chosenValue.toFixed(2)} ${chosenUnit} อัตราเผื่อเศษวัสดุ ${wasteFactorText}`;
-
+  let finalCalcNote = "คำนวณจากขนาดวัดจริง " + chosenValue.toFixed(2) + " " + chosenUnit + " อัตราเผื่อเศษวัสดุ " + wasteFactorText;
   const promptText = `
 ### คำสั่งและบริบทงาน (บังคับภาษาไทย 100%):
 ท่านคือวิศวกรและผู้เชี่ยวชาญการถอดแบบและประมาณราคา (QS) ของ SCG และ CPAC
@@ -1155,9 +1393,8 @@ async function saveAndApplyInPlaceMeasurement() {
   "calculation_note": "สูตรคำนวณและอัตราเผื่อเศษภาษาไทย"
 }
 `;
-
   try {
-    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key=${apiKey}`;
+    const endpoint = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key=" + apiKey;
     const response = await fetch(endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -1169,7 +1406,6 @@ async function saveAndApplyInPlaceMeasurement() {
         generationConfig: { responseMimeType: "application/json" }
       })
     });
-
     if (response.ok) {
       const data = await response.json();
       if (data.candidates && data.candidates[0] && data.candidates[0].content) {
@@ -1182,12 +1418,11 @@ async function saveAndApplyInPlaceMeasurement() {
   } catch (apiErr) {
     // ใช้ค่า Fallback ต่อได้ทันที
   }
-
   if (editingItemId) {
     const item = lastRawBOQItems.find(it => it._id === editingItemId);
     if (item) {
       item.category = category;
-      item.net_quantity = `${chosenValue.toFixed(2)} ${chosenUnit}`;
+      item.net_quantity = chosenValue.toFixed(2) + " " + chosenUnit;
       item.scg_product = chosenProduct;
       item.order_estimate = finalOrderEstimate;
       item.calculation_note = finalCalcNote;
@@ -1201,17 +1436,17 @@ async function saveAndApplyInPlaceMeasurement() {
       item.source_location = {
         page_number: pageNum,
         box_2d: mainBox,
-        location_description: `วัดขนาดด้วย Geometry Tool และเลือกสินค้า "${chosenProduct}" บนหน้า ${pageNum}`
+        location_description: 'วัดขนาดด้วย Geometry Tool และเลือกสินค้า "' + chosenProduct + '" บนหน้า ' + pageNum
       };
-      statusElem.innerText = `✅ อัปเดตรูปทรงและรายการ "${item.item_name}" บนหน้า ${pageNum} สำเร็จ!`;
+      statusElem.innerText = '✅ อัปเดตรูปทรงและรายการ "' + item.item_name + '" บนหน้า ' + pageNum + ' สำเร็จ!';
     }
   } else {
     const newItem = {
       _id: "item_" + Date.now() + "_" + Math.floor(Math.random() * 10000),
       category: category,
-      code_ref: `Geometry (${chosenUnit})`,
-      item_name: `วัดปริมาณในแบบ (${category} - หน้า ${pageNum})`,
-      net_quantity: `${chosenValue.toFixed(2)} ${chosenUnit}`,
+      code_ref: "Geometry (" + chosenUnit + ")",
+      item_name: "วัดปริมาณในแบบ (" + category + " - หน้า " + pageNum + ")",
+      net_quantity: chosenValue.toFixed(2) + " " + chosenUnit,
       scg_product: chosenProduct,
       order_estimate: finalOrderEstimate,
       confidence_score: 99,
@@ -1225,14 +1460,16 @@ async function saveAndApplyInPlaceMeasurement() {
       source_location: {
         page_number: pageNum,
         box_2d: mainBox,
-        location_description: `วัดในแบบบนหน้า ${pageNum}`
+        location_description: "วัดในแบบบนหน้า " + pageNum
       }
     };
     lastRawBOQItems.push(newItem);
-    statusElem.innerText = `✅ เพิ่มรายการใหม่ของหน้า ${pageNum} ลงในตาราง BOQ สำเร็จ!`;
+    statusElem.innerText = "✅ เพิ่มรายการใหม่ของหน้า " + pageNum + " ลงในตาราง BOQ สำเร็จ!";
   }
-
   renderBOQTable(lastRawBOQItems);
+
+  await syncGeometryToProjectDB();
+
   setTimeout(() => {
     closeModal('drawModal');
   }, 800);

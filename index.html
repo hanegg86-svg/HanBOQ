@@ -21,14 +21,14 @@
   <div class="project-header-bar">
     <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
       <span class="project-badge-tag">โครงการปัจจุบัน</span>
-      <span style="font-size: 16px; font-weight: bold;" id="activeProjectDisplay">โครงการทั่วไป (ยังไม่ได้บันทึก)</span>
+      <span style="font-size: 16px; font-weight: bold;" id="activeProjectNameDisplay">โครงการทั่วไป (ยังไม่ได้บันทึก)</span>
       <span style="font-size: 13px; color: #94a3b8;" id="activeCustomerDisplay">[ลูกค้า: ไม่ระบุ]</span>
-      <span style="font-size: 12px; color: #38bdf8; font-weight: 600;" id="activePlanFileDisplay">📄 [ไฟล์แบบ: ยังไม่ได้เลือกแบบ]</span>
+      <span style="font-size: 12px; color: #38bdf8; font-weight: 600;" id="activeFileNameDisplay">📄 [ไฟล์แบบ: ยังไม่ได้เลือกแบบ]</span>
     </div>
     <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-      <button type="button" class="btn-projects" style="padding: 6px 14px; font-size: 13px;" onclick="openProjectManagerModal()">📂 คลังโครงการ &amp; ลูกค้า</button>
-      <button type="button" style="background: #16a34a; padding: 6px 14px; font-size: 13px;" onclick="saveCurrentProjectToDB()">💾 บันทึกลงเครื่อง (IndexedDB)</button>
-      <button type="button" style="background: #475569; padding: 6px 12px; font-size: 13px;" onclick="createNewProjectPrompt()">➕ สร้างโครงการใหม่</button>
+      <button type="button" class="btn-projects" style="padding: 6px 14px; font-size: 13px;" onclick="openProjectManager()">📂 คลังโครงการ &amp; ลูกค้า</button>
+      <button type="button" style="background: #16a34a; padding: 6px 14px; font-size: 13px;" onclick="saveCurrentProject()">💾 บันทึกลงเครื่อง (IndexedDB)</button>
+      <button type="button" style="background: #475569; padding: 6px 12px; font-size: 13px;" onclick="createNewProject()">➕ สร้างโครงการใหม่</button>
     </div>
   </div>
 
@@ -442,7 +442,7 @@
       <!-- แถบค้นหาโปรเจกต์ -->
       <div style="display: flex; gap: 8px; margin-bottom: 12px;">
         <input type="text" id="projectSearchInput" placeholder="🔍 พิมพ์ชื่อลูกค้า, ชื่อโครงการ, ชื่อไฟล์แบบ หรือรหัสเพื่อค้นหา..." style="margin-bottom: 0;" oninput="filterProjectList()">
-        <button type="button" style="background: #16a34a; padding: 6px 14px; font-size: 13px; flex: none;" onclick="createNewProjectPrompt()">➕ โครงการใหม่</button>
+        <button type="button" style="background: #16a34a; padding: 6px 14px; font-size: 13px; flex: none;" onclick="createNewProject()">➕ โครงการใหม่</button>
       </div>
 
       <!-- กล่องแสดงรายการโปรเจกต์ -->

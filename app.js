@@ -1,5 +1,9 @@
 /* ==========================================================
    ตรรกะหลัก แอปพลิเคชัน & AI ถอดแบบ BOQ (GEMINI 3.5 FLASH LITE)
+   ปรับปรุง: THAI_CONSTRUCTION_DICT, หมวดโครงสร้างเหล็ก,
+   Auto Slope Detection, MATERIAL_MAPPING_TABLE,
+   Cross-Sell Engine, Section/Elevation Cross-Check,
+   NON_SCG Material Detection
    ========================================================== */
 let currentUploadedFile = null;
 let pdfDocumentInstance = null;
@@ -45,6 +49,148 @@ function getMinSlopeFromProductName(productName) {
   return 15;
 }
 
+/* ==========================================================
+   พจนานุกรมคำศัพท์ในแบบก่อสร้างไทย (THAI CONSTRUCTION DICT)
+   ========================================================== */
+const THAI_CONSTRUCTION_DICT = {
+  "ค.ส.ล.": "คอนกรีตเสริมเหล็ก",
+  "คอร.": "Corrugated (ลอน)",
+  "ปลอก": "Pipe Sleeve",
+  "ฝ้าเพดานยิปซั่ม": "แผ่นยิปซัม SCG ตราช้าง",
+  "พื้นสำเร็จรูป": "แผ่นพื้น CPAC Hollow Core",
+  "DL": "Dead Load (น้ำหนักบรรทุกคงที่)",
+  "LL": "Live Load (น้ำหนักบรรทุกจร)",
+  "FFL": "Finished Floor Level (ระดับพื้นผิวสำเร็จ)",
+  "H-beam": "เหล็กโครงสร้างรูปตัว H",
+  "ผนังก่ออิฐฉาบปูน": "ก่ออิฐมวลเบา Q-CON + ปูนฉาบเสือมอร์ตาร์",
+  "ผนังก่ออิฐมอญ": "ก่ออิฐมอญ/บล็อก + ปูนเสือซีเมนต์ผสม (หรือแนะนำ Q-CON เพื่อลดน้ำหนัก)",
+  "ฝ้าเพดานยิปซัม": "แผ่นยิปซัม SCG ตราช้าง ขอบลาด หนา 9 มม. + โครงพลัสไลน์",
+  "พื้น ค.ส.ล.": "คอนกรีตผสมเสร็จ CPAC 240 ksc Cube (เทพื้นโครงสร้าง)",
+  "วัสดุมุงหลังคา": "ตรวจสอบ Roof Plan — แนะนำ SCG Metal Sheet หรือกระเบื้อง CPAC",
+  "โครงเหล็กหลังคา": "SCG Metal Sheet Lumax/Snap Lock (เหมาะกับโครงเหล็ก)",
+  "แผ่นเมทัลชีท": "SCG Metal Sheet ลอน Snap Lock / LumaX",
+  "อลูมิเนียมคอมโพสิต": "NON_SCG: วัสดุตกแต่งภายนอก (ไม่ใช่สินค้า SCG)",
+  "กระจกใส": "NON_SCG: กระจก (ไม่ใช่สินค้า SCG)",
+  "อลูมิเนียม อบดำ": "NON_SCG: กรอบอลูมิเนียม (ไม่ใช่สินค้า SCG)",
+  "slope_0_to_3": "SCG Metal Sheet LumaX (ขั้นต่ำ 0.3°)",
+  "slope_3_to_5": "SCG Metal Sheet Snap Lock (ซ่อนสกรู ขั้นต่ำ 3°)",
+  "slope_5_to_15": "SCG Metal Sheet 760 Noise Shield (กันเสียงฝน ขั้นต่ำ 5°)",
+  "slope_15_to_17": "กระเบื้องหลังคาลอนคู่ SCG (ขั้นต่ำ 15°)",
+  "slope_17_to_22": "หลังคาคอนกรีต SCG CPAC ลอนมาตรฐาน (ขั้นต่ำ 17°)",
+  "slope_22_to_25": "SCG Neustile (ขั้นต่ำ 22°)",
+  "slope_25_plus": "SCG Prestige (ขั้นต่ำ 25°)"
+};
+
+/* ==========================================================
+   ตารางจับคู่วัสดุจากแบบ → สินค้า SCG/CPAC (MATERIAL MAPPING)
+   ========================================================== */
+const MATERIAL_MAPPING_TABLE = [
+  ["ผนังก่ออิฐฉาบปูน", "ก่ออิฐมวลเบา Q-CON + ปูนฉาบเสือมอร์ตาร์", "งานผนัง", "scg"],
+  ["ผนังก่ออิฐมอญ", "ก่ออิฐมอญ/บล็อก + ปูนเสือซีเมนต์ผสม", "งานผนัง", "scg"],
+  ["ผนังเบา", "ผนังเบา สมาร์ทบอร์ด SCG หนา 8-10 มม. + โครง C-Stud", "งานผนัง", "scg"],
+  ["แผ่นยิปซัม", "แผ่นยิปซัม SCG ตราช้าง ขอบลาด หนา 9 มม. + โครงพลัสไลน์", "งานฝ้าเพดาน", "scg"],
+  ["ยิปซั่มบอร์ด", "แผ่นยิปซัม SCG ตราช้าง ขอบลาด หนา 9 มม. + โครงพลัสไลน์", "งานฝ้าเพดาน", "scg"],
+  ["สมาร์ทบอร์ด", "ฝ้าสมาร์ทบอร์ด SCG ขอบเรียบ หนา 4 มม.", "งานฝ้าเพดาน", "scg"],
+  ["smartboard", "ฝ้าสมาร์ทบอร์ด SCG ขอบเรียบ หนา 4 มม.", "งานฝ้าเพดาน", "scg"],
+  ["พื้นสำเร็จรูป", "แผ่นพื้นสำเร็จรูป CPAC Hollow Core หนา 10 ซม. + Topping 5 ซม.", "งานโครงสร้างและคอนกรีต CPAC", "scg"],
+  ["hollow core", "แผ่นพื้นสำเร็จรูป CPAC Hollow Core หนา 10 ซม. + Topping 5 ซม.", "งานโครงสร้างและคอนกรีต CPAC", "scg"],
+  ["คอนกรีตผสมเสร็จ", "คอนกรีตผสมเสร็จ CPAC 240 ksc Cube", "งานโครงสร้างและคอนกรีต CPAC", "scg"],
+  ["ready-mix", "คอนกรีตผสมเสร็จ CPAC 240 ksc Cube", "งานโครงสร้างและคอนกรีต CPAC", "scg"],
+  ["ค.ส.ล.", "คอนกรีตผสมเสร็จ CPAC 240 ksc Cube", "งานโครงสร้างและคอนกรีต CPAC", "scg"],
+  ["เหล็กเสริม", "เหล็กเส้นเสริมคอนกรีต (ทั่วไป)", "งานโครงสร้างและคอนกรีต CPAC", "general"],
+  ["H-beam", "SCG Metal Sheet Lumax/Snap Lock (อาคารโครงเหล็ก)", "งานโครงสร้างเหล็ก", "scg"],
+  ["เหล็กกล่อง", "SCG Metal Sheet Lumax/Snap Lock (อาคารโครงเหล็ก)", "งานโครงสร้างเหล็ก", "scg"],
+  ["จันทันเหล็ก", "SCG Metal Sheet Lumax/Snap Lock (อาคารโครงเหล็ก)", "งานโครงสร้างเหล็ก", "scg"],
+  ["แปเหล็ก", "SCG Metal Sheet Lumax/Snap Lock (อาคารโครงเหล็ก)", "งานโครงสร้างเหล็ก", "scg"],
+  ["หลังคาเมทัลชีท", "SCG Metal Sheet ลอน Snap Lock (ซ่อนสกรู)", "งานหลังคา", "scg"],
+  ["metal sheet", "SCG Metal Sheet ลอน LumaX", "งานหลังคา", "scg"],
+  ["กระเบื้องหลังคา", "กระเบื้องหลังคาลอนคู่ SCG", "งานหลังคา", "scg"],
+  ["หลังคาคอนกรีต", "หลังคาคอนกรีต SCG CPAC ลอนมาตรฐาน", "งานหลังคา", "scg"],
+  ["ฉนวนกันความร้อน", "ฉนวนปูเหนือฝ้า SCG STAY COOL หนา 75 มม.", "งานฉนวนปูเหนือฝ้า (STAY COOL)", "scg"],
+  ["stay cool", "ฉนวนปูเหนือฝ้า SCG STAY COOL หนา 75 มม.", "งานฉนวนปูเหนือฝ้า (STAY COOL)", "scg"],
+  ["fso", "ฉนวนใยแก้วใต้หลังคา SCG FSO", "งานฉนวนใต้หลังคา (SCG FSO)", "scg"],
+  ["เชิงชาย", "ไม้เชิงชาย SCG Smartwood 2 in 1", "งานไม้สังเคราะห์/ตกแต่ง", "scg"],
+  ["บัว", "ไม้บัว SCG Smartwood", "งานไม้สังเคราะห์/ตกแต่ง", "scg"],
+  ["ไม้ระแนง", "ไม้ระแนงบังแดด SCG Smartwood 3 นิ้ว", "งานไม้สังเคราะห์/ตกแต่ง", "scg"],
+  ["ไม้ฝา", "ไม้ฝา SCG Smartwood (ลายไม้สัก)", "งานไม้สังเคราะห์/ตกแต่ง", "scg"],
+  ["วงกบอลูมิเนียม", "NON_SCG: วงกบอลูมิเนียม (ไม่ใช่สินค้า SCG)", "งานตกแต่งอื่นๆ (ไม่ใช่ SCG)", "non_scg"],
+  ["อลูมิเนียมคอมโพสิต", "NON_SCG: Aluminum Composite (ไม่ใช่สินค้า SCG)", "งานตกแต่งอื่นๆ (ไม่ใช่ SCG)", "non_scg"],
+  ["aluminum composite", "NON_SCG: Aluminum Composite (ไม่ใช่สินค้า SCG)", "งานตกแต่งอื่นๆ (ไม่ใช่ SCG)", "non_scg"],
+  ["กระจกใส", "NON_SCG: กระจก (ไม่ใช่สินค้า SCG)", "งานตกแต่งอื่นๆ (ไม่ใช่ SCG)", "non_scg"],
+  ["กระจก", "NON_SCG: กระจก (ไม่ใช่สินค้า SCG)", "งานตกแต่งอื่นๆ (ไม่ใช่ SCG)", "non_scg"],
+  ["โถชักโครก", "สุขภัณฑ์ (ไม่ใช่สินค้า SCG — อาจแนะนำ COTTO)", "งานสุขาภิบาล", "general"],
+  ["กระเบื้องปูพื้น", "กระเบื้องปูพื้น COTTO + ปูนกาวเสือ", "งานพื้น", "scg"],
+  ["cotto", "กระเบื้องปูพื้น COTTO + ปูนกาวเสือ", "งานพื้น", "scg"],
+  ["สีทาภายใน", "NON_SCG: งานทาสี (TOA/JOTUN — ไม่ใช่สินค้า SCG)", "งานตกแต่งอื่นๆ (ไม่ใช่ SCG)", "non_scg"],
+  ["สีทาภายนอก", "NON_SCG: งานทาสี (TOA/JOTUN — ไม่ใช่สินค้า SCG)", "งานตกแต่งอื่นๆ (ไม่ใช่ SCG)", "non_scg"],
+  ["TOA", "NON_SCG: งานทาสี TOA (ไม่ใช่สินค้า SCG)", "งานตกแต่งอื่นๆ (ไม่ใช่ SCG)", "non_scg"],
+  ["ระบบกำจัดปลวก", "บริการกำจัดปลวก (ไม่ใช่สินค้า SCG)", "งานอื่นๆ", "general"],
+  ["ประตู HDF", "ประตูไม้ HDF (ทั่วไป — ไม่ใช่ SCG โดยตรง)", "งานประตู-หน้าต่าง", "general"],
+  ["วงกบประตู", "วงกบประตูไม้ (ทั่วไป — ไม่ใช่ SCG โดยตรง)", "งานประตู-หน้าต่าง", "general"],
+  ["หน้าต่างบานเปิด", "หน้าต่างอลูมิเนียม (ทั่วไป — ไม่ใช่ SCG โดยตรง)", "งานประตู-หน้าต่าง", "general"]
+];
+
+function findMaterialMatch(text) {
+  const lower = (text || "").toLowerCase();
+  for (let i = 0; i < MATERIAL_MAPPING_TABLE.length; i++) {
+    const [keyword, product, category, flag] = MATERIAL_MAPPING_TABLE[i];
+    if (lower.includes(keyword.toLowerCase())) {
+      return { product, category, flag };
+    }
+  }
+  return null;
+}
+
+/* ==========================================================
+   ตรวจจับความชันหลังคาจากข้อความในแบบ (AUTO SLOPE DETECTION)
+   ========================================================== */
+function detectSlopeFromDrawingText(aiResponseText) {
+  const patterns = [
+    /(\d+(?:\.\d+)?)\s*[º°]/g,
+    /SLOPE\s*[:=]?\s*(\d+(?:\.\d+)?)/gi,
+    /ความชัน\s*(\d+(?:\.\d+)?)/gi,
+    /([\d.]+)\s*องศา/gi
+  ];
+  for (let p = 0; p < patterns.length; p++) {
+    const matches = aiResponseText.matchAll(patterns[p]);
+    for (const match of matches) {
+      if (match && match[1]) {
+        const detected = parseFloat(match[1]);
+        if (detected >= 0 && detected <= 60) return detected;
+      }
+    }
+  }
+  return null;
+}
+
+function autoMapSlopeToRoofProduct(slopeDeg) {
+  if (slopeDeg <= 0.3) return { product: "metal_lumax", name: "SCG Metal Sheet LumaX (ขั้นต่ำ 0.3°)" };
+  if (slopeDeg <= 3) return { product: "metal_snaplock", name: "SCG Metal Sheet Snap Lock (ขั้นต่ำ 3°)" };
+  if (slopeDeg <= 5) return { product: "metal_760", name: "SCG Metal Sheet 760 Noise Shield (ขั้นต่ำ 5°)" };
+  if (slopeDeg <= 15) return { product: "roman", name: "กระเบื้องหลังคาลอนคู่ SCG (ขั้นต่ำ 15°)" };
+  if (slopeDeg <= 17) return { product: "cpac", name: "หลังคาคอนกรีต SCG CPAC ลอนมาตรฐาน (ขั้นต่ำ 17°)" };
+  if (slopeDeg <= 22) return { product: "scg_neustile", name: "SCG Neustile (ขั้นต่ำ 22°)" };
+  return { product: "scg_prestige", name: "SCG Prestige (ขั้นต่ำ 25°)" };
+}
+
+/* ==========================================================
+   ตรวจจับประเภทอาคารจากข้อความ (BUILDING TYPE DETECTION)
+   ========================================================== */
+function detectBuildingType(rawText) {
+  const lower = (rawText || "").toLowerCase();
+  const indicators = {
+    hasSteelStructure: lower.includes("h-beam") || lower.includes("เหล็กกล่อง") || lower.includes("จันทันเหล็ก") || lower.includes("แปเหล็ก") || lower.includes("โครงเหล็ก"),
+    hasMultiFloor: lower.includes("ระดับพื้นชั้น 2") || lower.includes("ชั้น 2") || (lower.match(/\+3\.\d{2}/g) || []).length >= 2,
+    hasRoofStructure: lower.includes("หลังคาน") || lower.includes("slope") || lower.includes("º") || lower.includes("°"),
+    hasConcreteStructure: lower.includes("ค.ส.ล.") || lower.includes("เสาคอนกรีต") || lower.includes("ฐานราก") || lower.includes("ready-mix"),
+    hasAluminumComposite: lower.includes("อลูมิเนียมคอมโพสิต") || lower.includes("aluminum composite"),
+    hasWWTPSystem: lower.includes("wwtp") || lower.includes("บ่อพัก") || lower.includes("บำบัดน้ำเสีย"),
+    hasCOTTOProducts: lower.includes("cotto") || lower.includes("คอตโต้"),
+    sectionLevels: (rawText || "").match(/\+[\d.]+/g) || []
+  };
+  return indicators;
+}
+
 const SCG_PRODUCT_CATALOG = {
   "งานหลังคา": [
     "SCG Roof Metal Sheet ลอน LumaX (รับความชันต่ำสุด 0.3 องศา)",
@@ -83,6 +229,14 @@ const SCG_PRODUCT_CATALOG = {
     "คอนกรีตผสมเสร็จ CPAC 350-400 ksc Cube (งาน Post-tension)",
     "คอนกรีตกันซึม CPAC (สำหรับเทดาดฟ้า/ห้องน้ำ/สระว่ายน้ำ)",
     "คอนกรีตทับหน้า Topping หนา 5 ซม. เหนือแผ่น Hollow Core"
+  ],
+  "งานโครงสร้างเหล็ก": [
+    "SCG Metal Sheet ลอน LumaX (เหมาะกับโครงเหล็ก ความชันต่ำ 0.3°)",
+    "SCG Metal Sheet ลอน Snap Lock (ซ่อนสกรู เหมาะกับโครงเหล็ก ขั้นต่ำ 3°)",
+    "SCG Metal Sheet ลอน 760 Noise Shield (โครงเหล็ก + กันเสียงฝน ขั้นต่ำ 5°)",
+    "แปเหล็กกล่อง + SCG Metal Sheet (ระบบหลังคาโครงเหล็กครบวงจร)",
+    "ฉนวนใยแก้วใต้หลังคา SCG FSO (บุใต้ Metal Sheet บนโครงเหล็ก)",
+    "แผ่นสะท้อนความร้อน SCG Radiant Barrier (ติดใต้แปเหล็ก)"
   ],
   "งานไม้สังเคราะห์/ตกแต่ง": [
     "ไม้เชิงชาย SCG Smartwood 2 in 1 (3.0 ม./ท่อน)",
@@ -129,7 +283,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
   setupSlopeFactorListener();
   autoAdjustDefaultSlope();
-
   const projects = await getAllProjectsFromDB();
   if (projects.length > 0) {
     projects.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
@@ -162,10 +315,10 @@ function setupSlopeFactorListener() {
     const minDeg = SCG_ROOF_MIN_SLOPE[roofChoice] !== undefined ? SCG_ROOF_MIN_SLOPE[roofChoice] : 0.3;
     const currentDeg = parseFloat(input.value) || 0;
     const mult = getSlopeMultiplier(currentDeg);
-    label.innerText = `(ขั้นต่ำ: ${minDeg}° | ตัวคูณ: ${mult.toFixed(3)})`;
+    label.innerText = "(ขั้นต่ำ: " + minDeg + "° | ตัวคูณ: " + mult.toFixed(3) + ")";
     if (currentDeg < minDeg) {
       warning.style.display = "block";
-      warning.innerText = `⚠️ องศา ${currentDeg}° ต่ำกว่าเกณฑ์มาตรฐาน SCG (ขั้นต่ำ ${minDeg}°) เสี่ยงน้ำไหลย้อนซึม`;
+      warning.innerText = "⚠️ องศา " + currentDeg + "° ต่ำกว่าเกณฑ์มาตรฐาน SCG (ขั้นต่ำ " + minDeg + "°) เสี่ยงน้ำไหลย้อนซึม";
     } else {
       warning.style.display = "none";
     }
@@ -181,11 +334,11 @@ function autoAdjustDefaultSlope() {
   const modalMinLabel = document.getElementById("modalSlopeMinLabel");
   slopeInput.value = minDeg;
   if (modalSlopeInput) modalSlopeInput.value = minDeg;
-  if (modalMinLabel) modalMinLabel.innerText = `(ขั้นต่ำ: ${minDeg}°)`;
+  if (modalMinLabel) modalMinLabel.innerText = "(ขั้นต่ำ: " + minDeg + "°)";
   const label = document.getElementById("slopeFactorLabel");
   const warning = document.getElementById("slopeWarning");
   const mult = getSlopeMultiplier(minDeg);
-  label.innerText = `(ขั้นต่ำ: ${minDeg}° | ตัวคูณ: ${mult.toFixed(3)})`;
+  label.innerText = "(ขั้นต่ำ: " + minDeg + "° | ตัวคูณ: " + mult.toFixed(3) + ")";
   if (warning) warning.style.display = "none";
 }
 
@@ -197,6 +350,7 @@ function populateProductDropdown(category, currentProduct) {
   else if (category.includes("ฉนวนใต้หลังคา") || category.includes("FSO")) key = "งานฉนวนใต้หลังคา (SCG FSO)";
   else if (category.includes("ฉนวนปูเหนือฝ้า") || category.includes("STAY COOL")) key = "งานฉนวนปูเหนือฝ้า (STAY COOL)";
   else if (category.includes("หลังคา")) key = "งานหลังคา";
+  else if (category.includes("โครงเหล็ก") || category.includes("เหล็ก") || category.includes("H-beam") || category.includes("steel")) key = "งานโครงสร้างเหล็ก";
   else if (category.includes("โครงสร้าง") || category.includes("คอนกรีต") || category.includes("CPAC") || category.includes("Hollow") || category.includes("Post")) key = "งานโครงสร้างและคอนกรีต CPAC";
   else if (category.includes("ไม้")) key = "งานไม้สังเคราะห์/ตกแต่ง";
   else if (category.includes("ผนัง")) key = "งานผนัง";
@@ -232,16 +386,16 @@ function onProductSelectChanged() {
     measureSelect.value = "perimeter";
   }
   const cat = document.getElementById("drawCategorySelect").value;
-  const isRoofRelated = (cat.includes("หลังคา") || cat.includes("FSO") || cat.includes("Dry Tech"));
+  const isRoofRelated = (cat.includes("หลังคา") || cat.includes("FSO") || cat.includes("Dry Tech") || cat.includes("โครงเหล็ก"));
   if (isRoofRelated) {
     const minSlope = getMinSlopeFromProductName(prod);
     const modalSlopeInput = document.getElementById("modalSlopeDeg");
     const modalMinLabel = document.getElementById("modalSlopeMinLabel");
     modalSlopeInput.value = minSlope;
-    if (modalMinLabel) modalMinLabel.innerText = `(ขั้นต่ำ: ${minSlope}°)`;
+    if (modalMinLabel) modalMinLabel.innerText = "(ขั้นต่ำ: " + minSlope + "°)";
     document.getElementById("roofSlopeDeg").value = minSlope;
     const mult = getSlopeMultiplier(minSlope);
-    document.getElementById("slopeFactorLabel").innerText = `(ขั้นต่ำ: ${minSlope}° | ตัวคูณ: ${mult.toFixed(3)})`;
+    document.getElementById("slopeFactorLabel").innerText = "(ขั้นต่ำ: " + minSlope + "° | ตัวคูณ: " + mult.toFixed(3) + ")";
     document.getElementById("slopeWarning").style.display = "none";
     measuredShapes.forEach(shape => {
       shape.slopeDeg = minSlope;
@@ -265,9 +419,9 @@ function onCategoryChangedInDrawModal() {
   const cat = document.getElementById("drawCategorySelect").value;
   const slopeContainer = document.getElementById("modalSlopeContainer");
   const roofShapeContainer = document.getElementById("roofShapeContainer");
-  const isRoofRelated = (cat.includes("หลังคา") || cat.includes("FSO") || cat.includes("Dry Tech"));
+  const isRoofRelated = (cat.includes("หลังคา") || cat.includes("FSO") || cat.includes("Dry Tech") || cat.includes("โครงเหล็ก"));
   slopeContainer.style.display = isRoofRelated ? "inline-flex" : "none";
-  roofShapeContainer.style.display = cat.includes("หลังคา") ? "inline-flex" : "none";
+  roofShapeContainer.style.display = (cat.includes("หลังคา") || cat.includes("โครงเหล็ก")) ? "inline-flex" : "none";
   populateProductDropdown(cat, null);
 }
 
@@ -279,15 +433,15 @@ function onModalSlopeChanged() {
   const mult = getSlopeMultiplier(modalSlope);
   const label = document.getElementById("slopeFactorLabel");
   const warning = document.getElementById("slopeWarning");
-  label.innerText = `(ขั้นต่ำ: ${minSlope}° | ตัวคูณ: ${mult.toFixed(3)})`;
+  label.innerText = "(ขั้นต่ำ: " + minSlope + "° | ตัวคูณ: " + mult.toFixed(3) + ")";
   if (modalSlope < minSlope) {
     warning.style.display = "block";
-    warning.innerText = `⚠️ องศา ${modalSlope}° ต่ำกว่าเกณฑ์มาตรฐาน SCG (ขั้นต่ำ ${minSlope}°)`;
+    warning.innerText = "⚠️ องศา " + modalSlope + "° ต่ำกว่าเกณฑ์มาตรฐาน SCG (ขั้นต่ำ " + minSlope + "°)";
   } else {
     warning.style.display = "none";
   }
   const cat = document.getElementById("drawCategorySelect").value;
-  const isRoofRelated = (cat.includes("หลังคา") || cat.includes("FSO") || cat.includes("Dry Tech"));
+  const isRoofRelated = (cat.includes("หลังคา") || cat.includes("FSO") || cat.includes("Dry Tech") || cat.includes("โครงเหล็ก"));
   if (isRoofRelated) {
     measuredShapes.forEach(shape => {
       shape.slopeDeg = modalSlope;
@@ -308,7 +462,6 @@ async function onFileSelected() {
     const currentPrj = document.getElementById("metaProjectName").value;
     const currentCust = document.getElementById("metaCustomerName").value;
     updateActiveBarDisplay(currentPrj, currentCust, file.name);
-
     await loadPlanDocument(file);
     document.getElementById("drawBtn").disabled = false;
   }
@@ -392,19 +545,14 @@ function formatOrderEstimateHTML(text) {
     items = text.split(/\s+-\s+/).map(s => s.trim()).filter(s => s.length > 0);
   }
   if (items.length === 0) return text;
-  let html = `<div class="order-bundle-list">`;
-  items.forEach(item => {
-    const cleanItem = item.replace(/^[-•*]\s*/, '').trim();
+  let html = '<div class="order-bundle-list">';
+  for (let i = 0; i < items.length; i++) {
+    const cleanItem = items[i].replace(/^[-•*]\s*/, '').trim();
     if (cleanItem) {
-      html += `
-        <div class="order-item-row">
-          <span class="order-item-icon">📦</span>
-          <span class="order-item-text">${cleanItem}</span>
-        </div>
-      `;
+      html += '<div class="order-item-row"><span class="order-item-icon">📦</span><span class="order-item-text">' + cleanItem + '</span></div>';
     }
-  });
-  html += `</div>`;
+  }
+  html += '</div>';
   return html;
 }
 
@@ -420,7 +568,7 @@ function openCustomItemModal() {
   for (let i = 1; i <= totalPages; i++) {
     const opt = document.createElement("option");
     opt.value = i;
-    opt.innerText = `หน้า ${i}`;
+    opt.innerText = "หน้า " + i;
     pageSelect.appendChild(opt);
   }
   document.getElementById("scopeAllPagesRadio").checked = true;
@@ -451,9 +599,9 @@ async function submitCustomItemRow() {
   }
   submitBtn.disabled = true;
   if (isAllPages) {
-    statusElem.innerText = `Gemini 3.5 Flash Lite กำลังสแกนหา "${category}" และจับคู่สัญลักษณ์ Schedule เป็นภาษาไทยจากแบบแปลนครบทุกหน้า...`;
+    statusElem.innerText = 'Gemini 3.5 Flash Lite กำลังสแกนหา "' + category + '" และจับคู่สัญลักษณ์ Schedule เป็นภาษาไทยจากแบบแปลนครบทุกหน้า...';
   } else {
-    statusElem.innerText = `กำลังวิเคราะห์คำสั่งเฉพาะเจาะจงสำหรับหน้า ${pageNum} เป็นภาษาไทย...`;
+    statusElem.innerText = "กำลังวิเคราะห์คำสั่งเฉพาะเจาะจงสำหรับหน้า " + pageNum + " เป็นภาษาไทย...";
   }
   try {
     const parts = [];
@@ -467,44 +615,12 @@ async function submitCustomItemRow() {
     }
     let promptText = "";
     if (isAllPages) {
-      promptText = `
-### บทบาทและข้อกำหนดภาษา (บังคับภาษาไทย 100%):
-ท่านคือวิศวกรผู้เชี่ยวชาญการถอดแบบ BOQ ของ SCG และ CPAC
-ข้อมูลข้อความทุกช่อง (ยกเว้นรหัสสัญลักษณ์ เช่น △1, △5, F1, HC หรือชื่อแบรนด์ SCG, CPAC, Q-CON) ต้องเขียนเป็น "ภาษาไทยล้วน 100%"
-### ขอบเขตและงาน:
-จงสแกนตรวจสอบแบบแปลนทุกหน้า (หน้า 1 ถึง ${detectedTotalPages}) เพื่อถอดแบบและประมาณราคาตามคำสั่งเฉพาะเจาะจงนี้:
-"""
-หมวดงาน: ${category}
-คำสั่งเฉพาะเจาะจง: ${instructionText}
-"""
-### กฎการตอบกลับ:
-1. สำหรับทุกชั้น/โซนที่พบหมวดงานหรือสัญลักษณ์นี้ ให้สร้างเป็นรายการแยกแถวใน Array
-2. ระบุเลขหน้าที่พบจริงลงใน "source_location.page_number"
-3. ใน "order_estimate" ให้แจกแจงรายการสินค้าสั่งซื้อและอุปกรณ์แพ็กเกจระบบเป็นภาษาไทย แต่ละบรรทัดขึ้นต้นด้วย "- "
-4. ใน "calculation_note" และ "verification_method" ให้อธิบายสูตรและการคำนวณเป็นภาษาไทย
-5. ส่งออกเฉพาะ JSON Array
-`;
+      promptText = "\n### บทบาทและข้อกำหนดภาษา (บังคับภาษาไทย 100%):\nท่านคือวิศวกรผู้เชี่ยวชาญการถอดแบบ BOQ ของ SCG และ CPAC\nข้อมูลข้อความทุกช่อง (ยกเว้นรหัสสัญลักษณ์ เช่น △1, △5, F1, HC หรือชื่อแบรนด์ SCG, CPAC, Q-CON) ต้องเขียนเป็น \"ภาษาไทยล้วน 100%\"\n### ขอบเขตและงาน:\nจงสแกนตรวจสอบแบบแปลนทุกหน้า (หน้า 1 ถึง " + detectedTotalPages + ") เพื่อถอดแบบและประมาณราคาตามคำสั่งเฉพาะเจาะจงนี้:\n\"\"\"\nหมวดงาน: " + category + "\nคำสั่งเฉพาะเจาะจง: " + instructionText + "\n\"\"\"\n### กฎการตอบกลับ:\n1. สำหรับทุกชั้น/โซนที่พบหมวดงานหรือสัญลักษณ์นี้ ให้สร้างเป็นรายการแยกแถวใน Array\n2. ระบุเลขหน้าที่พบจริงลงใน \"source_location.page_number\"\n3. ใน \"order_estimate\" ให้แจกแจงรายการสินค้าสั่งซื้อและอุปกรณ์แพ็กเกจระบบเป็นภาษาไทย แต่ละบรรทัดขึ้นต้นด้วย \"- \"\n4. ใน \"calculation_note\" และ \"verification_method\" ให้อธิบายสูตรและการคำนวณเป็นภาษาไทย\n5. ส่งออกเฉพาะ JSON Array\n";
     } else {
-      promptText = `
-### บทบาทและข้อกำหนดภาษา (บังคับภาษาไทย 100%):
-ท่านคือวิศวกรผู้เชี่ยวชาญการถอดแบบ BOQ ของ SCG และ CPAC
-ข้อมูลข้อความทุกช่องต้องเป็น "ภาษาไทยล้วน 100%"
-### ขอบเขตและงาน:
-เพิ่มรายการเฉพาะเจาะจงลงในตาราง BOQ สำหรับแปลนหน้า ${pageNum} ตามคำสั่งนี้:
-"""
-หมวดงาน: ${category}
-คำสั่งเฉพาะเจาะจง: ${instructionText}
-อ้างอิงหน้าแปลน: หน้า ${pageNum}
-"""
-### กฎการตอบกลับ:
-1. สกัด item_name, net_quantity (พร้อมหน่วยภาษาไทย), และสินค้า SCG/CPAC ที่เหมาะสมที่สุด
-2. ใส่รหัสสัญลักษณ์ในแบบ (ถ้ามี) ลงใน "code_ref"
-3. ใน "order_estimate" แจกแจงรายการสินค้าและอุปกรณ์เสริมเป็นภาษาไทย แต่ละบรรทัดขึ้นต้นด้วย "- "
-4. ส่งออกเฉพาะ JSON Object
-`;
+      promptText = "\n### บทบาทและข้อกำหนดภาษา (บังคับภาษาไทย 100%):\nท่านคือวิศวกรผู้เชี่ยวชาญการถอดแบบ BOQ ของ SCG และ CPAC\nข้อมูลข้อความทุกช่องต้องเป็น \"ภาษาไทยล้วน 100%\"\n### ขอบเขตและงาน:\nเพิ่มรายการเฉพาะเจาะจงลงในตาราง BOQ สำหรับแปลนหน้า " + pageNum + " ตามคำสั่งนี้:\n\"\"\"\nหมวดงาน: " + category + "\nคำสั่งเฉพาะเจาะจง: " + instructionText + "\nอ้างอิงหน้าแปลน: หน้า " + pageNum + "\n\"\"\"\n### กฎการตอบกลับ:\n1. สกัด item_name, net_quantity (พร้อมหน่วยภาษาไทย), และสินค้า SCG/CPAC ที่เหมาะสมที่สุด\n2. ใส่รหัสสัญลักษณ์ในแบบ (ถ้ามี) ลงใน \"code_ref\"\n3. ใน \"order_estimate\" แจกแจงรายการสินค้าและอุปกรณ์เสริมเป็นภาษาไทย แต่ละบรรทัดขึ้นต้นด้วย \"- \"\n4. ส่งออกเฉพาะ JSON Object\n";
     }
     parts.unshift({ text: promptText });
-    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key=${apiKey}`;
+    const endpoint = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key=" + apiKey;
     const response = await fetch(endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -530,20 +646,21 @@ async function submitCustomItemRow() {
     } else if (parsedResult && typeof parsedResult === 'object') {
       itemsToAdd = [parsedResult];
     }
-    itemsToAdd.forEach((item, idx) => {
+    for (let idx = 0; idx < itemsToAdd.length; idx++) {
+      const item = itemsToAdd[idx];
       item._id = "item_" + Date.now() + "_" + idx + "_" + Math.floor(Math.random() * 1000);
       item.unit_price = item.unit_price !== undefined ? parseFloat(item.unit_price) : 0;
       calculateItemTotals(item);
       item.is_manual_modified = true;
       lastRawBOQItems.push(item);
-    });
+    }
     lastRawBOQItems.sort((a, b) => {
       const pA = (a.source_location && a.source_location.page_number) ? a.source_location.page_number : 1;
       const pB = (b.source_location && b.source_location.page_number) ? b.source_location.page_number : 1;
       return pA - pB;
     });
     renderBOQTable(lastRawBOQItems);
-    statusElem.innerText = `✅ เพิ่มรายการเฉพาะเจาะจง (${itemsToAdd.length} รายการ) สำเร็จ!`;
+    statusElem.innerText = "✅ เพิ่มรายการเฉพาะเจาะจง (" + itemsToAdd.length + " รายการ) สำเร็จ!";
     setTimeout(() => {
       closeModal("customItemModal");
     }, 900);
@@ -599,54 +716,21 @@ async function processDocuments() {
       const specPart = await fileToGenerativePart(specFile);
       parts.push(specPart);
     }
-    statusDiv.innerText = `Gemini 3.5 Flash Lite กำลังสแกนทุกผังและจับคู่สัญลักษณ์ Schedule เป็นภาษาไทยในเอกสารทั้งหมด ${detectedTotalPages} หน้า...`;
+    statusDiv.innerText = "Gemini 3.5 Flash Lite กำลังสแกนทุกผังและจับคู่สัญลักษณ์ Schedule เป็นภาษาไทยในเอกสารทั้งหมด " + detectedTotalPages + " หน้า...";
     let customDirective = "";
     if (customInstruction) {
-      customDirective = `\n### คำสั่งเน้นย้ำของผู้ใช้งาน:\n"""\n${customInstruction}\n"""\n`;
+      customDirective = "\n### คำสั่งเน้นย้ำของผู้ใช้งาน:\n\"\"\"\n" + customInstruction + "\n\"\"\"\n";
     }
-    const promptText = `
-### กฎเหล็กด้านภาษา (MANDATORY THAI LANGUAGE RULE):
-ท่านคือหัวหน้าวิศวกรผู้เชี่ยวชาญการถอดแบบและประมาณราคา (Chief QS) ของ SCG และ CPAC
-ข้อมูลและคำอธิบายทุกช่องในตาราง BOQ ต้องเขียนเป็น "ภาษาไทยล้วน 100%"
-### งานที่ต้องปฏิบัติ:
-วิเคราะห์แบบสถาปัตย์ แบบโครงสร้าง และแบบรูปตัด/รูปด้าน ทั้งหมด ${detectedTotalPages} หน้า พร้อมตรวจสอบสอบทาน 3 มิติ เพื่อจัดทำรายการประมาณการวัสดุ BOQ สินค้า SCG และคอนกรีต CPAC อย่างละเอียดและแม่นยำ
-${customDirective}
-### สเปกวัสดุที่ผู้ใช้เลือก:
-1. หมวดคอนกรีตและโครงสร้าง CPAC: "${concreteChoice}"
-2. หมวดหลังคา: "${roofChoice}" (ความชัน: ${slopeDeg} องศา)
-3. หมวดฉนวนปูเหนือฝ้า: "${ceilingInsChoice}"
-4. หมวดฉนวนใต้หลังคา: "${roofInsChoice}"
-5. ผนัง: "${wallChoice}", พื้น: "${floorChoice}", ฝ้า: "${ceilingChoice}", ไม้ตกแต่ง: "${woodChoice}"
-### รูปแบบผลลัพธ์ (ภาษาไทยล้วน 100%):
-ส่งออกเฉพาะ JSON Array ที่ถูกต้องตามโครงสร้างนี้:
-[
-  {
-    "category": "หมวดงานภาษาไทย เช่น งานผนัง, งานหลังคา, งานโครงสร้างและคอนกรีต CPAC",
-    "code_ref": "รหัสสัญลักษณ์ เช่น △1, △5, F1, HC หรือรหัสอ้างอิงในแบบ",
-    "item_name": "ชื่อรายการงานตามแบบแปลน/ตารางสัญลักษณ์ภาษาไทย (ระบุชั้น/ห้อง/โซน)",
-    "net_quantity": "ปริมาณพร้อมหน่วยภาษาไทย เช่น 120.50 ตร.ม. หรือ 45.00 ม.",
-    "scg_product": "ชื่อสินค้า SCG หรือ CPAC ที่แนะนำ",
-    "order_estimate": "- รายการสินค้าหลัก 1 พร้อมจำนวนและหน่วย\\n- อุปกรณ์ส่วนควบระบบ 2",
-    "confidence_score": 98,
-    "calculation_note": "สูตรคำนวณและสัดส่วนเผื่อเศษเป็นภาษาไทย",
-    "verification_method": "ที่มาการคำนวณและการ Cross-Check 3D เป็นภาษาไทย",
-    "source_location": {
-      "page_number": 1,
-      "box_2d": [100, 100, 900, 900],
-      "location_description": "คำอธิบายตำแหน่งบนแบบแปลนหน้านั้นภาษาไทย"
-    }
-  }
-]
-`;
+    const promptText = "\n### กฎเหล็กด้านภาษา (MANDATORY THAI LANGUAGE RULE):\nท่านคือหัวหน้าวิศวกรผู้เชี่ยวชาญการถอดแบบและประมาณราคา (Chief QS) ของ SCG และ CPAC\nข้อมูลและคำอธิบายทุกช่องในตาราง BOQ ต้องเขียนเป็น \"ภาษาไทยล้วน 100%\"\n### งานที่ต้องปฏิบัติ:\nวิเคราะห์แบบสถาปัตย์ แบบโครงสร้าง และแบบรูปตัด/รูปด้าน ทั้งหมด " + detectedTotalPages + " หน้า พร้อมตรวจสอบสอบทาน 3 มิติ เพื่อจัดทำรายการประมาณการวัสดุ BOQ สินค้า SCG และคอนกรีต CPAC อย่างละเอียดและแม่นยำ\n" + customDirective + "\n### พจนานุกรมคำศัพท์ในแบบก่อสร้างไทย:\n" + JSON.stringify(THAI_CONSTRUCTION_DICT, null, 2) + "\n\n### การตรวจสอบจากรูปตัดและรูปด้าน (Section & Elevation Cross-Check):\n1. ตรวจสอบรูปตัด (Section A-A, B-B) ทุกรูป: หาระดับ FFL (Finished Floor Level), ระดับหลังคา, ระดับฝ้าเพดาน\n2. คำนวณความสูงของผนัง: ความสูง = ระดับฝ้า - FFL หรือ ระดับหลังคา - FFL\n3. ตรวจสอบจำนวนชั้น: ถ้าพบ \"ระดับพื้นชั้น 2 +3.75\" หรือค่าระดับความสูงหลายค่า → แยก BOQ ตามชั้น\n4. ถ้าพบโครงเหล็ก H-beam 200x200 → อาคารนี้ใช้โครงสร้างเหล็ก → แนะนำ SCG Metal Sheet\n5. ตรวจสอบ slope จากแปลนโครงสร้างหลังคา (S-05, ST.07) — ระบุเป็นองศา (º หรือ °)\n6. ทุกรูปตัดต้องนำมาคำนวณ Cross-Check 3D: พื้นที่ผนังภายนอก, ความสูงฝ้า, ปริมาณวัสดุกรุผนัง\n\n### สเปกวัสดุที่ผู้ใช้เลือก:\n1. หมวดคอนกรีตและโครงสร้าง CPAC: \"" + concreteChoice + "\"\n2. หมวดหลังคา: \"" + roofChoice + "\" (ความชัน: " + slopeDeg + " องศา)\n3. หมวดฉนวนปูเหนือฝ้า: \"" + ceilingInsChoice + "\"\n4. หมวดฉนวนใต้หลังคา: \"" + roofInsChoice + "\"\n5. ผนัง: \"" + wallChoice + "\", พื้น: \"" + floorChoice + "\", ฝ้า: \"" + ceilingChoice + "\", ไม้ตกแต่ง: \"" + woodChoice + "\"\n### รูปแบบผลลัพธ์ (ภาษาไทยล้วน 100%):\nส่งออกเฉพาะ JSON Array ที่ถูกต้องตามโครงสร้างนี้:\n[\n  {\n    \"category\": \"หมวดงานภาษาไทย เช่น งานผนัง, งานหลังคา, งานโครงสร้างและคอนกรีต CPAC\",\n    \"code_ref\": \"รหัสสัญลักษณ์ เช่น △1, △5, F1, HC หรือรหัสอ้างอิงในแบบ\",\n    \"item_name\": \"ชื่อรายการงานตามแบบแปลน/ตารางสัญลักษณ์ภาษาไทย (ระบุชั้น/ห้อง/โซน)\",\n    \"net_quantity\": \"ปริมาณพร้อมหน่วยภาษาไทย เช่น 120.50 ตร.ม. หรือ 45.00 ม.\",\n    \"scg_product\": \"ชื่อสินค้า SCG หรือ CPAC ที่แนะนำ\",\n    \"order_estimate\": \"- รายการสินค้าหลัก 1 พร้อมจำนวนและหน่วย\\n- อุปกรณ์ส่วนควบระบบ 2\",\n    \"confidence_score\": 98,\n    \"calculation_note\": \"สูตรคำนวณและสัดส่วนเผื่อเศษเป็นภาษาไทย\",\n    \"verification_method\": \"ที่มาการคำนวณและการ Cross-Check 3D เป็นภาษาไทย\",\n    \"source_location\": {\n      \"page_number\": 1,\n      \"box_2d\": [100, 100, 900, 900],\n      \"location_description\": \"คำอธิบายตำแหน่งบนแบบแปลนหน้านั้นภาษาไทย\"\n    }\n  }\n]\n";
     parts.unshift({ text: promptText });
-    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key=${apiKey}`;
+    const endpoint = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key=" + apiKey;
     const response = await fetch(endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         system_instruction: {
           parts: [{
-            text: "ท่านคือหัวหน้าวิศวกรผู้เชี่ยวชาญการถอดแบบ BOQ ของ SCG และ CPAC ข้อความและข้อมูลทุกช่องในตารางต้องเป็นภาษาไทยล้วน 100% ส่งออกเฉพาะ JSON ล้วน"
+            text: "ท่านคือหัวหน้าวิศวกรผู้เชี่ยวชาญการถอดแบบ BOQ ของ SCG และ CPAC ข้อความและข้อมูลทุกช่องในตารางต้องเป็นภาษาไทยล้วน 100% ส่งออกเฉพาะ JSON ล้วน\n\n### พจนานุกรมคำศัพท์ในแบบก่อสร้างไทย:\n" + JSON.stringify(THAI_CONSTRUCTION_DICT, null, 2) + "\n\n### กฎการจับคู่วัสดุจากแบบ → สินค้า SCG/CPAC:\n1. ถ้าพบ \"โครงเหล็กหลังคา\" หรือ \"H-beam\" + หลังคา → แนะนำ SCG Metal Sheet (Lumax/Snap Lock/760) ตามความชัน\n2. ถ้าพบ \"ผนังก่ออิฐฉาบปูน\" → แนะนำ Q-CON อิฐมวลเบา + ปูนฉาบเสือ (ลดน้ำหนัก กันร้อน)\n3. ถ้าพบ \"พื้นสำเร็จรูป\" → แนะนำ CPAC Hollow Core\n4. ถ้าพบ \"ฝ้าเพดานยิปซั่ม\" → แนะนำ SCG ตราช้าง + โครงพลัสไลน์\n5. ถ้าพบ \"สมาร์ทบอร์ด\" หรือ \"Smartboard\" → แนะนำฝ้าสมาร์ทบอร์ด SCG\n6. ถ้าพบวัสดุที่ไม่ใช่ SCG (อลูมิเนียม กระจก Aluminum Composite TOA) → ระบุ category เป็น \"งานตกแต่งอื่นๆ (ไม่ใช่ SCG)\" และ flag ใน item_name\n7. พยายามหาโอกาส Cross-Sell: ถ้าพบหลังคา → แนะนำฉนวน FSO/STAY COOL, ถ้าพบผนัง → แนะนำ Smartboard, ถ้าพบพื้น → แนะนำ COTTO\n8. ถ้าพบระบบบำบัดน้ำเสีย (WWTP) หรือบ่อพัก → แนะนำคอนกรีตกันซึม CPAC\n9. ตรวจสอบรูปตัด (Section) เสมอ: หาระดับความสูงฝ้า (FFL), ระดับหลังคา → คำนวณ slope factor และพื้นที่ผนัง\n10. ถ้าพบ slope 5º → อาคารใช้ Metal Sheet (Lumax/Snap Lock) เพราะ slope ต่ำกว่าเกณฑ์กระเบื้องหลังคา"
           }]
         },
         contents: [{ parts: parts }],
@@ -659,20 +743,71 @@ ${customDirective}
     const data = await response.json();
     const rawContent = data.candidates[0].content.parts[0].text;
     const boqItems = cleanAndParseJSON(rawContent);
+
+    // ===== Auto-detect slope จาก AI response =====
+    const detectedSlope = detectSlopeFromDrawingText(rawContent);
+    if (detectedSlope !== null) {
+      document.getElementById("roofSlopeDeg").value = detectedSlope;
+      if (document.getElementById("modalSlopeDeg")) {
+        document.getElementById("modalSlopeDeg").value = detectedSlope;
+      }
+      const roofMapping = autoMapSlopeToRoofProduct(detectedSlope);
+      document.getElementById("roofOption").value = roofMapping.product;
+      autoAdjustDefaultSlope();
+      statusDiv.innerText += " | 🔍 ตรวจพบความชันหลังคา " + detectedSlope + "° → แนะนำ " + roofMapping.name;
+    }
+
+    // ===== ตรวจจับประเภทอาคารและ Cross-Check =====
+    const buildingType = detectBuildingType(rawContent);
+    if (buildingType.hasSteelStructure) {
+      statusDiv.innerText += " | 🏗️ ตรวจพบโครงสร้างเหล็ก (H-beam) → แนะนำ SCG Metal Sheet";
+    }
+    if (buildingType.hasAluminumComposite) {
+      statusDiv.innerText += " | ⚠️ พบ Aluminum Composite → วัสดุไม่ใช่ SCG (แจ้งผู้ใช้)";
+    }
+    if (buildingType.hasCOTTOProducts) {
+      statusDiv.innerText += " | 🧱 พบสุขภัณฑ์ COTTO → แนะนำสินค้า SCG";
+    }
+
+    // ===== จับคู่วัสดุจาก MATERIAL_MAPPING_TABLE =====
+    for (let i = 0; i < boqItems.length; i++) {
+      const item = boqItems[i];
+      const itemText = (item.item_name || "") + " " + (item.code_ref || "") + " " + (item.scg_product || "");
+      const materialMatch = findMaterialMatch(itemText);
+
+      if (materialMatch && materialMatch.flag === "non_scg") {
+        item.category = materialMatch.category;
+        item.scg_product = materialMatch.product;
+        item.confidence_score = 85;
+        item.calculation_note = "⚠️ วัสดุนี้ไม่ใช่สินค้า SCG/CPAC: " + materialMatch.product + " | กรุณาตรวจสอบกับผู้จำหน่ายวัสดุทั่วไป";
+        item.verification_method = "ตรวจพบจากแบบแปลน — ไม่มีสินค้า SCG ที่เทียบเท่าโดยตรง";
+      } else if (materialMatch && materialMatch.flag === "scg" && (!item.scg_product || item.scg_product === "-")) {
+        item.scg_product = materialMatch.product;
+        item.category = materialMatch.category;
+        item.confidence_score = Math.max(item.confidence_score || 90, 90);
+      } else if (materialMatch && materialMatch.flag === "general") {
+        item.category = materialMatch.category;
+        if (!item.scg_product || item.scg_product === "-") {
+          item.scg_product = materialMatch.product;
+        }
+      }
+    }
+
     boqItems.sort((a, b) => {
       const pA = (a.source_location && a.source_location.page_number) ? a.source_location.page_number : 1;
       const pB = (b.source_location && b.source_location.page_number) ? b.source_location.page_number : 1;
       return pA - pB;
     });
-    boqItems.forEach((item, idx) => {
-      item._id = "item_" + Date.now() + "_" + idx;
+    for (let i = 0; i < boqItems.length; i++) {
+      const item = boqItems[i];
+      item._id = "item_" + Date.now() + "_" + i;
       item.unit_price = item.unit_price !== undefined ? parseFloat(item.unit_price) : 0;
       calculateItemTotals(item);
-    });
+    }
     lastRawBOQItems = boqItems;
     recalcBtn.disabled = false;
     renderBOQTable(lastRawBOQItems);
-    statusDiv.innerText = `ประมวลผลสำเร็จเรียบร้อย! ถอดปริมาณงานได้ทั้งหมด ${boqItems.length} รายการเป็นภาษาไทย`;
+    statusDiv.innerText = "ประมวลผลสำเร็จเรียบร้อย! ถอดปริมาณงานได้ทั้งหมด " + boqItems.length + " รายการเป็นภาษาไทย";
   } catch (err) {
     statusDiv.innerText = "เกิดข้อผิดพลาดในการประมวลผล กรุณาลองใหม่อีกครั้ง";
   } finally {
@@ -696,33 +831,15 @@ async function recalculateWithNewSpecs() {
   recalcBtn.disabled = true;
   statusDiv.innerText = "กำลังคำนวณปริมาณสินค้าใหม่ตามสเปกที่เลือกเป็นภาษาไทย...";
   try {
-    const promptText = `
-### คำสั่งคำนวณใหม่ (บังคับภาษาไทย 100%):
-จงปรับปรุงสเปกสินค้า SCG & CPAC และคำนวณยอดสั่งซื้อใหม่สำหรับรายการ BOQ ที่มีอยู่เดิม โดยทุกข้อความต้องเป็น "ภาษาไทยล้วน 100%"
-### รายการเดิม:
-${JSON.stringify(lastRawBOQItems.map(it => ({
-  _id: it._id,
-  category: it.category,
-  code_ref: it.code_ref,
-  item_name: it.item_name,
-  net_quantity: it.net_quantity,
-  source_location: it.source_location
-})), null, 2)}
-### สเปกใหม่ที่เลือก:
-- หมวดหลังคา: "${document.getElementById("roofOption").value}" (ความชัน: ${slopeDeg} องศา)
-- หมวดฉนวนปูเหนือฝ้า: "${document.getElementById("ceilingInsulationOption").value}"
-- หมวดฉนวนใต้หลังคา: "${document.getElementById("roofInsulationOption").value}"
-- หมวดโครงสร้างคอนกรีต CPAC: "${document.getElementById("concreteOption").value}"
-- หมวดผนัง: "${document.getElementById("wallOption").value}"
-- หมวดพื้น: "${document.getElementById("floorOption").value}"
-- หมวดฝ้าเพดาน: "${document.getElementById("ceilingOption").value}"
-- หมวดไม้ตกแต่ง: "${document.getElementById("woodOption").value}"
-### ข้อกำหนด:
-1. คงลำดับแถวและ _id เดิมทั้งหมด
-2. ใน "order_estimate" ให้แสดงรายการสั่งซื้อและอุปกรณ์เสริมเป็นภาษาไทย แต่ละรายการขึ้นต้นด้วย "- "
-3. ส่งออกเฉพาะ JSON Array ที่ถูกต้อง
-`;
-    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key=${apiKey}`;
+    const promptText = "\n### คำสั่งคำนวณใหม่ (บังคับภาษาไทย 100%):\nจงปรับปรุงสเปกสินค้า SCG & CPAC และคำนวณยอดสั่งซื้อใหม่สำหรับรายการ BOQ ที่มีอยู่เดิม โดยทุกข้อความต้องเป็น \"ภาษาไทยล้วน 100%\"\n### รายการเดิม:\n" + JSON.stringify(lastRawBOQItems.map(it => ({
+      _id: it._id,
+      category: it.category,
+      code_ref: it.code_ref,
+      item_name: it.item_name,
+      net_quantity: it.net_quantity,
+      source_location: it.source_location
+    })), null, 2) + "\n### สเปกใหม่ที่เลือก:\n- หมวดหลังคา: \"" + document.getElementById("roofOption").value + "\" (ความชัน: " + slopeDeg + " องศา)\n- หมวดฉนวนปูเหนือฝ้า: \"" + document.getElementById("ceilingInsulationOption").value + "\"\n- หมวดฉนวนใต้หลังคา: \"" + document.getElementById("roofInsulationOption").value + "\"\n- หมวดโครงสร้างคอนกรีต CPAC: \"" + document.getElementById("concreteOption").value + "\"\n- หมวดผนัง: \"" + document.getElementById("wallOption").value + "\"\n- หมวดพื้น: \"" + document.getElementById("floorOption").value + "\"\n- หมวดฝ้าเพดาน: \"" + document.getElementById("ceilingOption").value + "\"\n- หมวดไม้ตกแต่ง: \"" + document.getElementById("woodOption").value + "\"\n### ข้อกำหนด:\n1. คงลำดับแถวและ _id เดิมทั้งหมด\n2. ใน \"order_estimate\" ให้แสดงรายการสั่งซื้อและอุปกรณ์เสริมเป็นภาษาไทย แต่ละรายการขึ้นต้นด้วย \"- \"\n3. ใช้ MATERIAL_MAPPING_TABLE จับคู่วัสดุจากแบบกับสินค้า SCG\n4. ส่งออกเฉพาะ JSON Array ที่ถูกต้อง\n";
+    const endpoint = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key=" + apiKey;
     const response = await fetch(endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -740,13 +857,14 @@ ${JSON.stringify(lastRawBOQItems.map(it => ({
     const data = await response.json();
     const rawContent = data.candidates[0].content.parts[0].text;
     const updatedItems = cleanAndParseJSON(rawContent);
-    updatedItems.forEach((item, idx) => {
+    for (let idx = 0; idx < updatedItems.length; idx++) {
+      const item = updatedItems[idx];
       const orig = lastRawBOQItems[idx];
       item._id = (orig && orig._id) ? orig._id : "item_" + Date.now() + "_" + idx;
       item.unit_price = (orig && orig.unit_price !== undefined) ? orig.unit_price : 0;
       item.value_mb = (orig && orig.value_mb !== undefined) ? orig.value_mb : 0;
       calculateItemTotals(item);
-    });
+    }
     lastRawBOQItems = updatedItems;
     renderBOQTable(lastRawBOQItems);
     statusDiv.innerText = "คำนวณและอัปเดตสเปกสินค้าใหม่เป็นภาษาไทยสำเร็จ!";
@@ -770,8 +888,7 @@ function extractNumericQuantity(qtyStr) {
 
 function calculateItemTotals(item) {
   const qty = extractNumericQuantity(item.net_quantity);
-  
-  // รองรับข้อมูลโปรเจกต์เดิมที่มี value_mb แต่ยังไม่เคยกรอก unit_price
+
   if ((item.unit_price === undefined || item.unit_price === null || item.unit_price === 0) && item.value_mb > 0) {
     const existingTotal = item.value_mb * 1000000;
     item.total_price = existingTotal;
@@ -806,15 +923,14 @@ function updateItemUnitPrice(id, val) {
   if (!item) return;
   const num = parseFloat(val);
   item.unit_price = !isNaN(num) && num >= 0 ? num : 0;
-  
+
   const totals = calculateItemTotals(item);
-  
-  // อัปเดตมูลค่ารวมของแถวนั้นแบบ Real-time
-  const totalValElem = document.getElementById(`total-val-${item._id}`);
-  const totalMbElem = document.getElementById(`total-mb-${item._id}`);
+
+  const totalValElem = document.getElementById('total-val-' + id);
+  const totalMbElem = document.getElementById('total-mb-' + id);
   if (totalValElem) totalValElem.innerText = formatCurrency(totals.totalPrice);
-  if (totalMbElem) totalMbElem.innerText = `(${totals.value_mb.toFixed(4)} MB)`;
-  
+  if (totalMbElem) totalMbElem.innerText = '(' + totals.value_mb.toFixed(4) + ' MB)';
+
   updateTotalSummaryDisplay();
 }
 
@@ -828,7 +944,7 @@ function updateItemValue(id, val) {
   const qty = extractNumericQuantity(item.net_quantity);
   if (qty > 0) {
     item.unit_price = parseFloat((item.total_price / qty).toFixed(2));
-    const uPriceInput = document.getElementById(`unit-price-${item._id}`);
+    const uPriceInput = document.getElementById('unit-price-' + id);
     if (uPriceInput) uPriceInput.value = item.unit_price > 0 ? item.unit_price : "";
   }
   updateTotalSummaryDisplay();
@@ -840,8 +956,8 @@ function updateTotalSummaryDisplay() {
   const totalBaht = lastRawBOQItems.reduce((sum, it) => sum + (parseFloat(it.total_price) || 0), 0);
   const totalValElem = document.getElementById("totalProjectValueDisplay");
   const totalCountElem = document.getElementById("totalItemsCountDisplay");
-  if (totalValElem) totalValElem.innerText = `${totalMB.toFixed(2)} MB (${totalBaht.toLocaleString('th-TH', {minimumFractionDigits: 2, maximumFractionDigits: 2})} บาท)`;
-  if (totalCountElem) totalCountElem.innerText = `${lastRawBOQItems.length} รายการ`;
+  if (totalValElem) totalValElem.innerText = totalMB.toFixed(2) + " MB (" + totalBaht.toLocaleString('th-TH', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + " บาท)";
+  if (totalCountElem) totalCountElem.innerText = lastRawBOQItems.length + " รายการ";
 }
 
 function ensureTableHeader() {
@@ -878,18 +994,16 @@ function renderBOQTable(items) {
   ensureTableHeader();
   const tbody = document.getElementById("boqBody");
   tbody.innerHTML = "";
-
-  // ปลดล็อกหรือล็อกปุ่มคำนวณใหม่อัตโนมัติตามจำนวนรายการที่มีอยู่จริง
   const recalcBtn = document.getElementById("recalcBtn");
   if (recalcBtn) {
     recalcBtn.disabled = (!items || items.length === 0);
   }
-
   if (!items || items.length === 0) {
     document.getElementById("resultCard").style.display = "none";
     return;
   }
-  items.forEach((item) => {
+  for (let idx = 0; idx < items.length; idx++) {
+    const item = items[idx];
     calculateItemTotals(item);
     let badgeClass = "badge badge-other";
     const cat = item.category || "";
@@ -897,13 +1011,14 @@ function renderBOQTable(items) {
     else if (cat.includes("สันหลังคา") || cat.includes("Dry Tech")) badgeClass = "badge badge-roof";
     else if (cat.includes("ฉนวนใต้หลังคา") || cat.includes("FSO")) badgeClass = "badge badge-roof";
     else if (cat.includes("ฉนวนปูเหนือฝ้า") || cat.includes("STAY COOL")) badgeClass = "badge badge-insulation";
+    else if (cat.includes("โครงเหล็ก")) badgeClass = "badge badge-concrete";
     else if (cat.includes("โครงสร้าง") || cat.includes("คอนกรีต") || cat.includes("CPAC") || cat.includes("Hollow") || cat.includes("Post")) badgeClass = "badge badge-concrete";
     else if (cat.includes("ไม้")) badgeClass = "badge badge-wood";
     else if (cat.includes("ผนัง")) badgeClass = "badge badge-wall";
     else if (cat.includes("พื้น")) badgeClass = "badge badge-floor";
     else if (cat.includes("ฝ้า") || cat.includes("เพดาน")) badgeClass = "badge badge-ceiling";
     else if (cat.includes("สุขาภิบาล") || cat.includes("ระบบ")) badgeClass = "badge badge-mep";
-
+    else if (cat.includes("ไม่ใช่ SCG") || cat.includes("NON_SCG") || cat.includes("อื่นๆ")) badgeClass = "badge badge-other";
     const conf = typeof item.confidence_score === "number" ? item.confidence_score : 95;
     let confClass = "conf-high";
     let confIcon = "🟢";
@@ -914,23 +1029,25 @@ function renderBOQTable(items) {
       confClass = "conf-med";
       confIcon = "🟡";
     }
-
     const loc = item.source_location || {};
     const pageNum = loc.page_number || 1;
-    const pageBadge = `<span class="page-indicator-badge">📄 หน้า ${pageNum}</span>`;
+    const pageBadge = '<span class="page-indicator-badge">📄 หน้า ' + pageNum + '</span>';
     const isModified = item.is_manual_modified ? "modified" : "";
-    const manualBadge = item.is_manual_modified ? `<span class="manual-badge">📐 แก้ไขแล้ว</span>` : "";
+    const manualBadge = item.is_manual_modified ? '<span class="manual-badge">📐 แก้ไขแล้ว</span>' : "";
     const hasCrossCheck = (item.verification_method || "").toLowerCase().includes("section") ||
                           (item.verification_method || "").includes("รูปตัด") ||
                           (item.verification_method || "").includes("ความสูง");
-    const crossCheckBadge = hasCrossCheck ? `<div class="cross-check-tag">🔍 Cross-Checked 3D</div>` : "";
+    const crossCheckBadge = hasCrossCheck ? '<div class="cross-check-tag">🔍 Cross-Checked 3D</div>' : "";
+
+    const isNonSCG = (cat.includes("ไม่ใช่ SCG") || cat.includes("NON_SCG") || (item.scg_product || "").includes("NON_SCG"));
+    const nonSCGWarning = isNonSCG ? '<div style="font-size:10px; color:#b91c1c; font-weight:bold; margin-top:3px;">⚠️ ไม่ใช่สินค้า SCG</div>' : "";
+
     const orderEstimateFormatted = formatOrderEstimateHTML(item.order_estimate);
     const unitPriceVal = item.unit_price > 0 ? item.unit_price : "";
-
     const row = document.createElement("tr");
-    row.id = `boq-row-${item._id}`;
+    row.id = 'boq-row-' + item._id;
     row.innerHTML = `
-      <td><span class="${badgeClass}">${item.category || "-"}</span></td>
+      <td><span class="${badgeClass}">${item.category || "-"}</span>${nonSCGWarning}</td>
       <td style="text-align: center;">${pageBadge}</td>
       <td style="font-weight: 700; color: #0284c7;">${item.code_ref || "-"}</td>
       <td>
@@ -976,7 +1093,7 @@ function renderBOQTable(items) {
       </td>
     `;
     tbody.appendChild(row);
-  });
+  }
   updateTotalSummaryDisplay();
   document.getElementById("resultCard").style.display = "block";
 }
@@ -985,7 +1102,7 @@ function deleteBOQItem(id) {
   if (!lastRawBOQItems || lastRawBOQItems.length === 0) return;
   const targetItem = lastRawBOQItems.find(item => item._id === id);
   const itemName = targetItem ? (targetItem.item_name || "รายการนี้") : "รายการนี้";
-  if (confirm(`คุณต้องการลบ "${itemName}" ออกจากตาราง BOQ ใช่หรือไม่?`)) {
+  if (confirm('คุณต้องการลบ "' + itemName + '" ออกจากตาราง BOQ ใช่หรือไม่?')) {
     lastRawBOQItems = lastRawBOQItems.filter(item => item._id !== id);
     renderBOQTable(lastRawBOQItems);
   }
@@ -998,15 +1115,12 @@ function updateNetQuantity(id, newValue) {
   const trimmed = newValue.trim();
   item.net_quantity = trimmed;
   item.is_manual_modified = true;
-
-  // คำนวณมูลค่ารวมใหม่ทันทีเมื่อปริมาณสุทธิเปลี่ยน
   const totals = calculateItemTotals(item);
-  const totalValElem = document.getElementById(`total-val-${item._id}`);
-  const totalMbElem = document.getElementById(`total-mb-${item._id}`);
+  const totalValElem = document.getElementById('total-val-' + id);
+  const totalMbElem = document.getElementById('total-mb-' + id);
   if (totalValElem) totalValElem.innerText = formatCurrency(totals.totalPrice);
-  if (totalMbElem) totalMbElem.innerText = `(${totals.value_mb.toFixed(4)} MB)`;
+  if (totalMbElem) totalMbElem.innerText = '(' + totals.value_mb.toFixed(4) + ' MB)';
   updateTotalSummaryDisplay();
-
   const numericMatch = trimmed.match(/[\d,.]+/);
   if (numericMatch) {
     const rawNum = parseFloat(numericMatch[0].replace(/,/g, ''));
@@ -1016,57 +1130,69 @@ function updateNetQuantity(id, newValue) {
       if (product.includes("dry tech") || product.includes("สันหลังคา")) {
         const tiles = Math.ceil(rawNum * 3.3 * 1.05);
         const dryRolls = Math.ceil((rawNum / 3.0) * 1.05);
-        newEstimate = `- แผ่นครอบสันหลังคา: ${tiles} แผ่น\n- แผ่นรองใต้สันหลังคา SCG Dry Tech: ${dryRolls} ม้วน (3.0 ม./ม้วน)`;
+        newEstimate = "- แผ่นครอบสันหลังคา: " + tiles + " แผ่น\n- แผ่นรองใต้สันหลังคา SCG Dry Tech: " + dryRolls + " ม้วน (3.0 ม./ม้วน)";
       } else if (product.includes("hollow core") || product.includes("ฮอลโลว์คอร์")) {
         const sqmAmt = (rawNum * 1.05).toFixed(1);
         const toppingCubic = (rawNum * 0.05 * 1.05).toFixed(2);
         const wireMeshSqm = (rawNum * 1.10).toFixed(1);
-        newEstimate = `- แผ่นพื้น CPAC Hollow Core: ${sqmAmt} ตร.ม.\n- คอนกรีตทับหน้า Topping หนา 5 ซม.: ${toppingCubic} คิว (ลบ.ม.)\n- ตะแกรงเหล็ก Wire Mesh: ${wireMeshSqm} ตร.ม. (เผื่อทาบ 10%)`;
+        newEstimate = "- แผ่นพื้น CPAC Hollow Core: " + sqmAmt + " ตร.ม.\n- คอนกรีตทับหน้า Topping หนา 5 ซม.: " + toppingCubic + " คิว (ลบ.ม.)\n- ตะแกรงเหล็ก Wire Mesh: " + wireMeshSqm + " ตร.ม. (เผื่อทาบ 10%)";
       } else if (product.includes("prestige") || product.includes("เพรสทีจ") || product.includes("neustile") || product.includes("นิวสไตล์") || product.includes("cpac") || product.includes("ลอนคู่")) {
         const tiles = Math.ceil(rawNum * 11 * 1.05);
-        newEstimate = `- กระเบื้องหลังคา: ${tiles} แผ่น (เผื่อเศษ 5%)`;
+        newEstimate = "- กระเบื้องหลังคา: " + tiles + " แผ่น (เผื่อเศษ 5%)";
       } else if (product.includes("post-tension") || product.includes("โพสต์เทนชั่น")) {
         const sqmAmt = (rawNum * 1.05).toFixed(1);
         const strandKg = Math.round(rawNum * 4.0);
-        newEstimate = `- พื้นคอนกรีตอัดแรง Post-tension: ${sqmAmt} ตร.ม.\n- ลวดสลิง PC Strand: ~${strandKg} กก.`;
+        newEstimate = "- พื้นคอนกรีตอัดแรง Post-tension: " + sqmAmt + " ตร.ม.\n- ลวดสลิง PC Strand: ~" + strandKg + " กก.";
       } else if (product.includes("คอนกรีตผสมเสร็จ") || product.includes("ready-mix")) {
         const cubic = (rawNum * 1.05).toFixed(2);
-        newEstimate = `- คอนกรีตผสมเสร็จ CPAC: ${cubic} คิว (ลบ.ม.)`;
+        newEstimate = "- คอนกรีตผสมเสร็จ CPAC: " + cubic + " คิว (ลบ.ม.)";
       } else if (product.includes("เชิงชาย") || product.includes("บัว")) {
         const pcs = Math.ceil((rawNum / 3.0) * 1.05);
-        newEstimate = `- ไม้เชิงชาย SCG Smartwood: ${pcs} ท่อน (3.0 ม./ท่อน)`;
+        newEstimate = "- ไม้เชิงชาย SCG Smartwood: " + pcs + " ท่อน (3.0 ม./ท่อน)";
       } else if (product.includes("stay cool") || product.includes("สเตย์คูล")) {
         const rolls = Math.ceil((rawNum / 2.40) * 1.05);
-        newEstimate = `- ฉนวนปูเหนือฝ้า SCG STAY COOL: ${rolls} ม้วน (ปูเหนือฝ้า 2.40 ตร.ม./ม้วน)`;
+        newEstimate = "- ฉนวนปูเหนือฝ้า SCG STAY COOL: " + rolls + " ม้วน (ปูเหนือฝ้า 2.40 ตร.ม./ม้วน)";
       } else if (product.includes("fso")) {
         const sqmAmt = (rawNum * 1.05).toFixed(1);
-        newEstimate = `- ฉนวนใยแก้วใต้หลังคา SCG FSO: ${sqmAmt} ตร.ม.`;
+        newEstimate = "- ฉนวนใยแก้วใต้หลังคา SCG FSO: " + sqmAmt + " ตร.ม.";
       } else if (product.includes("สมาร์ทบอร์ด") || product.includes("smartboard") || product.includes("ยิปซัม")) {
         const sheets = Math.ceil((rawNum / 2.88) * 1.05);
-        newEstimate = `- แผ่นบอร์ด: ${sheets} แผ่น`;
+        newEstimate = "- แผ่นบอร์ด: " + sheets + " แผ่น";
       } else if (product.includes("ไม้ฝา") || product.includes("siding")) {
         const planks = Math.ceil(rawNum * 2.22 * 1.05);
-        newEstimate = `- ไม้ฝาตกแต่ง SCG Smartwood: ${planks} แผ่น`;
+        newEstimate = "- ไม้ฝาตกแต่ง SCG Smartwood: " + planks + " แผ่น";
       } else if (product.includes("lumax") || product.includes("metal sheet") || product.includes("เมทัลชีท")) {
         const sqmAmt = (rawNum * 1.05).toFixed(1);
-        newEstimate = `- แผ่นหลังคา Metal Sheet: ${sqmAmt} ตร.ม.`;
+        newEstimate = "- แผ่นหลังคา Metal Sheet: " + sqmAmt + " ตร.ม.";
+      } else if (product.includes("คอนกรีตกันซึม")) {
+        const cubic = (rawNum * 1.05).toFixed(2);
+        newEstimate = "- คอนกรีตกันซึม CPAC: " + cubic + " คิว (ลบ.ม.)";
+      } else if (product.includes("cotto") || product.includes("กระเบื้องปูพื้น")) {
+        const sqmAmt = (rawNum * 1.05).toFixed(1);
+        newEstimate = "- กระเบื้องปูพื้น COTTO: " + sqmAmt + " ตร.ม.\n- ปูนกาวเสือ: ตามอัตราส่วนผู้ผลิต";
+      } else if (product.includes("q-con") || product.includes("อิฐมวลเบา")) {
+        const sqmAmt = (rawNum * 1.05).toFixed(1);
+        newEstimate = "- อิฐมวลเบา Q-CON: " + sqmAmt + " ตร.ม.\n- ปูนฉาบเสือมอร์ตาร์: ตามอัตราส่วนผู้ผลิต";
       }
       if (newEstimate) {
         item.order_estimate = newEstimate;
-        const estElem = document.getElementById(`order-estimate-${id}`);
+        const estElem = document.getElementById('order-estimate-' + id);
         if (estElem) estElem.innerHTML = formatOrderEstimateHTML(newEstimate);
       }
     }
   }
-  const inputElem = document.getElementById(`qty-input-${id}`);
+  const inputElem = document.getElementById('qty-input-' + id);
   if (inputElem) {
     inputElem.classList.add("modified");
   }
 }
 
 function closeModal(modalId) {
-  stopAutoPanLoop();
-  document.getElementById(modalId).style.display = "none";
+  if (typeof stopAutoPanLoop === "function") {
+    stopAutoPanLoop();
+  }
+  const modal = document.getElementById(modalId);
+  if (modal) modal.style.display = "none";
 }
 
 window.onclick = function(event) {
@@ -1086,7 +1212,6 @@ function exportExcel() {
   const code = document.getElementById("metaProjectCode").value || "-";
   const totalMB = lastRawBOQItems.reduce((sum, it) => sum + (parseFloat(it.value_mb) || 0), 0);
   const totalBaht = lastRawBOQItems.reduce((sum, it) => sum + (parseFloat(it.total_price) || 0), 0);
-
   const excelData = lastRawBOQItems.map(row => {
     calculateItemTotals(row);
     const page = (row.source_location && row.source_location.page_number) ? row.source_location.page_number : "-";
@@ -1099,7 +1224,7 @@ function exportExcel() {
       "ชื่อไฟล์แบบแปลน": plan,
       "รหัสโครงการ": code,
       "หมวดงาน": row.category || "-",
-      "หน้าที่พบ": `หน้า ${page}`,
+      "หน้าที่พบ": "หน้า " + page,
       "รหัสอ้างอิง/สัญลักษณ์": row.code_ref || "-",
       "รายการงานตามแบบ": row.item_name || "-",
       "ปริมาณสุทธิ": row.net_quantity || "-",
@@ -1115,8 +1240,6 @@ function exportExcel() {
       "คำอธิบายตำแหน่งในแบบ": desc
     };
   });
-
-  // แถวสรุปท้ายตาราง Excel
   excelData.push({
     "ชื่อโครงการ": "รวมมูลค่าโครงการทั้งหมด",
     "ชื่อลูกค้า": "",
@@ -1138,11 +1261,10 @@ function exportExcel() {
     "การ Cross-Check และที่มาปริมาณ": "",
     "คำอธิบายตำแหน่งในแบบ": ""
   });
-
   const worksheet = XLSX.utils.json_to_sheet(excelData);
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, worksheet, "SCG_BOQ");
-  const fileName = `SCG_BOQ_${cust}_${prj}_${new Date().toISOString().slice(0,10)}.xlsx`;
+  const fileName = "SCG_BOQ_" + cust + "_" + prj + "_" + new Date().toISOString().slice(0,10) + ".xlsx";
   XLSX.writeFile(workbook, fileName);
 }
 
@@ -1154,7 +1276,6 @@ function buildReportHTML() {
   const estimator = document.getElementById("metaEstimator").value || "-";
   const totalMB = lastRawBOQItems.reduce((sum, it) => sum + (parseFloat(it.value_mb) || 0), 0);
   const totalBaht = lastRawBOQItems.reduce((sum, it) => sum + (parseFloat(it.total_price) || 0), 0);
-
   const headerHTML = `
     <div style="border-bottom: 3px solid #dc2626; padding-bottom: 12px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: flex-end;">
       <div>
@@ -1177,19 +1298,19 @@ function buildReportHTML() {
     </div>
   `;
   let rowsHTML = "";
-  lastRawBOQItems.forEach((row, i) => {
+  for (let i = 0; i < lastRawBOQItems.length; i++) {
+    const row = lastRawBOQItems[i];
     calculateItemTotals(row);
     const page = (row.source_location && row.source_location.page_number) ? row.source_location.page_number : "-";
     const cleanEstimate = (row.order_estimate || "-")
       .split(/\r?\n/)
       .map(s => s.trim().replace(/^[-•*]\s*/, ''))
       .filter(s => s.length > 0)
-      .map(s => `• ${s}`)
+      .map(s => '• ' + s)
       .join("<br>");
     const uPriceText = row.unit_price > 0 ? Number(row.unit_price).toLocaleString('th-TH', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : "-";
     const totalBahtText = row.total_price > 0 ? Number(row.total_price).toLocaleString('th-TH', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + " ฿" : "-";
-    const mbText = row.value_mb > 0 ? `(${Number(row.value_mb).toFixed(4)} MB)` : "";
-
+    const mbText = row.value_mb > 0 ? "(" + Number(row.value_mb).toFixed(4) + " MB)" : "";
     rowsHTML += `
       <tr style="border-bottom: 1px solid #cbd5e1; font-size: 10px; background: ${i % 2 === 0 ? '#ffffff' : '#f8fafc'}; page-break-inside: avoid;">
         <td style="padding: 6px 8px; font-weight: bold; color: #b91c1c; vertical-align: top;">${row.category || "-"}</td>
@@ -1208,7 +1329,7 @@ function buildReportHTML() {
         <td style="padding: 6px 8px; color: #0369a1; font-size: 9px; line-height: 1.3; vertical-align: top;">${row.verification_method || "-"}</td>
       </tr>
     `;
-  });
+  }
   const tableHTML = `
     <table style="width: 100%; border-collapse: collapse; text-align: left;">
       <thead>
@@ -1314,18 +1435,16 @@ function printReportDocument() {
     </head>
     <body>
       ${reportContent}
-      <script>
-        window.onload = function() {
-          setTimeout(function() {
-            window.focus();
-            window.print();
-          }, 400);
-        };
-      <\/script>
     </body>
     </html>
   `);
   printWindow.document.close();
+  printWindow.onload = function() {
+    setTimeout(function() {
+      printWindow.focus();
+      printWindow.print();
+    }, 400);
+  };
 }
 
 function exportJSON() {
@@ -1336,10 +1455,9 @@ function exportJSON() {
   const cust = document.getElementById("metaCustomerName").value || "ไม่ระบุลูกค้า";
   const prj = document.getElementById("metaProjectName").value || "ไม่ระบุโครงการ";
   const plan = document.getElementById("metaPlanFileName").value || "ไม่ระบุชื่อแบบ";
-
   const projectSnapshot = {
     exportDate: new Date().toISOString(),
-    version: "3.5-lite",
+    version: "3.5-lite-enhanced",
     meta: {
       customerName: cust,
       projectName: prj,
@@ -1366,7 +1484,7 @@ function exportJSON() {
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.download = `SCG_BOQ_${cust}_${prj}_${new Date().toISOString().slice(0,10)}.json`;
+  link.download = "SCG_BOQ_" + cust + "_" + prj + "_" + new Date().toISOString().slice(0,10) + ".json";
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
@@ -1410,16 +1528,17 @@ function handleJsonFileImport(event) {
       } else {
         throw new Error("โครงสร้างไฟล์ JSON ไม่ถูกต้อง");
       }
-      itemsToLoad.forEach((item, idx) => {
+      for (let idx = 0; idx < itemsToLoad.length; idx++) {
+        const item = itemsToLoad[idx];
         if (!item._id) item._id = "item_" + Date.now() + "_" + idx;
         item.unit_price = item.unit_price !== undefined ? parseFloat(item.unit_price) : 0;
         calculateItemTotals(item);
-      });
+      }
       lastRawBOQItems = itemsToLoad;
       document.getElementById("recalcBtn").disabled = false;
       renderBOQTable(lastRawBOQItems);
-      document.getElementById("status").innerText = `✅ นำเข้าข้อมูลสำเร็จแล้ว (${lastRawBOQItems.length} รายการ)`;
-      alert(`นำเข้าข้อมูลเรียบร้อยแล้ว (${lastRawBOQItems.length} รายการ)`);
+      document.getElementById("status").innerText = '✅ นำเข้าข้อมูลสำเร็จแล้ว (' + lastRawBOQItems.length + ' รายการ)';
+      alert('นำเข้าข้อมูลเรียบร้อยแล้ว (' + lastRawBOQItems.length + ' รายการ)');
     } catch (err) {
       alert("ไม่สามารถอ่านไฟล์ JSON ได้ กรุณาตรวจสอบความถูกต้องของไฟล์");
     } finally {
