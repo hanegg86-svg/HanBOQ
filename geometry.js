@@ -1,6 +1,7 @@
 /* ==========================================================
    ระบบ PRECISION GEOMETRY TOOL (CANVAS, OSNAP, ORTHO & EDGE PAN)
-   ปรับปรุงให้เชื่อมต่อกับ Project DB, Metadata Tagging, AI Context
+   ปรับปรุงให้เชื่อมต่อกับ Project DB, Metadata Tagging, AI Context,
+   รองรับโครงหลังคา SCG Truss (หน่วย ตร.ม. อิงความชันหลังคา)
    ========================================================== */
 let currentDrawPageImg = null;
 let currentToolMode = "area";
@@ -42,17 +43,14 @@ async function loadProjectSettingsToGeometry() {
 
     const s = project.settings;
 
-    // โหลด slope จาก project settings
     if (s.roofSlopeDeg && document.getElementById("modalSlopeDeg")) {
       document.getElementById("modalSlopeDeg").value = s.roofSlopeDeg;
     }
 
-    // โหลด roofOption จาก project settings
     if (s.roofOption && document.getElementById("roofOption")) {
       document.getElementById("roofOption").value = s.roofOption;
     }
 
-    // โหลด calibration ถ้ามี
     if (project.ai_context?.detected_slope) {
       // มี slope ที่เคย detect ไว้แล้ว
     }
@@ -73,7 +71,6 @@ async function syncGeometryToProjectDB() {
     const project = await getProjectById(currentProjectId);
     if (!project) return;
 
-    // --- auto-detect project type จาก geometry shapes ---
     const cat = document.getElementById("drawCategorySelect")?.value || "";
     const chosenProduct = document.getElementById("drawProductSelect")?.value || "";
     const slopeDeg = parseFloat(document.getElementById("modalSlopeDeg")?.value) || 0;
@@ -84,7 +81,9 @@ async function syncGeometryToProjectDB() {
       chosenProduct.toLowerCase().includes("metal") ||
       chosenProduct.toLowerCase().includes("snap lock") ||
       chosenProduct.toLowerCase().includes("prestige") ||
-      chosenProduct.toLowerCase().includes("neustile");
+      chosenProduct.toLowerCase().includes("neustile") ||
+      chosenProduct.toLowerCase().includes("truss") ||
+      chosenProduct.includes("ทรัส");
 
     const hasConcreteStructure =
       cat.includes("โครงสร้าง") ||
@@ -109,9 +108,11 @@ async function syncGeometryToProjectDB() {
       cat.includes("หลังคา") ||
       cat.includes("FSO") ||
       cat.includes("Dry Tech") ||
-      cat.includes("สันหลังคา");
+      cat.includes("สันหลังคา") ||
+      cat.includes("โครงเหล็ก") ||
+      chosenProduct.toLowerCase().includes("truss") ||
+      chosenProduct.includes("ทรัส");
 
-    // --- อัปเดต project_template ---
     if (!project.project_template) project.project_template = {};
     const pt = project.project_template;
 
@@ -130,14 +131,12 @@ async function syncGeometryToProjectDB() {
       pt.roof_style = "metal_sheet";
     }
 
-    // Scope of work
     if (!pt.scope_of_work) pt.scope_of_work = [];
     if (cat && pt.scope_of_work.indexOf(cat) === -1) {
       pt.scope_of_work.push(cat);
     }
     if (pt.floor_count < 1) pt.floor_count = 1;
 
-    // --- อัปเดต ai_context ---
     if (!project.ai_context) project.ai_context = {};
     const ai = project.ai_context;
 
@@ -152,7 +151,6 @@ async function syncGeometryToProjectDB() {
       ai.detected_building_types.push("concrete_structure");
     }
 
-    // --- อัปเดต metadata_tags ---
     if (!project.metadata_tags) project.metadata_tags = [];
     const tags = project.metadata_tags;
 
@@ -174,11 +172,9 @@ async function syncGeometryToProjectDB() {
       tags.push(newTags[i]);
     }
 
-    // --- อัปเดต last_material_preference ---
     ai.last_material_preference = isRoofRelated ? "metal_sheet" :
       (hasConcreteStructure ? "cpac_240" : ai.last_material_preference || "auto");
 
-    // --- บันทึก settings snapshot ---
     project.settings = project.settings || {};
     project.settings.roofSlopeDeg = document.getElementById("modalSlopeDeg")?.value || project.settings.roofSlopeDeg || "15";
     const roofOptionEl = document.getElementById("roofOption");
@@ -189,7 +185,6 @@ async function syncGeometryToProjectDB() {
 
     project.updatedAt = new Date().toISOString();
 
-    // บันทึกลง DB
     if (typeof saveProjectToDB === "function") {
       await saveProjectToDB(project);
       console.log("💾 [Geometry] Sync metadata กลับไปยัง project DB สำเร็จ | Tags:", tags.slice(-5));
@@ -218,7 +213,6 @@ function autoDetectProjectTypeFromGeometry() {
     scope_tags: []
   };
 
-  // ตรวจจับจาก category
   if (cat.includes("หลังคา")) {
     result.roof_style = "metal_sheet";
     result.has_steel_structure = true;
@@ -238,9 +232,8 @@ function autoDetectProjectTypeFromGeometry() {
     result.scope_tags.push("insulation");
   }
 
-  // ตรวจจับจาก product
   const pLower = product.toLowerCase();
-  if (pLower.includes("lumax") || pLower.includes("metal") || pLower.includes("prestige") || pLower.includes("neustile")) {
+  if (pLower.includes("lumax") || pLower.includes("metal") || pLower.includes("prestige") || pLower.includes("neustile") || pLower.includes("truss") || pLower.includes("ทรัส")) {
     result.roof_style = "metal_sheet";
     result.has_steel_structure = true;
   }
@@ -251,7 +244,6 @@ function autoDetectProjectTypeFromGeometry() {
     result.has_aluminum_composite = true;
   }
 
-  // ตรวจจับจาก shapes
   if (measuredShapes.length > 0 && result.roof_style === "unknown") {
     if (slopeDeg > 0) {
       result.roof_style = "metal_sheet";
@@ -642,7 +634,8 @@ async function autoDetectScaleWithAI() {
 
 function updateBoxCounter() {
   const cat = document.getElementById("drawCategorySelect").value;
-  const isRoofRelated = (cat.includes("หลังคา") || cat.includes("FSO") || cat.includes("Dry Tech"));
+  const prod = (document.getElementById("drawProductSelect")?.value || "").toLowerCase();
+  const isRoofRelated = (cat.includes("หลังคา") || cat.includes("FSO") || cat.includes("Dry Tech") || cat.includes("โครงเหล็ก") || prod.includes("truss") || prod.includes("ทรัส"));
   const mType = document.getElementById("measureTypeSelect").value;
   const label = document.getElementById("boxCounterLabel");
   if (currentToolMode === "line" || measuredLines.length > 0) {
@@ -677,7 +670,8 @@ function redrawCanvas() {
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   ctx.drawImage(currentDrawPageImg, 0, 0);
   const cat = document.getElementById("drawCategorySelect").value;
-  const isRoofRelated = (cat.includes("หลังคา") || cat.includes("FSO") || cat.includes("Dry Tech"));
+  const prod = (document.getElementById("drawProductSelect")?.value || "").toLowerCase();
+  const isRoofRelated = (cat.includes("หลังคา") || cat.includes("FSO") || cat.includes("Dry Tech") || cat.includes("โครงเหล็ก") || prod.includes("truss") || prod.includes("ทรัส"));
   const mType = document.getElementById("measureTypeSelect").value;
   const currentSlopeDeg = parseFloat(document.getElementById("modalSlopeDeg").value) || 0;
   const slopeMultiplier = getSlopeMultiplier(currentSlopeDeg);
@@ -1004,7 +998,8 @@ function setupDrawEvents() {
       if (currentDragBox.w > 10 && currentDragBox.h > 10) {
         let widthM = 0, heightM = 0, flatAreaM = 0, slopeAreaM = 0, perimeterM = 0;
         const cat = document.getElementById("drawCategorySelect").value;
-        const isRoofRelated = (cat.includes("หลังคา") || cat.includes("FSO") || cat.includes("Dry Tech"));
+        const prod = (document.getElementById("drawProductSelect")?.value || "").toLowerCase();
+        const isRoofRelated = (cat.includes("หลังคา") || cat.includes("FSO") || cat.includes("Dry Tech") || cat.includes("โครงเหล็ก") || prod.includes("truss") || prod.includes("ทรัส"));
         const currentSlopeDeg = parseFloat(document.getElementById("modalSlopeDeg").value) || 0;
         const slopeMultiplier = getSlopeMultiplier(currentSlopeDeg);
         if (pixelsPerMeter) {
@@ -1057,7 +1052,8 @@ function handlePolygonClick(coords) {
 function closeAndFinishPolygon() {
   if (currentPolygonPoints.length < 3) return;
   const cat = document.getElementById("drawCategorySelect").value;
-  const isRoofRelated = (cat.includes("หลังคา") || cat.includes("FSO") || cat.includes("Dry Tech"));
+  const prod = (document.getElementById("drawProductSelect")?.value || "").toLowerCase();
+  const isRoofRelated = (cat.includes("หลังคา") || cat.includes("FSO") || cat.includes("Dry Tech") || cat.includes("โครงเหล็ก") || prod.includes("truss") || prod.includes("ทรัส"));
   const currentSlopeDeg = parseFloat(document.getElementById("modalSlopeDeg").value) || 0;
   const slopeMultiplier = getSlopeMultiplier(currentSlopeDeg);
   const metrics = calculatePolygonMetrics(currentPolygonPoints, pixelsPerMeter);
@@ -1139,15 +1135,16 @@ async function openInPlaceEditor(itemId) {
   else if (cat.includes("ฉนวนใต้หลังคา") || cat.includes("FSO")) catSelect.value = "งานฉนวนใต้หลังคา (SCG FSO)";
   else if (cat.includes("ฉนวนปูเหนือฝ้า") || cat.includes("STAY COOL")) catSelect.value = "งานฉนวนปูเหนือฝ้า (STAY COOL)";
   else if (cat.includes("หลังคา")) catSelect.value = "งานหลังคา";
+  else if (cat.includes("โครงเหล็ก") || cat.includes("truss") || cat.includes("ทรัส")) catSelect.value = "งานโครงสร้างเหล็ก";
   else if (cat.includes("โครงสร้าง") || cat.includes("คอนกรีต") || cat.includes("CPAC") || cat.includes("Hollow") || cat.includes("Post")) catSelect.value = "งานโครงสร้างและคอนกรีต CPAC";
   else if (cat.includes("ไม้")) catSelect.value = "งานไม้สังเคราะห์/ตกแต่ง";
   else if (cat.includes("ผนัง")) catSelect.value = "งานผนัง";
   else if (cat.includes("พื้น")) catSelect.value = "งานพื้น";
   else if (cat.includes("ฝ้า") || cat.includes("เพดาน")) catSelect.value = "งานฝ้าเพดาน";
   populateProductDropdown(catSelect.value, targetItem.scg_product);
-  const isRoofRelated = (catSelect.value.includes("หลังคา") || catSelect.value.includes("FSO") || catSelect.value.includes("Dry Tech"));
+  const isRoofRelated = (catSelect.value.includes("หลังคา") || catSelect.value.includes("FSO") || catSelect.value.includes("Dry Tech") || catSelect.value.includes("โครงเหล็ก"));
   document.getElementById("modalSlopeContainer").style.display = isRoofRelated ? "inline-flex" : "none";
-  document.getElementById("roofShapeContainer").style.display = catSelect.value.includes("หลังคา") ? "inline-flex" : "none";
+  document.getElementById("roofShapeContainer").style.display = (catSelect.value.includes("หลังคา") || catSelect.value.includes("โครงเหล็ก")) ? "inline-flex" : "none";
   const slopeMatch = (targetItem.verification_method || "").match(/Slope\s*([\d.]+)/i);
   if (slopeMatch) {
     document.getElementById("modalSlopeDeg").value = slopeMatch[1];
@@ -1275,8 +1272,9 @@ async function saveAndApplyInPlaceMeasurement() {
     return;
   }
   const category = document.getElementById("drawCategorySelect").value;
-  const isRoofRelated = (category.includes("หลังคา") || category.includes("FSO") || category.includes("Dry Tech"));
   const chosenProduct = document.getElementById("drawProductSelect").value;
+  const pLower = chosenProduct.toLowerCase();
+  const isRoofRelated = (category.includes("หลังคา") || category.includes("FSO") || category.includes("Dry Tech") || category.includes("โครงเหล็ก") || pLower.includes("truss") || pLower.includes("ทรัส"));
   const pageNum = parseInt(document.getElementById("drawPageSelect").value);
   const slopeDeg = document.getElementById("modalSlopeDeg").value;
   const roofShape = document.getElementById("roofShapeSelect").value;
@@ -1333,8 +1331,10 @@ async function saveAndApplyInPlaceMeasurement() {
     }
   }
   let fallbackOrderEstimate = "";
-  const pLower = chosenProduct.toLowerCase();
-  if (pLower.includes("dry tech") || pLower.includes("สันหลังคา")) {
+  if (pLower.includes("truss") || pLower.includes("ทรัส")) {
+    const sqmAmt = (chosenValue * wastePercent).toFixed(1);
+    fallbackOrderEstimate = "- ระบบโครงหลังคาสำเร็จรูป SCG Truss: " + sqmAmt + " ตร.ม. (คิดตามพื้นที่ลาดเอียง เผื่อ " + wasteFactorText + ")\n- สกรูและอุปกรณ์ยึดโครงสร้างชุบกัลวาไนซ์: ครบชุดตามมาตรฐาน SCG";
+  } else if (pLower.includes("dry tech") || pLower.includes("สันหลังคา")) {
     const tiles = Math.ceil(chosenValue * 3.3 * wastePercent);
     const dryRolls = Math.ceil((chosenValue / 3.0) * wastePercent);
     fallbackOrderEstimate = "- แผ่นครอบสันหลังคา: " + tiles + " แผ่น\n- แผ่นรองใต้สันหลังคา SCG Dry Tech: " + dryRolls + " ม้วน (3.0 ม./ม้วน)";
